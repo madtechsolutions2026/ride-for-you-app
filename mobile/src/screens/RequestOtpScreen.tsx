@@ -241,10 +241,10 @@ const styles = StyleSheet.create({
   card: {
     zIndex: 1,
     marginHorizontal: spacing.md,
-    marginTop: -70,
+    marginTop: -52,
     paddingHorizontal: spacing.lg,
-    paddingTop: 60, // clears the blob curve overlapping the top
-    paddingBottom: spacing.lg,
+    paddingTop: 44, // "Welcome back" sits clear of the blob's dipped centre
+    paddingBottom: spacing.md,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     borderBottomLeftRadius: radius.card,
