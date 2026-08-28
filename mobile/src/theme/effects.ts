@@ -39,12 +39,12 @@ export const neo = {
   raised: {
     backgroundColor: colors.surface.card,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#7C9B8E', // muted grey-green, matches the mockup's soft shadow
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.32,
-    shadowRadius: 38,
-    elevation: 10, // Android
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    shadowColor: '#5F8375', // muted grey-green
+    shadowOffset: { width: 0, height: 24 },
+    shadowOpacity: 0.45,
+    shadowRadius: 48,
+    elevation: 18, // Android
   },
   /* A gently pressed-in look: the phone-number text field */
   inset: {

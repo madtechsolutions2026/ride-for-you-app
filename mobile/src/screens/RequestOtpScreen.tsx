@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -22,7 +21,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'RequestOtp'>;
 
 export default function RequestOtpScreen({ navigation }: Props) {
   const { width, height } = useWindowDimensions();
-  const heroHeight = Math.round(height * 0.47);
+  const heroHeight = Math.round(height * 0.46);
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,13 +60,12 @@ export default function RequestOtpScreen({ navigation }: Props) {
       >
         {/* ---------------------- HERO ---------------------- */}
         <View style={[styles.hero, { height: heroHeight }]}>
-          {/* the curved photo, filling the hero, behind everything */}
-          <View style={StyleSheet.absoluteFill}>
-            <HeroBlob width={width} height={heroHeight} />
+          {/* blob draws 78px past the hero and sits above the card (zIndex) */}
+          <View style={styles.heroBlobWrap}>
+            <HeroBlob width={width} height={heroHeight} overhang={78} />
           </View>
 
-          <View style={styles.heroContent}>
-            {/* top row: logo + language */}
+          <View style={styles.heroContent} pointerEvents="box-none">
             <View style={styles.topRow}>
               <Glass borderRadius={radius.md} style={styles.logoMark}>
                 <Ionicons name="flash" size={22} color={colors.brand.primary} />
@@ -80,14 +78,12 @@ export default function RequestOtpScreen({ navigation }: Props) {
               </Glass>
             </View>
 
-            {/* dot-grid decoration */}
             <View style={styles.dotGrid}>
               {Array.from({ length: 16 }).map((_, i) => (
                 <View key={i} style={styles.dot} />
               ))}
             </View>
 
-            {/* wordmark + tagline (kept narrow so the blob has room) */}
             <View style={styles.wordmarkBlock}>
               <Text style={styles.brand}>RIDE</Text>
               <Text style={styles.brand}>FOR</Text>
@@ -109,12 +105,6 @@ export default function RequestOtpScreen({ navigation }: Props) {
 
         {/* ---------------------- LOGIN CARD ---------------------- */}
         <NeoSurface borderRadius={radius.card} style={styles.card}>
-          {/* soft frosted sheen along the domed top edge (neumorphic highlight) */}
-          <LinearGradient
-            colors={['rgba(255,255,255,0.95)', 'rgba(255,255,255,0)']}
-            style={styles.cardSheen}
-            pointerEvents="none"
-          />
           <View style={styles.grabber} />
 
           <View style={styles.cardHeader}>
@@ -199,8 +189,9 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xl },
 
   /* hero */
-  hero: { width: '100%' },
-  heroContent: { flex: 1, paddingHorizontal: screenPadding, paddingTop: spacing.xl },
+  hero: { width: '100%', zIndex: 2 }, // paints above the card so the blob curve overlaps it
+  heroBlobWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
+  heroContent: { flex: 1, paddingHorizontal: screenPadding, paddingTop: 52 },
   wordmarkBlock: { maxWidth: '56%', marginTop: spacing.sm }, // keep text clear of the blob
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   logoMark: { width: 54, height: 42, alignItems: 'center', justifyContent: 'center' },
@@ -248,27 +239,16 @@ const styles = StyleSheet.create({
 
   /* card */
   card: {
+    zIndex: 1,
     marginHorizontal: spacing.md,
     marginTop: -70,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: 60, // clears the blob curve overlapping the top
     paddingBottom: spacing.lg,
-    // domed top: big top corners, calmer bottom corners
-    borderTopLeftRadius: 46,
-    borderTopRightRadius: 46,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
     borderBottomLeftRadius: radius.card,
     borderBottomRightRadius: radius.card,
-    borderTopWidth: 1.5,
-    borderTopColor: 'rgba(255,255,255,1)',
-  },
-  cardSheen: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 72,
-    borderTopLeftRadius: 46,
-    borderTopRightRadius: 46,
   },
   grabber: {
     alignSelf: 'center',
