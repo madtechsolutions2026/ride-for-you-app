@@ -6,3 +6,10 @@ build/
 web-build/
 *.log
 .DS_Store
+
+# IDE
+.idea/
+
+# Expo native (regenerate with: npx expo prebuild)
+mobile/android/
+mobile/ios/

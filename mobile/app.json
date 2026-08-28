@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Ride For You",
+    "slug": "ride-for-you-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/scooter.png",
+    "userInterfaceStyle": "light",
+    "scheme": "rideforyou",
+    "splash": {
+      "image": "./assets/scooter.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.rideforyou.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/scooter.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/scooter.png"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
