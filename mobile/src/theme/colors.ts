@@ -11,37 +11,39 @@
  */
 
 export const colors = {
-  /* ---- Brand greens (sampled from the mockup) ---- */
+  /* ---- Brand greens (sampled from the reference) ---- */
   brand: {
-    primary: '#15A55E', // main green — buttons, active icons, links, "YOU"
-    dark: '#0E7A44', // pressed states, darker accents
-    light: '#3FCB84', // lighter green highlights / borders
-    mint: '#E4F2EB', // pale green — icon circles, badges
-    // The "Continue with OTP" button is a left-to-right gradient of these two:
-    gradientFrom: '#23A968',
-    gradientTo: '#5FD79E',
-    // The frosted-teal hero blob fades between these top→bottom:
-    glassTop: '#EAF4EF',
-    glassBottom: '#D3E8E0',
+    primary: '#18B878', // main green — buttons, active icons, links, "YOU"
+    dark: '#129461', // pressed states, darker accents
+    light: '#4BD49B', // lighter green highlights
+    mint: '#E9F7F1', // pale green — icon circles, badges
+    // "Continue with OTP" is a left-to-right gradient of these:
+    gradientFrom: '#1FAE72',
+    gradientTo: '#5FD9A4',
+    // The frosted hero blob fades between these top→bottom:
+    glassTop: '#EFF7F5',
+    glassBottom: '#DCEDE8',
   },
 
   /* ---- Text ---- */
   text: {
-    primary: '#0F241D', // near-black with a green tint — headings, body
-    secondary: '#7C8783', // muted grey-green — captions, placeholders, hints
+    primary: '#172B3A', // dark navy — headings, body
+    secondary: '#8A97A0', // soft cool grey — captions, placeholders, hints
     inverse: '#FFFFFF', // text on top of a green button or dark photo
-    link: '#15A55E',
+    link: '#18B878',
   },
 
   /* ---- Surfaces (backgrounds of things) ---- */
   surface: {
-    background: '#EFF2F0', // the screen behind everything — pale cool grey-green
+    background: '#F7FAFA', // almost white with a cool mint tint
+    backgroundTintTop: '#EFF6F7', // very pale blue-mint, top of the page wash
+    backgroundTintBottom: '#FDFEFE', // near-white, bottom of the page wash
     card: '#FFFFFF', // white cards / panels that float on the background
     field: '#FFFFFF', // input backgrounds
   },
 
   /* ---- Lines & borders ---- */
-  border: '#E6ECE9', // hairline dividers, input outlines, card outlines
+  border: '#EDF2F1', // hairline dividers only — inputs/cards use shadow, not borders
 
   /* ---- Status colours (KYC "Pending", errors, etc.) ---- */
   status: {

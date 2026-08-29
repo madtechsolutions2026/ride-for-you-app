@@ -1,60 +1,60 @@
 /**
  * effects.ts
  * ----------
- * The two surface "materials" from the mockup:
+ * The two surface "materials" from the reference design:
  *
  *   glass  — frosted / see-through (language pill, shield badge, trust circles)
  *   neo    — soft raised white plastic (the login card, the +91 pill, inputs,
  *            the Google button)
  *
- * Screens don't reinvent these — they use <Glass> and <NeoSurface> components
- * (built next) which read from here.
+ * Design rule from the reference: NO hard borders anywhere. Depth comes from
+ * large, very diffuse, low-opacity shadows in a cool grey-green — never black.
  */
 
 import { colors } from './colors';
 
 /* ---------------- Glassmorphism ---------------- */
-/*
- * Real blur comes from <BlurView> (expo-blur). These values sit ON TOP of the
- * blurred area to give it colour + an edge.
- */
 export const glass = {
-  blurIntensity: 24, // 0–100, how strong the frost is
-  blurTint: 'light' as const, // 'light' | 'dark' | 'default'
-  fill: 'rgba(255, 255, 255, 0.55)', // white wash over the blur
-  border: 'rgba(255, 255, 255, 0.75)', // bright hairline edge = the "glass rim"
+  blurIntensity: 26, // 0–100, how strong the frost is
+  blurTint: 'light' as const,
+  fill: 'rgba(255, 255, 255, 0.68)', // white wash over the blur
+  border: 'rgba(255, 255, 255, 0.85)', // bright hairline = the "glass rim"
   borderWidth: 1,
 };
 
 /* ---------------- Neumorphism ---------------- */
 /*
- * React Native gives one shadow per view. True neumorphism wants two (a light
- * one top-left + a dark one bottom-right). We fake it with:
- *   - a bright inner-ish border (top highlight)
- *   - one soft grey-green drop shadow (the "sits above the page" feel)
- * Good enough to read as neumorphic; upgrade later if we ever need the real thing.
+ * React Native allows one shadow per view, so true two-sided neumorphism
+ * isn't free. We approximate the reference with a single large diffuse
+ * shadow and NO border — which is what makes it read as "gently raised"
+ * rather than "outlined box".
  */
 export const neo = {
-  /* A raised white panel: card, Google button, the +91 pill */
+  /* The big floating login card. */
+  card: {
+    backgroundColor: colors.surface.card,
+    shadowColor: '#46806E',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.16,
+    shadowRadius: 45,
+    elevation: 16,
+  },
+  /* A raised white control: the +91 pill, the Google button, icon circles. */
   raised: {
     backgroundColor: colors.surface.card,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    shadowColor: '#5F8375', // muted grey-green
-    shadowOffset: { width: 0, height: 24 },
-    shadowOpacity: 0.45,
-    shadowRadius: 48,
-    elevation: 18, // Android
+    shadowColor: '#46806E',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.13,
+    shadowRadius: 20,
+    elevation: 7,
   },
-  /* A gently pressed-in look: the phone-number text field */
+  /* The phone-number field — a raised white surface, not a bordered input. */
   inset: {
-    backgroundColor: '#FBFDFC',
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#8AA79B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 1,
+    backgroundColor: colors.surface.card,
+    shadowColor: '#46806E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 5,
   },
 } as const;

@@ -142,7 +142,7 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
         </View>
 
         {/* ---------------- CARD ---------------- */}
-        <NeoSurface borderRadius={radius.card} style={styles.card}>
+        <NeoSurface variant="card" borderRadius={radius.card} style={styles.card}>
           <View style={styles.grabber} />
 
           <Text style={styles.title}>Enter OTP</Text>

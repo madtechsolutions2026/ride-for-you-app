@@ -21,7 +21,8 @@ import { View, ViewProps } from 'react-native';
 import { neo, radius } from '../theme';
 
 type NeoSurfaceProps = ViewProps & {
-  variant?: 'raised' | 'inset';
+  /** card = the big floating panel · raised = pills/buttons · inset = inputs */
+  variant?: 'card' | 'raised' | 'inset';
   borderRadius?: number;
 };
 

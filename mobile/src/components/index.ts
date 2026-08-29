@@ -8,6 +8,7 @@ export { Glass } from './Glass';
 export { NeoSurface } from './NeoSurface';
 export { PrimaryButton } from './PrimaryButton';
 export { HeroBlob } from './HeroBlob';
+export { GoogleMark } from './GoogleMark';
 export { QuickAction, QuickActionDivider } from './QuickAction';
 export { VehicleCard } from './VehicleCard';
 export type { Vehicle } from './VehicleCard';

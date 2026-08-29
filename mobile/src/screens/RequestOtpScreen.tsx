@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Keyboard,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,19 +10,20 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
-import { colors, fontFamily, radius, screenPadding, spacing, textStyles } from '../theme';
-import { Glass, HeroBlob, NeoSurface, PrimaryButton } from '../components';
+import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
+import { Glass, GoogleMark, HeroBlob, NeoSurface, PrimaryButton } from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RequestOtp'>;
 
 export default function RequestOtpScreen({ navigation }: Props) {
   const { width, height } = useWindowDimensions();
-  const heroHeight = Math.round(height * 0.46);
+  const heroHeight = Math.round(height * 0.44);
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,6 +54,14 @@ export default function RequestOtpScreen({ navigation }: Props) {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
+
+      {/* page wash — pale blue-mint at the top fading to near-white */}
+      <LinearGradient
+        colors={[colors.surface.backgroundTintTop, colors.surface.backgroundTintBottom]}
+        locations={[0, 0.55]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -104,7 +114,7 @@ export default function RequestOtpScreen({ navigation }: Props) {
         </View>
 
         {/* ---------------------- LOGIN CARD ---------------------- */}
-        <NeoSurface borderRadius={radius.card} style={styles.card}>
+        <NeoSurface variant="card" borderRadius={radius.card} style={styles.card}>
           <View style={styles.grabber} />
 
           <View style={styles.cardHeader}>
@@ -149,10 +159,23 @@ export default function RequestOtpScreen({ navigation }: Props) {
             label="Continue with OTP"
             onPress={handleRequestOtp}
             loading={loading}
-            style={{ marginTop: spacing.md }}
+            style={{ marginTop: spacing.lg }}
           />
 
-         
+          {/* OR divider */}
+          <View style={styles.orRow}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>OR</Text>
+            <View style={styles.orLine} />
+          </View>
+
+          {/* Google */}
+          <Pressable onPress={() => {}}>
+            <NeoSurface borderRadius={radius.pill} style={styles.googleBtn}>
+              <GoogleMark />
+              <Text style={styles.googleText}>Continue with Google</Text>
+            </NeoSurface>
+          </Pressable>
 
           {/* trust badges */}
           <View style={styles.trustRow}>
@@ -186,13 +209,13 @@ function TrustItem({ icon, title, sub }: { icon: any; title: string; sub: string
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface.background },
-  scroll: { paddingBottom: spacing.xl },
+  scroll: { paddingBottom: spacing.xxl },
 
   /* hero */
   hero: { width: '100%', zIndex: 2 }, // paints above the card so the blob curve overlaps it
   heroBlobWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
-  heroContent: { flex: 1, paddingHorizontal: screenPadding, paddingTop: 52 },
-  wordmarkBlock: { maxWidth: '56%', marginTop: spacing.sm }, // keep text clear of the blob
+  heroContent: { flex: 1, paddingHorizontal: screenPadding, paddingTop: 46 },
+  wordmarkBlock: { maxWidth: '56%' }, // keep text clear of the blob
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   logoMark: { width: 54, height: 42, alignItems: 'center', justifyContent: 'center' },
   langPill: {
@@ -208,7 +231,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     width: 44,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     marginLeft: spacing.xxl,
     opacity: 0.55,
   },
@@ -233,22 +256,22 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 2,
     backgroundColor: colors.brand.primary,
-    marginVertical: spacing.sm,
+    marginVertical: 6,
   },
   tagline: { ...textStyles.bodySmall, color: colors.text.secondary },
 
   /* card */
   card: {
     zIndex: 1,
-    marginHorizontal: spacing.md,
-    marginTop: -52,
+    marginHorizontal: 18,
+    marginTop: -58, // tucks under the blob so the curve flows into the card
     paddingHorizontal: spacing.lg,
-    paddingTop: 44, // "Welcome back" sits clear of the blob's dipped centre
+    paddingTop: 46, // "Welcome back" sits clear of the blob's dipped centre
     paddingBottom: spacing.md,
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    borderBottomLeftRadius: radius.card,
-    borderBottomRightRadius: radius.card,
+    borderTopLeftRadius: 42,
+    borderTopRightRadius: 42,
+    borderBottomLeftRadius: 34,
+    borderBottomRightRadius: 34,
   },
   grabber: {
     alignSelf: 'center',
@@ -259,17 +282,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.lg },
-  welcomeTitle: { fontFamily: fontFamily.bold, fontSize: 21, color: colors.text.primary },
-  welcomeSub: { ...textStyles.bodySmall, color: colors.text.secondary, marginTop: 3 },
+  welcomeTitle: { fontFamily: fontFamily.bold, fontSize: 23, color: colors.text.primary },
+  welcomeSub: { ...textStyles.bodySmall, color: colors.text.secondary, marginTop: 4 },
   shieldBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.brand.mint,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.subtle,
   },
 
   phoneRow: { flexDirection: 'row', gap: spacing.sm },
@@ -277,40 +299,67 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 5,
     paddingHorizontal: spacing.md,
-    height: 52,
+    height: 56,
   },
-  countryText: { fontFamily: fontFamily.bold, fontSize: 15, color: colors.text.primary },
+  countryText: { fontFamily: fontFamily.semibold, fontSize: 15, color: colors.text.primary },
   phoneField: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 11,
     paddingHorizontal: spacing.md,
-    height: 52,
+    height: 56,
   },
   fieldDivider: { width: 1, height: 22, backgroundColor: colors.border },
   phoneInput: { flex: 1, fontFamily: fontFamily.medium, fontSize: 15, color: colors.text.primary },
 
   error: { ...textStyles.bodySmall, color: colors.status.error, marginTop: spacing.sm, textAlign: 'center' },
 
+  /* OR divider */
+  orRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  orLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  orText: {
+    fontFamily: fontFamily.medium,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: colors.text.secondary,
+  },
+
+  /* Google */
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    height: 56,
+  },
+  googleText: { fontFamily: fontFamily.semibold, fontSize: 14.5, color: colors.text.primary },
+
   trustRow: {
     flexDirection: 'row',
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   trustItem: { flex: 1, alignItems: 'center', paddingHorizontal: 4 },
   trustIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.brand.mint,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: 7,
+    ...shadows.subtle,
   },
   trustTitle: { fontFamily: fontFamily.semibold, fontSize: 10.5, color: colors.text.primary, textAlign: 'center' },
   trustSub: {
@@ -323,6 +372,6 @@ const styles = StyleSheet.create({
   },
   trustDivider: { width: 1, backgroundColor: colors.border, marginVertical: 2 },
 
-  footer: { ...textStyles.bodySmall, color: colors.text.secondary, textAlign: 'center', marginTop: spacing.lg },
+  footer: { ...textStyles.bodySmall, color: colors.text.secondary, textAlign: 'center', marginTop: spacing.md },
   footerLink: { color: colors.brand.link, fontFamily: fontFamily.semibold },
 });

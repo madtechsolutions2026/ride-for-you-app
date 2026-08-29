@@ -39,18 +39,18 @@ export function HeroBlob({ width: w, height: h, overhang = 0 }: HeroBlobProps) {
   // Left edge: one smooth S past the wordmark (card's top-left stays clear).
   // Bottom edge: dips in the centre, rises to the right where the card tucks under.
   const bottomEdge =
-    `C ${w * 0.3} ${h * 0.66}, ${w * 0.44} ${h * 0.7}, ${w * 0.6} ${h * 0.77} ` +
-    `C ${w * 0.74} ${h * 0.85}, ${w * 0.88} ${h * 0.8}, ${w} ${h * 0.66}`;
+    `C ${w * 0.32} ${h * 0.74}, ${w * 0.46} ${h * 0.78}, ${w * 0.62} ${h * 0.83} ` +
+    `C ${w * 0.76} ${h * 0.87}, ${w * 0.9} ${h * 0.8}, ${w} ${h * 0.66}`;
 
   const blob = [
     `M ${w * 0.46} 0`,
-    `C ${w * 0.28} ${h * 0.16}, ${w * 0.2} ${h * 0.4}, ${w * 0.26} ${h * 0.58}`,
+    `C ${w * 0.28} ${h * 0.18}, ${w * 0.19} ${h * 0.45}, ${w * 0.26} ${h * 0.68}`,
     bottomEdge,
     `L ${w} 0 Z`,
   ].join(' ');
 
   // just the bottom curve, for the drop shadow
-  const seam = `M ${w * 0.26} ${h * 0.58} ${bottomEdge}`;
+  const seam = `M ${w * 0.26} ${h * 0.68} ${bottomEdge}`;
 
   return (
     <View style={{ width: w, height: svgH }}>
@@ -83,13 +83,16 @@ export function HeroBlob({ width: w, height: h, overhang = 0 }: HeroBlobProps) {
         {/* 1. teal glass base */}
         <Path d={blob} fill="url(#glassFill)" />
 
-        {/* 2. scooter photo, cropped to the blob */}
+        {/* 2. scooter photo, cropped to the blob.
+              The rect is drawn LARGER than the hero and shifted, which zooms
+              into the source photo so the scooter reads big, as in the
+              reference — rather than a small scooter lost in scenery. */}
         <SvgImage
           href={HERO_IMAGE}
-          x={0}
-          y={0}
-          width={w}
-          height={h}
+          x={-w * 0.04}
+          y={-h * 0.01}
+          width={w * 1.1}
+          height={h * 1.02}
           preserveAspectRatio="xMidYMid slice"
           clipPath="url(#heroClip)"
         />
