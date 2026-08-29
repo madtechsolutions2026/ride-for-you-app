@@ -1,64 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
+  useWindowDimensions,
   View,
-  ActivityIndicator,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-  Dimensions,
-  Image,
-  ScrollView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle } from 'react-native-svg';
+import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+
+import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { setTokens } from '../api/tokenStore';
+import { colors, fontFamily, radius, screenPadding, spacing, textStyles } from '../theme';
+import { Glass, HeroBlob, NeoSurface, PrimaryButton } from '../components';
 
-type Props = {
-  route: {
-    params: {
-      challengeId: string;
-      phone: string;
-    };
-  };
-  navigation: any;
+type Props = NativeStackScreenProps<RootStackParamList, 'VerifyOtp'> & {
   onLoginSuccess: () => void;
 };
 
-const { width, height } = Dimensions.get('window');
+const OTP_LENGTH = 6;
 
-// Custom Coded Vector Line-Art Icons
-const ShieldIcon = () => (
-  <View style={styles.vectorIconContainer}>
-    <View style={styles.vectorShield}>
-      <View style={styles.vectorShieldCheck} />
-    </View>
-  </View>
-);
+/** +919998887776 -> "+91 99988 87776" */
+function formatPhone(p: string) {
+  const cc = p.slice(0, 3);
+  const rest = p.slice(3);
+  return `${cc} ${rest.slice(0, 5)} ${rest.slice(5)}`.trim();
+}
 
-const LeafIcon = () => (
-  <View style={styles.vectorIconContainer}>
-    <View style={styles.vectorLeaf}>
-      <View style={styles.vectorLeafVein} />
-    </View>
-  </View>
-);
-
-const HeadsetIcon = () => (
-  <View style={styles.vectorIconContainer}>
-    <View style={styles.vectorHeadsetBand} />
-    <View style={[styles.vectorHeadsetCup, { left: 8 }]} />
-    <View style={[styles.vectorHeadsetCup, { right: 8 }]} />
-  </View>
-);
+function pad2(n: number) {
+  return n < 10 ? `0${n}` : `${n}`;
+}
 
 export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: Props) {
+  const { width, height } = useWindowDimensions();
+  const heroHeight = Math.round(height * 0.44);
+
   const { phone } = route.params;
   const [challengeId, setChallengeId] = useState(route.params.challengeId);
   const [otp, setOtp] = useState('');
@@ -66,624 +47,305 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
   const [resending, setResending] = useState(false);
   const [resendTimer, setResendTimer] = useState(30);
   const [error, setError] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
 
-  // Countdown timer logic
   useEffect(() => {
     if (resendTimer <= 0) return;
-    const interval = setInterval(() => {
-      setResendTimer((prev) => prev - 1);
-    }, 1000);
-    return () => clearInterval(interval);
+    const id = setInterval(() => setResendTimer((t) => t - 1), 1000);
+    return () => clearInterval(id);
   }, [resendTimer]);
 
-  const handleVerifyOtp = async () => {
+  const handleVerify = async () => {
     setError('');
     Keyboard.dismiss();
-
-    if (otp.length !== 6 || isNaN(Number(otp))) {
-      setError('Please enter the 6-digit verification code');
+    if (otp.length !== OTP_LENGTH) {
+      setError('Enter the 6-digit code');
       return;
     }
-
     setLoading(true);
     try {
-      const response = await apiClient.post('/auth/otp/verify', {
-        challengeId,
-        otp,
-      });
-
-      const { tokens } = response.data;
-      await setTokens(tokens.accessToken, tokens.refreshToken);
+      const res = await apiClient.post('/auth/otp/verify', { challengeId, otp });
+      await setTokens(res.data.tokens.accessToken, res.data.tokens.refreshToken);
       onLoginSuccess();
-    } catch (err: any) {
-      const errMsg = err.response?.data?.error || 'Verification failed. Please check the code.';
-      setError(errMsg);
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Verification failed. Check the code and try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResendOtp = async () => {
+  const handleResend = async () => {
+    if (resendTimer > 0 || resending) return;
     setError('');
     setResending(true);
     try {
-      const response = await apiClient.post('/auth/otp/request', { phone });
-      setChallengeId(response.data.challengeId);
-      setResendTimer(response.data.resendAvailableIn || 30);
+      const res = await apiClient.post('/auth/otp/request', { phone });
+      setChallengeId(res.data.challengeId);
+      setResendTimer(res.data.resendAvailableIn || 30);
       setOtp('');
-    } catch (err: any) {
-      const errMsg = err.response?.data?.error || 'Failed to resend code.';
-      setError(errMsg);
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Could not resend the code.');
     } finally {
       setResending(false);
     }
   };
 
-  const formatPhoneNumber = (num: string) => {
-    if (num.length >= 10) {
-      return `${num.slice(0, 7)} ${num.slice(7).replace(/./g, 'X')}`;
-    }
-    return num;
-  };
-
-  const heroSectionHeight = height * 0.46;
-
   return (
-    <View style={styles.mainContainer}>
-      
-      {/* 1. FIXED BACKGROUND S-CURVE */}
-      <View style={[styles.organicBackgroundContainer, { height: heroSectionHeight }]}>
-        <Svg width={width} height={heroSectionHeight} style={StyleSheet.absoluteFill}>
-          {/* Coded S-curve organic gradient backing */}
-          <Path
-            d={`M ${width * 0.58} 0 
-                C ${width * 0.12} ${heroSectionHeight * 0.28}, ${width * 0.48} ${heroSectionHeight * 0.70}, ${width * 0.95} ${heroSectionHeight}
-                L ${width} ${heroSectionHeight}
-                L ${width} 0 Z`}
-            fill="#EAF5FA"
-          />
+    <View style={styles.root}>
+      <StatusBar style="dark" />
 
-          {/* Soft stroke highlight tracing along the S-curve boundary */}
-          <Path
-            d={`M ${width * 0.58} 0 
-                C ${width * 0.12} ${heroSectionHeight * 0.28}, ${width * 0.48} ${heroSectionHeight * 0.70}, ${width * 0.95} ${heroSectionHeight}`}
-            fill="none"
-            stroke="#18B878"
-            strokeWidth={2.5}
-            opacity={0.12}
-          />
-
-          {/* 4x4 Dot matrix decoration pattern in the center */}
-          {Array.from({ length: 4 }).map((_, colIndex) => (
-            Array.from({ length: 4 }).map((_, rowIndex) => (
-              <Circle 
-                key={`${colIndex}-${rowIndex}`}
-                cx={width * 0.445 + colIndex * 8} 
-                cy={heroSectionHeight * 0.23 + rowIndex * 8} 
-                r={1.8} 
-                fill="#18B878" 
-                opacity={0.3} 
-              />
-            ))
-          ))}
-        </Svg>
-      </View>
-
-      {/* 2. SCROLLABLE FOREGROUND VIEWPORT */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Hero Section containing back action and Scooter Overlay */}
-          <View style={[styles.heroWrapper, { height: heroSectionHeight }]}>
-            
-            {/* Floating Back Button */}
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={() => navigation.goBack()}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.backButtonText}>← Back</Text>
-            </TouchableOpacity>
-
-            <View style={styles.brandPlaceholder} />
-            
-            {/* Specifying unclipped scooter image overlay */}
-            <Image 
-              source={require('../../assets/scooter.png')} 
-              style={styles.scooterImage}
-            />
+        {/* ---------------- HERO ---------------- */}
+        <View style={[styles.hero, { height: heroHeight }]}>
+          <View style={styles.heroBlobWrap}>
+            <HeroBlob width={width} height={heroHeight} overhang={78} />
           </View>
 
-          {/* 3. Floating White Neumorphic Verification Card */}
-          <View style={styles.loginCard}>
-            <View style={styles.cardCurveAccent} />
+          <View style={styles.heroContent} pointerEvents="box-none">
+            <View style={styles.topRow}>
+              <Pressable onPress={() => navigation.goBack()} hitSlop={10}>
+                <Glass borderRadius={radius.pill} style={styles.iconBtn}>
+                  <Ionicons name="shield-checkmark" size={20} color={colors.brand.primary} />
+                </Glass>
+              </Pressable>
 
-            {/* Header info */}
-            <View style={styles.cardHeader}>
-              <View style={styles.welcomeTextGroup}>
-                <Text style={styles.welcomeTitle}>Verify your number</Text>
-                <Text style={styles.welcomeSubtitle}>
-                  We've sent a code to <Text style={styles.boldPhone}>{formatPhoneNumber(phone)}</Text>
-                  {'  '}
-                  <Text style={styles.editLink} onPress={() => navigation.goBack()}>Edit</Text>
-                </Text>
-              </View>
-              <View style={styles.shieldBadge}>
-                <Text style={styles.shieldIcon}>🛡️</Text>
-              </View>
+              <Glass style={styles.langPill}>
+                <Ionicons name="globe-outline" size={14} color={colors.text.primary} />
+                <Text style={styles.langText}>English</Text>
+                <Ionicons name="chevron-down" size={12} color={colors.text.secondary} />
+              </Glass>
             </View>
 
-            <Text style={styles.inputLabel}>Enter 6-Digit Code</Text>
+            <View style={styles.dotGrid}>
+              {Array.from({ length: 16 }).map((_, i) => (
+                <View key={i} style={styles.dot} />
+              ))}
+            </View>
 
-            {/* 6-Digit Code Slots */}
-            <TouchableWithoutFeedback onPress={() => inputRef.current?.focus()}>
-              <View style={styles.otpGrid}>
-                {[0, 1, 2, 3, 4, 5].map((index) => {
-                  const char = otp[index] || '';
-                  const isCurrent = index === otp.length;
-                  return (
-                    <View
-                      key={index}
-                      style={[
-                        styles.otpBox,
-                        char ? styles.otpBoxFilled : null,
-                        isCurrent && isFocused ? styles.otpBoxActive : null,
-                      ]}
-                    >
-                      <Text style={styles.otpText}>{char}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </TouchableWithoutFeedback>
+            <View style={styles.wordmarkBlock}>
+              <Text style={styles.brand}>Verify</Text>
+              <Text style={[styles.brand, styles.brandGreen]}>your{'\n'}number</Text>
 
-            {/* Hidden text input */}
-            <TextInput
-              ref={inputRef}
-              style={styles.hiddenInput}
-              value={otp}
-              onChangeText={(text) => {
-                setOtp(text.replace(/[^0-9]/g, ''));
-                if (error) setError('');
-              }}
-              keyboardType="number-pad"
-              maxLength={6}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              autoFocus
-            />
+              <Text style={styles.heroSub}>We&apos;ve sent a{'\n'}verification code to</Text>
+              <Pressable style={styles.phoneRow} onPress={() => navigation.goBack()} hitSlop={8}>
+                <Text style={styles.phoneText}>{formatPhone(phone)}</Text>
+                <Ionicons name="create-outline" size={15} color={colors.brand.primary} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {/* ---------------- CARD ---------------- */}
+        <NeoSurface borderRadius={radius.card} style={styles.card}>
+          <View style={styles.grabber} />
 
-            {/* Gradient Continue Button */}
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.submitButtonWrapper}
-              onPress={handleVerifyOtp}
-              disabled={loading || otp.length !== 6}
-            >
-              <LinearGradient
-                colors={otp.length === 6 ? ['#18B878', '#42D99A'] : ['#cbd5e1', '#94a3b8']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.submitButtonGradient}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <>
-                    <Text style={styles.submitButtonText}>Continue</Text>
-                    <View style={styles.arrowCircle}>
-                      <Text style={otp.length === 6 ? styles.arrowTextActive : styles.arrowTextDisabled}>➔</Text>
-                    </View>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
+          <Text style={styles.title}>Enter OTP</Text>
+          <Text style={styles.sub}>Enter the 6-digit code sent to your number</Text>
 
-            {/* Resend Actions */}
-            <View style={styles.resendContainer}>
-              {resendTimer > 0 ? (
-                <Text style={styles.resendTimerText}>
-                  Resend OTP in <Text style={styles.boldTimer}>{resendTimer}s</Text>
-                </Text>
-              ) : (
-                <TouchableOpacity 
-                  onPress={handleResendOtp} 
-                  disabled={resending}
-                  activeOpacity={0.8}
+          {/* 6 code boxes over a hidden input */}
+          <Pressable style={styles.otpRow} onPress={() => inputRef.current?.focus()}>
+            {Array.from({ length: OTP_LENGTH }).map((_, i) => {
+              const char = otp[i] ?? '';
+              const isActive = focused && i === otp.length;
+              return (
+                <View
+                  key={i}
+                  style={[styles.otpBox, char !== '' && styles.otpBoxFilled, isActive && styles.otpBoxActive]}
                 >
-                  {resending ? (
-                    <ActivityIndicator size="small" color="#18B878" />
+                  {char !== '' ? (
+                    <Text style={styles.otpChar}>{char}</Text>
                   ) : (
-                    <Text style={styles.resendActiveText}>Resend OTP</Text>
+                    <View style={styles.otpPlaceholder} />
                   )}
-                </TouchableOpacity>
-              )}
-            </View>
+                </View>
+              );
+            })}
+          </Pressable>
 
-            {/* Trust Badges (Coded Vector Outlines with Dividers) */}
-            <View style={styles.trustContainer}>
-              <View style={styles.trustItem}>
-                <ShieldIcon />
-                <Text style={styles.trustTitle}>Safe & Secure</Text>
-              </View>
+          <TextInput
+            ref={inputRef}
+            style={styles.hiddenInput}
+            value={otp}
+            onChangeText={(t) => {
+              setOtp(t.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH));
+              if (error) setError('');
+            }}
+            keyboardType="number-pad"
+            maxLength={OTP_LENGTH}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            autoFocus
+          />
 
-              <View style={styles.trustDivider} />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-              <View style={styles.trustItem}>
-                <LeafIcon />
-                <Text style={styles.trustTitle}>100% Electric</Text>
-              </View>
-
-              <View style={styles.trustDivider} />
-
-              <View style={styles.trustItem}>
-                <HeadsetIcon />
-                <Text style={styles.trustTitle}>24/7 Support</Text>
-              </View>
-            </View>
-
-            <View style={styles.placeholder} />
+          <View style={styles.resendBlock}>
+            <Text style={styles.resendQ}>Didn&apos;t receive the code?</Text>
+            <Pressable onPress={handleResend} disabled={resendTimer > 0 || resending} hitSlop={8}>
+              <Text style={styles.resendLink}>
+                {resending ? 'Sending…' : 'Resend OTP'}
+                {resendTimer > 0 ? <Text style={styles.resendTimer}>{`  (${pad2(0)}:${pad2(resendTimer)})`}</Text> : null}
+              </Text>
+            </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+          <PrimaryButton
+            label="Continue"
+            onPress={handleVerify}
+            loading={loading}
+            disabled={otp.length !== OTP_LENGTH}
+            style={{ marginTop: spacing.md }}
+          />
+
+          {/* secure note */}
+          <View style={styles.secureBox}>
+            <View style={styles.secureIcon}>
+              <Ionicons name="lock-closed" size={16} color={colors.brand.primary} />
+            </View>
+            <Text style={styles.secureText}>
+              Your verification code is 100% secure. Ride For You will never share your data with anyone.
+            </Text>
+          </View>
+
+          <View style={styles.hr} />
+
+          <View style={styles.helpRow}>
+            <View style={styles.helpIcon}>
+              <Ionicons name="headset-outline" size={16} color={colors.brand.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.helpTitle}>Need help?</Text>
+              <Pressable hitSlop={6}>
+                <Text style={styles.helpLink}>Contact Support ›</Text>
+              </Pressable>
+            </View>
+          </View>
+        </NeoSurface>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: '#F7F9FB',
-  },
-  organicBackgroundContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'transparent',
-    zIndex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-    zIndex: 10,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    zIndex: 10,
-  },
-  heroWrapper: {
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'ios' ? 50 : 35,
-    zIndex: 10,
-  },
-  scooterImage: {
-    position: 'absolute',
-    top: height * 0.09,
-    right: width * 0.02,
-    width: width * 0.58,
-    height: height * 0.32,
-    resizeMode: 'contain',
-  },
-  backButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 55 : 40,
-    left: 20,
+  root: { flex: 1, backgroundColor: colors.surface.background },
+  scroll: { paddingBottom: spacing.xl },
+
+  /* hero */
+  hero: { width: '100%', zIndex: 2 },
+  heroBlobWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
+  heroContent: { flex: 1, paddingHorizontal: screenPadding, paddingTop: 52 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  iconBtn: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
+  langPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.75)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
+    gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    zIndex: 30,
-    shadowColor: '#283C50',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  backButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1F3042',
-  },
-  brandPlaceholder: {
-    marginTop: 20,
-    width: width * 0.42,
-  },
-  loginCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 40,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 28,
-    marginHorizontal: 20,
-    marginBottom: Platform.OS === 'ios' ? 30 : 20,
-    shadowColor: '#283C50',
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.09,
-    shadowRadius: 32,
-    elevation: 10,
-    zIndex: 20,
-  },
-  cardCurveAccent: {
-    width: 48,
-    height: 5,
-    backgroundColor: '#EBF3F5',
-    borderRadius: 3,
-    alignSelf: 'center',
-    marginBottom: 24,
-  },
-  cardHeader: {
+  langText: { fontFamily: fontFamily.semibold, fontSize: 12, color: colors.text.primary },
+
+  dotGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  welcomeTextGroup: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#1F3042',
-  },
-  welcomeSubtitle: {
-    fontSize: 14,
-    color: '#7F8A99',
-    marginTop: 6,
-    lineHeight: 18,
-  },
-  boldPhone: {
-    color: '#1F3042',
-    fontWeight: '700',
-  },
-  editLink: {
-    color: '#18B878',
-    fontWeight: '800',
-  },
-  shieldBadge: {
+    flexWrap: 'wrap',
     width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#E5F8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#42D99A',
+    marginTop: spacing.md,
+    marginLeft: spacing.xxl,
+    opacity: 0.55,
   },
-  shieldIcon: {
-    fontSize: 20,
+  dot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.brand.primary, margin: 3.5 },
+
+  wordmarkBlock: { maxWidth: '50%', marginTop: spacing.sm },
+  brand: { fontFamily: fontFamily.bold, fontSize: 28, lineHeight: 33, color: colors.text.primary },
+  brandGreen: { color: colors.brand.primary },
+  heroSub: { ...textStyles.bodySmall, color: colors.text.secondary, marginTop: spacing.md },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  phoneText: { fontFamily: fontFamily.bold, fontSize: 15, color: colors.text.primary },
+
+  /* card */
+  card: {
+    zIndex: 1,
+    marginHorizontal: spacing.md,
+    marginTop: -52,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 44,
+    paddingBottom: spacing.lg,
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    borderBottomLeftRadius: radius.card,
+    borderBottomRightRadius: radius.card,
   },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1F3042',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  otpGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 20,
-  },
-  otpBox: {
-    width: (width - 48 - 40) / 6,
-    height: 54,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EBF3F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#283C50',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  otpBoxFilled: {
-    borderColor: '#18B878',
-    backgroundColor: '#FFFFFF',
-  },
-  otpBoxActive: {
-    borderColor: '#18B878',
-    borderWidth: 2,
-    backgroundColor: '#FFFFFF',
-  },
-  otpText: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1F3042',
-  },
-  hiddenInput: {
-    position: 'absolute',
-    width: 0,
-    height: 0,
-    opacity: 0,
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 14,
-    textAlign: 'center',
-  },
-  submitButtonWrapper: {
-    width: '100%',
-    borderRadius: 28,
-    overflow: 'hidden',
-    shadowColor: '#18B878',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 15,
-    elevation: 4,
-  },
-  submitButtonGradient: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 56,
-    paddingHorizontal: 20,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  arrowCircle: {
-    position: 'absolute',
-    right: 12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#17283A',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  arrowTextActive: {
-    color: '#18B878',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  arrowTextDisabled: {
-    color: '#cbd5e1',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  resendContainer: {
-    alignItems: 'center',
-    marginVertical: 20,
-    minHeight: 24,
-  },
-  resendTimerText: {
-    fontSize: 13,
-    color: '#7F8A99',
-    fontWeight: '600',
-  },
-  boldTimer: {
-    color: '#18B878',
-    fontWeight: '700',
-  },
-  resendActiveText: {
-    color: '#18B878',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  trustContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderTopWidth: 1.5,
-    borderColor: '#EBF3F5',
-    paddingTop: 18,
-  },
-  trustItem: {
-    width: '30%',
-    alignItems: 'center',
-  },
-  trustDivider: {
-    width: 1.5,
-    height: 28,
-    backgroundColor: '#EBF3F5',
+  grabber: {
     alignSelf: 'center',
-    opacity: 0.7,
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    marginBottom: spacing.lg,
   },
-  placeholder: {
-    height: 10,
+  title: { fontFamily: fontFamily.bold, fontSize: 21, color: colors.text.primary },
+  sub: { ...textStyles.bodySmall, color: colors.text.secondary, marginTop: 4 },
+
+  otpRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.lg },
+  otpBox: {
+    width: 48,
+    height: 56,
+    borderRadius: radius.md,
+    backgroundColor: '#FBFDFC',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  
-  // Custom Coded Vector Line-Art Icons Styling
-  vectorIconContainer: {
+  otpBoxFilled: { borderColor: colors.brand.light, backgroundColor: colors.surface.card },
+  otpBoxActive: { borderColor: colors.brand.primary, borderWidth: 2, backgroundColor: colors.surface.card },
+  otpChar: { fontFamily: fontFamily.bold, fontSize: 22, color: colors.text.primary },
+  otpPlaceholder: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border },
+  hiddenInput: { position: 'absolute', width: 1, height: 1, opacity: 0 },
+
+  error: { ...textStyles.bodySmall, color: colors.status.error, marginTop: spacing.sm, textAlign: 'center' },
+
+  resendBlock: { alignItems: 'center', marginTop: spacing.lg },
+  resendQ: { ...textStyles.bodySmall, color: colors.text.secondary },
+  resendLink: { fontFamily: fontFamily.bold, fontSize: 14, color: colors.brand.primary, marginTop: 4 },
+  resendTimer: { fontFamily: fontFamily.medium, color: colors.text.secondary },
+
+  secureBox: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'center',
+    backgroundColor: colors.brand.mint,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+  },
+  secureIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#E5F8F0',
-    justifyContent: 'center',
+    backgroundColor: colors.surface.card,
     alignItems: 'center',
-    marginBottom: 6,
-  },
-  vectorShield: {
-    width: 16,
-    height: 18,
-    borderWidth: 1.8,
-    borderColor: '#18B878',
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
     justifyContent: 'center',
+  },
+  secureText: { flex: 1, fontFamily: fontFamily.regular, fontSize: 11, lineHeight: 15, color: colors.text.secondary },
+
+  hr: { height: 1, backgroundColor: colors.border, marginVertical: spacing.lg },
+
+  helpRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  helpIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.brand.mint,
     alignItems: 'center',
-  },
-  vectorShieldCheck: {
-    width: 4,
-    height: 7,
-    borderBottomWidth: 1.8,
-    borderRightWidth: 1.8,
-    borderColor: '#18B878',
-    transform: [{ rotate: '45deg' }],
-    marginTop: -2,
-  },
-  vectorLeaf: {
-    width: 14,
-    height: 14,
-    borderWidth: 1.8,
-    borderColor: '#18B878',
-    borderTopLeftRadius: 8,
-    borderBottomRightRadius: 8,
-    transform: [{ rotate: '45deg' }],
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  vectorLeafVein: {
-    width: 10,
-    height: 1.8,
-    backgroundColor: '#18B878',
-    transform: [{ rotate: '-45deg' }],
-  },
-  vectorHeadsetBand: {
-    width: 14,
-    height: 14,
-    borderTopWidth: 1.8,
-    borderLeftWidth: 1.8,
-    borderRightWidth: 1.8,
-    borderColor: '#18B878',
-    borderTopLeftRadius: 7,
-    borderTopRightRadius: 7,
-    position: 'absolute',
-    top: 8,
-  },
-  vectorHeadsetCup: {
-    width: 3,
-    height: 6,
-    backgroundColor: '#18B878',
-    borderRadius: 1.5,
-    position: 'absolute',
-    bottom: 8,
-  },
-  trustTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#7F8A99',
-    textAlign: 'center',
-  },
+  helpTitle: { fontFamily: fontFamily.bold, fontSize: 13, color: colors.text.primary },
+  helpLink: { fontFamily: fontFamily.semibold, fontSize: 13, color: colors.brand.primary, marginTop: 2 },
 });
