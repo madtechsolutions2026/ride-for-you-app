@@ -127,7 +127,7 @@ export async function verifyOtp(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error('Error in verifyOtp:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: error?.message || 'Internal server error' });
   }
 }
 
