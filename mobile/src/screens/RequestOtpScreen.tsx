@@ -373,5 +373,5 @@ const styles = StyleSheet.create({
   trustDivider: { width: 1, backgroundColor: colors.border, marginVertical: 2 },
 
   footer: { ...textStyles.bodySmall, color: colors.text.secondary, textAlign: 'center', marginTop: spacing.md },
-  footerLink: { color: colors.brand.link, fontFamily: fontFamily.semibold },
+  footerLink: { color: colors.text.link, fontFamily: fontFamily.semibold },
 });

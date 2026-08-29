@@ -22,6 +22,7 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import { colors } from '../theme';
+import { images } from '../assets';
 
 type HeroBlobProps = {
   width: number;
@@ -30,8 +31,6 @@ type HeroBlobProps = {
   overhang?: number;
 };
 
-// Swap this line if you generate a new hero photo:
-const HERO_IMAGE = require('../../assets/loginimg-v2.png');
 
 export function HeroBlob({ width: w, height: h, overhang = 0 }: HeroBlobProps) {
   const svgH = h + overhang;
@@ -67,12 +66,12 @@ export function HeroBlob({ width: w, height: h, overhang = 0 }: HeroBlobProps) {
 
           <LinearGradient id="edgeFade" x1="0" y1="0" x2="1" y2="0.1">
             <Stop offset="0" stopColor={colors.surface.background} stopOpacity={1} />
-            <Stop offset="0.3" stopColor={colors.surface.background} stopOpacity={0} />
+            <Stop offset="0.2" stopColor={colors.surface.background} stopOpacity={0} />
           </LinearGradient>
 
           <LinearGradient id="bottomFade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0.7" stopColor={colors.brand.glassBottom} stopOpacity={0} />
-            <Stop offset="1" stopColor={colors.brand.glassBottom} stopOpacity={0.9} />
+            <Stop offset="0.78" stopColor={colors.brand.glassBottom} stopOpacity={0} />
+            <Stop offset="1" stopColor={colors.brand.glassBottom} stopOpacity={0.55} />
           </LinearGradient>
         </Defs>
 
@@ -84,21 +83,21 @@ export function HeroBlob({ width: w, height: h, overhang = 0 }: HeroBlobProps) {
         <Path d={blob} fill="url(#glassFill)" />
 
         {/* 2. scooter photo, cropped to the blob.
-              The rect is drawn LARGER than the hero and shifted, which zooms
-              into the source photo so the scooter reads big, as in the
-              reference — rather than a small scooter lost in scenery. */}
+              The source photo is portrait (1086x1448) but the hero is roughly
+              square, so the rect is given the PHOTO's aspect ratio (0.75) and
+              offset upward — otherwise "slice" crops the scooter's wheels off. */}
         <SvgImage
-          href={HERO_IMAGE}
-          x={-w * 0.04}
-          y={-h * 0.01}
-          width={w * 1.1}
-          height={h * 1.02}
+          href={images.authHero}
+          x={w * 0.13}
+          y={-h * 0.2}
+          width={w * 0.87}
+          height={h * 1.19}
           preserveAspectRatio="xMidYMid slice"
           clipPath="url(#heroClip)"
         />
 
-        {/* 3. faint teal wash */}
-        <Path d={blob} fill={colors.brand.glassBottom} opacity={0.12} />
+        {/* 3. NO teal wash — the v2 photo is already cool-toned. Washing it here is
+              what made the hero read pale and blurry. */}
 
         {/* 4. soft fade on the inner (left) edge */}
         <Path d={blob} fill="url(#edgeFade)" />
