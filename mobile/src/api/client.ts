@@ -2,7 +2,12 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './tokenStore';
 
-const BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+// Live Render Cloud Backend:
+const LIVE_BACKEND_URL = 'https://ride-for-you-app.onrender.com';
+const LOCAL_BACKEND_URL = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+
+// Use LIVE_BACKEND_URL for production APK & cloud access
+const BASE_URL = LIVE_BACKEND_URL;
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
