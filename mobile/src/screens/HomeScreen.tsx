@@ -34,7 +34,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'> & {
   onLogout: () => void;
 };
 
-type UserProfile = { id: string; phone: string; role: string; accountStatus: string };
+type UserProfile = {
+  id: string;
+  phone: string;
+  fullName?: string | null;
+  role: string;
+  accountStatus: string;
+};
 
 // --- mock data (TODO: replace with /vehicles + /stations once the backend has them) ---
 const STATIONS: MapStation[] = [
@@ -59,15 +65,27 @@ const TABS = [
 
 export default function HomeScreen({ navigation, onLogout }: Props) {
   const { width } = useWindowDimensions();
-  const [, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  useEffect(() => {
-    // keeps the access token warm and proves the session is still valid
+  const fetchProfile = () => {
     apiClient
       .get('/auth/me')
-      .then((r) => setProfile(r.data))
+      .then((r) => {
+        if (r.data) setProfile(r.data);
+      })
       .catch(() => {});
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchProfile();
+
+    // Auto-refresh greeting whenever rider navigates back to Home
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchProfile();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const handleProfileTab = () => {
     navigation.navigate('Profile');
@@ -105,7 +123,9 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
               </View>
             </View>
 
-            <Text style={styles.hello}>Hello, Rider 👋</Text>
+            <Text style={styles.hello}>
+              Hello, {profile?.fullName?.trim() ? profile.fullName.trim() : 'Rider'} 👋
+            </Text>
             <Text style={styles.h1}>Where are you</Text>
             <Text style={[styles.h1, styles.h1green]}>going today?</Text>
             <Text style={styles.tagline}>Smart rides. Sustainable future.</Text>
