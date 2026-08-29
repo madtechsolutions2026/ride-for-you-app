@@ -17,11 +17,20 @@ import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { setTokens } from '../api/tokenStore';
 import { colors, fontFamily, radius, screenPadding, spacing, textStyles } from '../theme';
-import { Glass, HeroBlob, NeoSurface, PrimaryButton } from '../components';
+import {
+  CurvedCardTop,
+  Glass,
+  HeroBlob,
+  NeoSurface,
+  PrimaryButton,
+} from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VerifyOtp'> & {
   onLoginSuccess: () => void;
 };
+
+/** Card gutter — shared by the card style and the curved cap width. */
+const CARD_MARGIN = 18;
 
 const OTP_LENGTH = 6;
 
@@ -39,6 +48,7 @@ function pad2(n: number) {
 export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: Props) {
   const { width, height } = useWindowDimensions();
   const heroHeight = Math.round(height * 0.44);
+  const cardWidth = width - CARD_MARGIN * 2;
 
   const { phone } = route.params;
   const [challengeId, setChallengeId] = useState(route.params.challengeId);
@@ -143,6 +153,9 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
 
         {/* ---------------- CARD ---------------- */}
         <NeoSurface variant="card" borderRadius={radius.card} style={styles.card}>
+          {/* soft asymmetric lip that echoes the hero curve above */}
+          <CurvedCardTop width={cardWidth} />
+
           <View style={styles.grabber} />
 
           <Text style={styles.title}>Enter OTP</Text>
@@ -271,13 +284,13 @@ const styles = StyleSheet.create({
   /* card */
   card: {
     zIndex: 1,
-    marginHorizontal: spacing.md,
-    marginTop: -52,
+    marginHorizontal: CARD_MARGIN,
+    marginTop: -20,
     paddingHorizontal: spacing.lg,
-    paddingTop: 44,
+    paddingTop: spacing.md,
     paddingBottom: spacing.lg,
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
+    borderTopLeftRadius: 0, // the curved cap supplies the top edge
+    borderTopRightRadius: 0,
     borderBottomLeftRadius: radius.card,
     borderBottomRightRadius: radius.card,
   },

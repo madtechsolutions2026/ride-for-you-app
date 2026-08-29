@@ -17,13 +17,24 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
-import { Glass, GoogleMark, HeroBlob, NeoSurface, PrimaryButton } from '../components';
+import {
+  CurvedCardTop,
+  Glass,
+  GoogleMark,
+  HeroBlob,
+  NeoSurface,
+  PrimaryButton,
+} from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RequestOtp'>;
+
+/** Card gutter — shared by the card style and the curved cap's width. */
+const CARD_MARGIN = 18;
 
 export default function RequestOtpScreen({ navigation }: Props) {
   const { width, height } = useWindowDimensions();
   const heroHeight = Math.round(height * 0.44);
+  const cardWidth = width - CARD_MARGIN * 2;
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -115,6 +126,9 @@ export default function RequestOtpScreen({ navigation }: Props) {
 
         {/* ---------------------- LOGIN CARD ---------------------- */}
         <NeoSurface variant="card" borderRadius={radius.card} style={styles.card}>
+          {/* soft asymmetric lip that echoes the hero curve above */}
+          <CurvedCardTop width={cardWidth} />
+
           <View style={styles.grabber} />
 
           <View style={styles.cardHeader}>
@@ -263,13 +277,15 @@ const styles = StyleSheet.create({
   /* card */
   card: {
     zIndex: 1,
-    marginHorizontal: 18,
-    marginTop: -58, // tucks under the blob so the curve flows into the card
+    marginHorizontal: CARD_MARGIN,
+    // the cap draws CARD_CAP_HEIGHT above this box, so the card's *visual*
+    // top is that much higher than its layout box
+    marginTop: -20,
     paddingHorizontal: spacing.lg,
-    paddingTop: 46, // "Welcome back" sits clear of the blob's dipped centre
+    paddingTop: spacing.md,
     paddingBottom: spacing.md,
-    borderTopLeftRadius: 42,
-    borderTopRightRadius: 42,
+    borderTopLeftRadius: 0, // the curved cap supplies the top edge
+    borderTopRightRadius: 0,
     borderBottomLeftRadius: 34,
     borderBottomRightRadius: 34,
   },
