@@ -44,7 +44,8 @@ export async function requestOtp(req: Request, res: Response) {
     return res.json({
       challengeId,
       expiresIn,
-      resendAvailableIn
+      resendAvailableIn,
+      code: otp
     });
   } catch (error: any) {
     console.error('Error in requestOtp:', error);
