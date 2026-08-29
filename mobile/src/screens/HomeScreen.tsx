@@ -79,22 +79,15 @@ export default function HomeScreen({ onLogout }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* ---------------- HERO ---------------- */}
         <View style={styles.hero}>
-          <Image source={images.heroScooter} style={styles.heroImg} contentFit="cover" />
+          {/* soft mint wash in the top-right, behind the scooter */}
           <LinearGradient
-            colors={[colors.surface.background, colors.surface.background, 'rgba(239,242,240,0)']}
-            locations={[0, 0.28, 0.72]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+            colors={['rgba(211,232,224,0.55)', 'rgba(239,242,240,0)']}
+            start={{ x: 1, y: 0 }}
+            end={{ x: 0.3, y: 0.7 }}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
-          <LinearGradient
-            colors={['rgba(239,242,240,0)', colors.surface.background]}
-            start={{ x: 0, y: 0.45 }}
-            end={{ x: 0, y: 1 }}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
+          <Image source={images.heroScooter} style={styles.heroImg} contentFit="contain" />
 
           <View style={styles.heroContent} pointerEvents="box-none">
             <View style={styles.topRow}>
@@ -222,8 +215,8 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: spacing.xl },
 
   /* hero */
-  hero: { height: 296, width: '100%', overflow: 'hidden' },
-  heroImg: { position: 'absolute', right: -56, top: -18, width: '70%', height: 300 },
+  hero: { height: 296, width: '100%' },
+  heroImg: { position: 'absolute', right: -26, top: 66, width: '50%', height: 190 },
   heroContent: { flex: 1, paddingHorizontal: screenPadding, paddingTop: 52 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between' },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

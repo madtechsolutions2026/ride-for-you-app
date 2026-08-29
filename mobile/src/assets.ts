@@ -3,28 +3,28 @@
  * ---------
  * Every image the app uses, in one place. Screens import from here so that
  * swapping artwork is a one-line change and never touches a screen.
- *
- * TODO — drop these transparent product cutouts into `mobile/assets/` and
- * point the lines below at them:
- *   scooter-cutout.png   hero scooter, no background      -> heroScooter
- *   vehicle-s1.png       RFY S1 (white),  no background   -> vehicleS1
- *   vehicle-x1.png       RFY X1 (black),  no background   -> vehicleX1
- *   vehicle-z1.png       RFY Z1 (2-tone), no background   -> vehicleZ1
- *
- * Until then they all fall back to the login hero photo.
  */
 
-const FALLBACK = require('../assets/loginimg.png');
+/** Transparent product cutout — the shape every screen leans on. */
+const SCOOTER_CUTOUT = require('../assets/scooter-cutout.png');
 
 export const images = {
-  /** Full scene w/ city + turbine — used behind the auth screens' curved blob. */
+  /** Full scene w/ city + turbine — sits behind the auth screens' curved blob. */
   authHero: require('../assets/loginimg.png'),
 
   /** Transparent scooter for the Home hero. */
-  heroScooter: FALLBACK,
+  heroScooter: SCOOTER_CUTOUT,
 
-  /** Transparent product shots for the vehicle carousel. */
-  vehicleS1: FALLBACK,
-  vehicleX1: FALLBACK,
-  vehicleZ1: FALLBACK,
+  /**
+   * Product shots for the vehicle carousel.
+   *
+   * TODO — vehicle-s1 / vehiclex1 / vehiclez1 in `mobile/assets/` are lovely
+   * studio shots but their backgrounds are BAKED IN (dark gradient), so they
+   * render as dark tiles on a white card. Run each through a background
+   * remover, save as `vehicle-{s1,x1,z1}-cut.png`, then point these lines at
+   * them. Until then all three reuse the transparent hero cutout.
+   */
+  vehicleS1: SCOOTER_CUTOUT,
+  vehicleX1: SCOOTER_CUTOUT,
+  vehicleZ1: SCOOTER_CUTOUT,
 };
