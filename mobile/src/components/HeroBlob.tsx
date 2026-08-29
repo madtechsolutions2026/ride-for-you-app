@@ -31,7 +31,7 @@ type HeroBlobProps = {
 };
 
 // Swap this line if you generate a new hero photo:
-const HERO_IMAGE = require('../../assets/loginimg.png');
+const HERO_IMAGE = require('../../assets/loginimg-v2.png');
 
 export function HeroBlob({ width: w, height: h, overhang = 0 }: HeroBlobProps) {
   const svgH = h + overhang;

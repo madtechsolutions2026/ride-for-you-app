@@ -10,7 +10,7 @@ const SCOOTER_CUTOUT = require('../assets/scooter-cutout.png');
 
 export const images = {
   /** Full scene w/ city + turbine — sits behind the auth screens' curved blob. */
-  authHero: require('../assets/loginimg.png'),
+  authHero: require('../assets/loginimg-v2.png'),
 
   /** Transparent scooter for the Home hero. */
   heroScooter: SCOOTER_CUTOUT,
