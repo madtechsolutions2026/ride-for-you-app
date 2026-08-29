@@ -217,8 +217,19 @@ export async function getCurrentUser(req: AuthRequest, res: Response) {
     return res.json({
       id: user.id,
       phone: user.phone,
+      fullName: user.fullName,
+      email: user.email,
+      city: user.city,
+      avatarUrl: user.avatarUrl,
       role: user.role,
-      accountStatus: user.accountStatus
+      accountStatus: user.accountStatus,
+      kycStatus: user.kycStatus,
+      kycSubmittedAt: user.kycSubmittedAt,
+      kycReviewedAt: user.kycReviewedAt,
+      kycRejectReason: user.kycRejectReason,
+      aadhaarNumber: user.aadhaarNumber,
+      addressProof: user.addressProof,
+      selfieUrl: user.selfieUrl,
     });
   } catch (error: any) {
     console.error('Error in getCurrentUser:', error);

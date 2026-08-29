@@ -8,13 +8,29 @@ generator client {
 }
 
 model User {
-  id            String    @id
-  phone         String    @unique
-  role          String    @default("RIDER") // RIDER, DRIVER
-  accountStatus String    @default("ACTIVE") // ACTIVE, SUSPENDED
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
+  id              String      @id
+  phone           String      @unique
+  fullName        String?
+  email           String?
+  city            String?
+  avatarUrl       String?
+  role            String      @default("RIDER") // RIDER, DRIVER, ADMIN
+  accountStatus   String      @default("ACTIVE") // ACTIVE, SUSPENDED
+  
+  // KYC Workflow Fields
+  kycStatus       String      @default("PENDING") // PENDING, SUBMITTED, APPROVED, REJECTED
+  kycSubmittedAt  DateTime?
+  kycReviewedAt   DateTime?
+  kycRejectReason String?
+  
+  // Submitted Document Details
+  aadhaarNumber   String?
+  addressProof    String?
+  selfieUrl       String?
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  sessions        Session[]
 }
 
 model OtpChallenge {
