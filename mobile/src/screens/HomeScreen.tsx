@@ -14,11 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { apiClient } from '../api/client';
 import { clearTokens } from '../api/tokenStore';
+import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, spacing, textStyles } from '../theme';
 import {
   Glass,
   NeoSurface,
   QuickAction,
+  QuickActionDivider,
   StylizedMap,
   VehicleCard,
   type MapStation,
@@ -29,8 +31,6 @@ type Props = { onLogout: () => void };
 
 type UserProfile = { id: string; phone: string; role: string; accountStatus: string };
 
-const HERO_IMAGE = require('../../assets/loginimg.png');
-
 // --- mock data (TODO: replace with /vehicles + /stations once the backend has them) ---
 const STATIONS: MapStation[] = [
   { id: 's1', x: 0.2, y: 0.42, available: 12 },
@@ -39,9 +39,9 @@ const STATIONS: MapStation[] = [
 ];
 
 const VEHICLES: Vehicle[] = [
-  { id: 'rfy-s1', name: 'RFY S1', rangeKm: 110, topSpeed: 50, pricePerDay: 249, image: HERO_IMAGE, popular: true },
-  { id: 'rfy-x1', name: 'RFY X1', rangeKm: 120, topSpeed: 55, pricePerDay: 299, image: HERO_IMAGE },
-  { id: 'rfy-z1', name: 'RFY Z1', rangeKm: 90, topSpeed: 45, pricePerDay: 199, image: HERO_IMAGE },
+  { id: 'rfy-s1', name: 'RFY S1', rangeKm: 110, topSpeed: 50, pricePerDay: 249, image: images.vehicleS1, popular: true },
+  { id: 'rfy-x1', name: 'RFY X1', rangeKm: 120, topSpeed: 55, pricePerDay: 299, image: images.vehicleX1 },
+  { id: 'rfy-z1', name: 'RFY Z1', rangeKm: 90, topSpeed: 45, pricePerDay: 199, image: images.vehicleZ1 },
 ];
 
 const TABS = [
@@ -54,9 +54,10 @@ const TABS = [
 
 export default function HomeScreen({ onLogout }: Props) {
   const { width } = useWindowDimensions();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
+    // keeps the access token warm and proves the session is still valid
     apiClient
       .get('/auth/me')
       .then((r) => setProfile(r.data))
@@ -78,7 +79,7 @@ export default function HomeScreen({ onLogout }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* ---------------- HERO ---------------- */}
         <View style={styles.hero}>
-          <Image source={HERO_IMAGE} style={styles.heroImg} contentFit="cover" />
+          <Image source={images.heroScooter} style={styles.heroImg} contentFit="cover" />
           <LinearGradient
             colors={[colors.surface.background, colors.surface.background, 'rgba(239,242,240,0)']}
             locations={[0, 0.28, 0.72]}
@@ -100,10 +101,12 @@ export default function HomeScreen({ onLogout }: Props) {
               <Glass borderRadius={radius.md} style={styles.iconBtn}>
                 <Ionicons name="menu" size={22} color={colors.text.primary} />
               </Glass>
-              <Glass borderRadius={radius.md} style={styles.iconBtn}>
-                <Ionicons name="notifications-outline" size={20} color={colors.text.primary} />
+              <View>
+                <Glass borderRadius={radius.md} style={styles.iconBtn}>
+                  <Ionicons name="notifications-outline" size={20} color={colors.text.primary} />
+                </Glass>
                 <View style={styles.notifDot} />
-              </Glass>
+              </View>
             </View>
 
             <Text style={styles.hello}>Hello, Rider 👋</Text>
@@ -130,8 +133,11 @@ export default function HomeScreen({ onLogout }: Props) {
           <StylizedMap width={cardInner} height={190} stations={STATIONS} />
           <View style={styles.actionsRow}>
             <QuickAction icon="bicycle-outline" label={'Nearby\nStations'} />
+            <QuickActionDivider />
             <QuickAction icon="battery-charging-outline" label={'Battery\nSwap'} badge="New" />
+            <QuickActionDivider />
             <QuickAction icon="headset-outline" label={'Support\n24/7'} />
+            <QuickActionDivider />
             <QuickAction icon="pricetag-outline" label={'Offers &\nDeals'} badge="New" />
           </View>
         </NeoSurface>
@@ -155,8 +161,15 @@ export default function HomeScreen({ onLogout }: Props) {
 
         {/* ---------------- SAFETY BANNER ---------------- */}
         <View style={styles.banner}>
-          <View style={styles.bannerIcon}>
-            <Ionicons name="shield-checkmark" size={22} color={colors.brand.primary} />
+          <View style={styles.bannerIconHalo}>
+            <LinearGradient
+              colors={[colors.brand.light, colors.brand.dark]}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              style={styles.bannerShield}
+            >
+              <Ionicons name="checkmark" size={22} color={colors.text.inverse} />
+            </LinearGradient>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.bannerTitle}>Ride safe. Ride smart.</Text>
@@ -169,7 +182,6 @@ export default function HomeScreen({ onLogout }: Props) {
           </Pressable>
         </View>
 
-        <Text style={styles.debugLine}>Signed in as {profile?.phone ?? '…'}</Text>
       </ScrollView>
 
       {/* ---------------- BOTTOM TABS (visual; real navigation later) ---------------- */}
@@ -217,14 +229,14 @@ const styles = StyleSheet.create({
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   notifDot: {
     position: 'absolute',
-    top: 11,
-    right: 12,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    top: -1,
+    right: -1,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
     backgroundColor: colors.brand.primary,
-    borderWidth: 1.5,
-    borderColor: colors.surface.card,
+    borderWidth: 2,
+    borderColor: colors.surface.background,
   },
   hello: { fontFamily: fontFamily.medium, fontSize: 14, color: colors.text.secondary, marginTop: spacing.lg },
   h1: { fontFamily: fontFamily.bold, fontSize: 27, lineHeight: 33, color: colors.text.primary, marginTop: 2 },
@@ -255,10 +267,10 @@ const styles = StyleSheet.create({
   mapCard: { marginHorizontal: screenPadding, marginTop: spacing.md, padding: spacing.sm },
   actionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'stretch',
     paddingHorizontal: spacing.xs,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.sm,
   },
 
   /* recommended */
@@ -285,15 +297,26 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     padding: spacing.md,
   },
-  bannerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  bannerIconHalo: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: colors.surface.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bannerTitle: { fontFamily: fontFamily.bold, fontSize: 14, color: colors.text.primary },
+  bannerShield: {
+    width: 40,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // shield silhouette: square top, rounded point at the bottom
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  bannerTitle: { fontFamily: fontFamily.bold, fontSize: 14.5, color: colors.text.primary },
   bannerText: { fontFamily: fontFamily.regular, fontSize: 11, lineHeight: 15, color: colors.text.secondary, marginTop: 2 },
   bannerBtn: {
     backgroundColor: colors.brand.primary,
@@ -302,8 +325,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   bannerBtnText: { fontFamily: fontFamily.semibold, fontSize: 11, color: colors.text.inverse },
-
-  debugLine: { fontFamily: fontFamily.regular, fontSize: 10, color: colors.text.secondary, textAlign: 'center', marginTop: spacing.lg },
 
   /* tab bar */
   tabBar: {
