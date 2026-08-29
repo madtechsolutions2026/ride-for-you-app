@@ -27,4 +27,9 @@ export const images = {
   vehicleS1: SCOOTER_CUTOUT,
   vehicleX1: SCOOTER_CUTOUT,
   vehicleZ1: SCOOTER_CUTOUT,
+
+  /** Profile & KYC screen assets */
+  kycHero: require('../assets/kyc-hero.jpg'),
+  riderAvatar: require('../assets/rider-avatar.jpg'),
+  safeLock: require('../assets/safe-lock.jpg'),
 };

@@ -27,7 +27,12 @@ import {
   type Vehicle,
 } from '../components';
 
-type Props = { onLogout: () => void };
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'> & {
+  onLogout: () => void;
+};
 
 type UserProfile = { id: string; phone: string; role: string; accountStatus: string };
 
@@ -52,7 +57,7 @@ const TABS = [
   { key: 'profile', icon: 'person-outline', label: 'Profile' },
 ] as const;
 
-export default function HomeScreen({ onLogout }: Props) {
+export default function HomeScreen({ navigation, onLogout }: Props) {
   const { width } = useWindowDimensions();
   const [, setProfile] = useState<UserProfile | null>(null);
 
@@ -64,10 +69,8 @@ export default function HomeScreen({ onLogout }: Props) {
       .catch(() => {});
   }, []);
 
-  const handleProfileTab = async () => {
-    // TEMP: no Profile screen yet — long-press logs out.
-    await clearTokens();
-    onLogout();
+  const handleProfileTab = () => {
+    navigation.navigate('Profile');
   };
 
   const cardInner = width - screenPadding * 2 - spacing.sm * 2;

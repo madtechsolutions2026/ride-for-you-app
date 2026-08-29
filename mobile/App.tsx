@@ -21,6 +21,7 @@ import { setSessionExpiredListener } from './src/api/client';
 import RequestOtpScreen from './src/screens/RequestOtpScreen';
 import VerifyOtpScreen from './src/screens/VerifyOtpScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 
 // Keep the native splash screen on screen while we load fonts + check the
 // login token. We hide it manually once everything is ready (see below).
@@ -82,9 +83,14 @@ export default function App() {
         <StatusBar style="dark" />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {isAuthenticated ? (
-            <Stack.Screen name="Home">
-              {(props) => <HomeScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
-            </Stack.Screen>
+            <>
+              <Stack.Screen name="Home">
+                {(props) => <HomeScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
+              </Stack.Screen>
+              <Stack.Screen name="Profile">
+                {(props) => <ProfileScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
+              </Stack.Screen>
+            </>
           ) : (
             <>
               <Stack.Screen name="RequestOtp" component={RequestOtpScreen} />
