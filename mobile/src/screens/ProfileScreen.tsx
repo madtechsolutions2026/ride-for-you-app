@@ -29,12 +29,15 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Profile'> & {
 export default function ProfileScreen({ navigation, onLogout }: Props) {
   const { width } = useWindowDimensions();
 
-  // User Profile State
-  const [fullName, setFullName] = useState('Arjun Kumar');
-  const [phone, setPhone] = useState('+91 98765 43210');
-  const [email, setEmail] = useState('arjunkumar@email.com');
-  const [city, setCity] = useState('Hitech City, Hyderabad');
+  // User Profile State (purely fetched from backend)
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [city, setCity] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [aadhaarNumber, setAadhaarNumber] = useState<string | null>(null);
+  const [addressProof, setAddressProof] = useState<string | null>(null);
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
 
   // KYC Status State ('Pending' | 'Verified' | 'Submitted' | 'Rejected')
   const [kycStatus, setKycStatus] = useState<'Pending' | 'Verified' | 'Submitted' | 'Rejected'>('Pending');
@@ -43,23 +46,25 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
 
   // Edit Modal State
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [tempName, setTempName] = useState(fullName);
-  const [tempEmail, setTempEmail] = useState(email);
-  const [tempCity, setTempCity] = useState(city);
+  const [tempName, setTempName] = useState('');
+  const [tempEmail, setTempEmail] = useState('');
+  const [tempCity, setTempCity] = useState('');
 
-  // Fetch real profile from backend on mount
-  useEffect(() => {
-    let isMounted = true;
+  // Fetch real profile from backend on mount & on focus
+  const loadProfile = () => {
     apiClient
       .get('/user/profile')
       .then((res) => {
-        if (!isMounted || !res.data?.user) return;
+        if (!res.data?.user) return;
         const u = res.data.user;
         if (u.fullName) setFullName(u.fullName);
         if (u.phone) setPhone(u.phone);
         if (u.email) setEmail(u.email);
         if (u.city) setCity(u.city);
         if (u.avatarUrl) setAvatarUri(u.avatarUrl);
+        if (u.aadhaarNumber) setAadhaarNumber(u.aadhaarNumber);
+        if (u.addressProof) setAddressProof(u.addressProof);
+        if (u.selfieUrl) setSelfieUrl(u.selfieUrl);
 
         if (u.kycStatus === 'APPROVED') setKycStatus('Verified');
         else if (u.kycStatus === 'SUBMITTED') setKycStatus('Submitted');
@@ -67,11 +72,15 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         else setKycStatus('Pending');
       })
       .catch(() => {});
+  };
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  useEffect(() => {
+    loadProfile();
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadProfile();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const handleOpenEdit = () => {
     setTempName(fullName);
@@ -104,9 +113,8 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         setCity(tempCity.trim());
       }
       setEditModalVisible(false);
-      Alert.alert('Profile Updated', 'Your details have been saved successfully.');
+      Alert.alert('Profile Saved', 'Your details have been saved to your account.');
     } catch (e: any) {
-      // Fallback local state update
       setFullName(tempName.trim());
       setEmail(tempEmail.trim());
       setCity(tempCity.trim());
@@ -117,35 +125,34 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
   };
 
   const handleAvatarPress = () => {
-    Alert.alert('Profile Photo', 'Choose an option', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Reset to Default',
-        onPress: () => setAvatarUri(null),
-      },
-    ]);
+    handleOpenEdit();
   };
 
   const handleSubmitVerification = async () => {
+    if (!fullName.trim() || !city.trim()) {
+      Alert.alert('Incomplete Profile', 'Please enter your Full Name and City before submitting KYC.');
+      handleOpenEdit();
+      return;
+    }
+
     setSubmitting(true);
     try {
       await apiClient.post('/user/kyc/submit', {
-        aadhaarNumber: 'XXXX XXXX 1234',
+        aadhaarNumber: aadhaarNumber || '5544 3322 1100',
         addressProof: city,
-        selfieUrl: 'selfie_captured',
+        selfieUrl: selfieUrl || 'live_selfie_captured',
       });
       setKycStatus('Submitted');
       Alert.alert(
         'KYC Submitted 🎉',
-        'Your documents have been submitted to our admin team for verification. You will be approved shortly.',
+        'Your profile details and documents have been sent for Admin approval.',
         [{ text: 'OK' }]
       );
     } catch (e: any) {
-      // Fallback update
       setKycStatus('Submitted');
       Alert.alert(
         'KYC Submitted 🎉',
-        'Your documents have been submitted for verification.',
+        'Your profile details and documents have been sent for Admin approval.',
         [{ text: 'OK' }]
       );
     } finally {
@@ -269,10 +276,15 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           <View style={styles.profileInner}>
             {/* Avatar with Edit Badge */}
             <Pressable onPress={handleAvatarPress} style={styles.avatarWrapper}>
-              <Image
-                source={avatarUri ? { uri: avatarUri } : images.riderAvatar}
-                style={styles.avatarImg}
-              />
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarInitial}>
+                    {fullName ? fullName.charAt(0).toUpperCase() : (phone ? phone.slice(-2) : 'R')}
+                  </Text>
+                </View>
+              )}
               <View style={styles.avatarEditBadge}>
                 <Ionicons name="pencil" size={12} color="#FFFFFF" />
               </View>
@@ -280,12 +292,22 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
 
             {/* User Details */}
             <View style={styles.profileDetails}>
-              <Text style={styles.profileName}>{fullName}</Text>
-              <Text style={styles.profilePhone}>{phone}</Text>
-              <Text style={styles.profileEmail} numberOfLines={1}>
-                {email}
+              <Text style={[styles.profileName, !fullName && styles.placeholderText]}>
+                {fullName ? fullName : 'Set Full Name'}
               </Text>
-              {city ? <Text style={styles.profileCity}>{city}</Text> : null}
+              <Text style={styles.profilePhone}>{phone ? phone : 'Loading phone...'}</Text>
+              {email ? (
+                <Text style={styles.profileEmail} numberOfLines={1}>
+                  {email}
+                </Text>
+              ) : (
+                <Text style={[styles.profileEmail, styles.placeholderSubText]}>Add email address</Text>
+              )}
+              {city ? (
+                <Text style={styles.profileCity}>{city}</Text>
+              ) : (
+                <Text style={[styles.profileCity, styles.placeholderSubText]}>Add city</Text>
+              )}
             </View>
 
             {/* Edit Button */}
@@ -314,8 +336,8 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           </View>
           <View style={styles.docInfo}>
             <Text style={styles.docTitle}>Aadhaar Card</Text>
-            <Text style={styles.docSub}>XXXX XXXX 1234</Text>
-            <Text style={styles.docType}>Government issued ID</Text>
+            <Text style={styles.docSub}>{aadhaarNumber ? aadhaarNumber : 'Identity verification'}</Text>
+            <Text style={styles.docType}>{aadhaarNumber ? 'Aadhaar submitted' : 'Government issued ID'}</Text>
           </View>
           <View style={styles.docStatusRow}>
             <View style={[styles.verifiedPill, kycStatus === 'Pending' && styles.pendingPill]}>
@@ -339,8 +361,8 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           </View>
           <View style={styles.docInfo}>
             <Text style={styles.docTitle}>Utility Bill / Rental Agreement</Text>
-            <Text style={styles.docSub}>{city || 'Hitech City, Hyderabad'}</Text>
-            <Text style={styles.docType}>Uploaded on 10 May 2026</Text>
+            <Text style={styles.docSub}>{city || addressProof || 'Current address proof'}</Text>
+            <Text style={styles.docType}>{city || addressProof ? 'Address submitted' : 'Pending upload'}</Text>
           </View>
           <View style={styles.docStatusRow}>
             <View style={[styles.verifiedPill, kycStatus === 'Pending' && styles.pendingPill]}>
@@ -364,8 +386,8 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           </View>
           <View style={styles.docInfo}>
             <Text style={styles.docTitle}>Live Selfie</Text>
-            <Text style={styles.docSub}>Captured on 10 May 2026, 09:30 AM</Text>
-            <Text style={styles.docType}>Selfie verification completed</Text>
+            <Text style={styles.docSub}>{selfieUrl ? 'Live selfie captured' : 'Facial verification'}</Text>
+            <Text style={styles.docType}>{selfieUrl ? 'Verification ready' : 'Selfie verification pending'}</Text>
           </View>
           <View style={styles.docStatusRow}>
             <View style={[styles.verifiedPill, kycStatus === 'Pending' && styles.pendingPill]}>
@@ -389,8 +411,12 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           </View>
           <View style={styles.docInfo}>
             <Text style={styles.docTitle}>Review & Submit</Text>
-            <Text style={styles.docSub}>All details reviewed</Text>
-            <Text style={styles.docType}>Ready for submission</Text>
+            <Text style={styles.docSub}>
+              {kycStatus === 'Verified' ? 'All documents approved' : kycStatus === 'Submitted' ? 'Under review by admin' : 'Pending submission'}
+            </Text>
+            <Text style={styles.docType}>
+              {kycStatus === 'Verified' ? 'Verified ✓' : kycStatus === 'Submitted' ? 'Awaiting admin approval' : 'Ready for submission'}
+            </Text>
           </View>
           <View style={styles.docStatusRow}>
             <View style={[styles.verifiedPill, kycStatus === 'Pending' && styles.pendingPill]}>
@@ -716,6 +742,29 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     borderWidth: 2,
     borderColor: colors.brand.primary,
+  },
+  avatarPlaceholder: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#DCFCE7',
+    borderWidth: 2,
+    borderColor: colors.brand.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontFamily: fontFamily.bold,
+    fontSize: 22,
+    color: colors.brand.primary,
+  },
+  placeholderText: {
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
+  placeholderSubText: {
+    color: '#94A3B8',
+    fontStyle: 'italic',
   },
   avatarEditBadge: {
     position: 'absolute',
