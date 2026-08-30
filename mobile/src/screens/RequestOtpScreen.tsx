@@ -86,13 +86,13 @@ export default function RequestOtpScreen({ navigation }: Props) {
     <View style={styles.root}>
       <StatusBar style="dark" />
 
-      {/* page wash — pale blue-mint at the top fading to near-white */}
-      <LinearGradient
-        colors={[colors.surface.backgroundTintTop, colors.surface.backgroundTintBottom]}
-        locations={[0, 0.55]}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
+      {/*
+        No page gradient. Figma's frame background is a FLAT #F8F7FD.
+        The wash that used to be here faded to near-white by 55% down the
+        screen — which is exactly where the card's top edge sits — so white
+        card met near-white page and the curved cap became invisible.
+        The flat ground is both faithful and what makes the curve read.
+      */}
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -180,15 +180,21 @@ export default function RequestOtpScreen({ navigation }: Props) {
           </View>
 
           {/* phone number row: [ +91 v ] [  (icon) Enter mobile number  ] */}
-          <View style={styles.phoneRow}>
-            <NeoSurface borderRadius={radius.pill} style={styles.countryPill}>
+          {/*
+            ONE continuous pill, not two with a gap between them. Figma draws
+            this as a single 335x52 rect; the +91 selector and the number field
+            are separated only by a hairline inside it.
+          */}
+          <NeoSurface variant="inset" borderRadius={radius.pill} style={styles.phoneRow}>
+            <View style={styles.countrySection}>
               <Text style={styles.countryText}>+91</Text>
               <Ionicons name="chevron-down" size={14} color={colors.text.secondary} />
-            </NeoSurface>
+            </View>
 
-            <NeoSurface variant="inset" borderRadius={radius.pill} style={styles.phoneField}>
+            <View style={styles.fieldDivider} />
+
+            <View style={styles.phoneField}>
               <Ionicons name="call-outline" size={17} color={colors.brand.primary} />
-              <View style={styles.fieldDivider} />
               <TextInput
                 style={styles.phoneInput}
                 placeholder="Enter mobile number"
@@ -202,8 +208,8 @@ export default function RequestOtpScreen({ navigation }: Props) {
                 }}
                 editable={!loading}
               />
-            </NeoSurface>
-          </View>
+            </View>
+          </NeoSurface>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -344,14 +350,18 @@ const styles = StyleSheet.create({
     ...shadows.subtle,
   },
 
-  phoneRow: { flexDirection: 'row', gap: spacing.sm },
-  countryPill: {
+  // One pill. Figma: 335 x 52 in the 430pt frame -> 44dp tall at 360dp.
+  phoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
+    height: 44,
     paddingHorizontal: spacing.md,
-    height: 56,
+  },
+  countrySection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingRight: spacing.md,
   },
   countryText: { fontFamily: fontFamily.semibold, fontSize: 15, color: colors.text.primary },
   phoneField: {
@@ -359,8 +369,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 11,
-    paddingHorizontal: spacing.md,
-    height: 56,
+    paddingLeft: spacing.md,
   },
   fieldDivider: { width: 1, height: 22, backgroundColor: colors.border },
   phoneInput: { flex: 1, fontFamily: fontFamily.medium, fontSize: 15, color: colors.text.primary },

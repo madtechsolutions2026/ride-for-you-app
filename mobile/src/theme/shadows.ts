@@ -36,6 +36,10 @@ export const shadows = {
    */
   card: {
     boxShadow: [
+      // Figma stacks TWO drop shadows on the card, not one: a tight contact
+      // shadow over a broad ambient one. Only the broad one was reproduced
+      // before, which is why the card's edge read soft but ungrounded.
+      { offsetX: 0, offsetY: 1, blurRadius: 4, spreadDistance: 0, color: 'rgba(0, 0, 0, 0.16)' },
       { offsetX: 0, offsetY: 7, blurRadius: 29, spreadDistance: 0, color: 'rgba(100, 100, 111, 0.2)' },
     ],
   },

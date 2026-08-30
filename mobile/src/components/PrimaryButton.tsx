@@ -60,19 +60,43 @@ export function PrimaryButton({ label, onPress, loading, disabled, style }: Prim
         )}
       </LinearGradient>
 
-      {/* White circle with the arrow — overhangs the right edge */}
-      <View style={styles.arrowCircle}>
-        <Ionicons name="arrow-forward" size={19} color={colors.brand.primary} />
+      {/*
+        The arrow slot, rebuilt from the Figma export ("Group 39544").
+
+        It is NOT a white circle overhanging the button's right edge — that
+        was a misread. The design is a recessed 67x54 pill sitting INSIDE the
+        button, holding a raised 52x40 face (rx 20) with the arrow on it.
+        Both are sized off the button's own height so they stay in proportion.
+      */}
+      <View style={styles.slotTrack} pointerEvents="none">
+        <View style={styles.slotFace}>
+          <Ionicons name="arrow-forward" size={ARROW_GLYPH} color={colors.control.slotArrow} />
+        </View>
       </View>
     </Pressable>
   );
 }
 
+/*
+ * Geometry from the Figma export ("Group 39544"), a 326 x 54 button:
+ *   slot track  67 x 54, at the right end, rx 27  (#F2F3F8)
+ *   slot face   52 x 40, inset 7 from right/top/bottom, rx 20  (#F9F9FB)
+ * Expressed as ratios of the button's height so they hold at any size.
+ */
+const BTN_H = 54; // design height
+const HEIGHT = 45; // 54 design pt -> dp at 360 (54 * 360/430)
+const r = (designValue: number) => Math.round((designValue / BTN_H) * HEIGHT);
+
+const TRACK_W = r(67);
+const FACE_W = r(52);
+const FACE_H = r(40);
+const INSET = r(7);
+const ARROW_GLYPH = r(20);
+
 const styles = StyleSheet.create({
   wrapper: {
-    // Measured off the mockup at 55.8dp — two independent column scans agreed,
-    // which is also what validated the 360dp scale for every other number.
-    height: 56,
+    // Figma: 326 x 54 in the 430pt frame -> 45dp tall at 360dp.
+    height: HEIGHT,
     borderRadius: radius.pill,
     justifyContent: 'center',
     // Android derives an elevation shadow from the view's own background, and
@@ -88,20 +112,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingLeft: 24,
-    paddingRight: 52, // room for the label to clear the overhanging circle
+    paddingRight: TRACK_W, // label clears the arrow slot
   },
   label: {
     ...textStyles.button,
     color: colors.text.inverse,
   },
-  arrowCircle: {
+  /* the recessed pill at the right end — inside the button, not overhanging */
+  slotTrack: {
     position: 'absolute',
-    right: -6, // sticks out past the button
-    top: 3, // (56 - 50) / 2 — keeps the circle centred now the button is 56 tall
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.surface.card,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: TRACK_W,
+    borderRadius: radius.pill,
+    backgroundColor: colors.control.slotTrack,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  /* the raised face carrying the arrow */
+  slotFace: {
+    position: 'absolute',
+    right: INSET,
+    width: FACE_W,
+    height: FACE_H,
+    borderRadius: FACE_H / 2,
+    backgroundColor: colors.control.slotFace,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.soft,

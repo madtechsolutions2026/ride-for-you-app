@@ -73,11 +73,44 @@ export function CurvedCardTop({ width: w, color = colors.surface.card }: CurvedC
   return (
     <View style={[styles.wrap, { width: w, height, top }]} pointerEvents="none">
       <Svg width={w} height={height} viewBox={`${VB_X} ${VB_Y} ${VB_W} ${VB_H}`}>
+        {/*
+          Figma gives this cap its own drop shadow (filter2_d: dy 7, blur 29,
+          #64646F at 20%). react-native-svg has no dependable blur filter, so
+          it is faked by stacking copies of the same path at decreasing
+          offsets and low opacity.
+
+          The offsets are NEGATIVE — upward — on purpose. A blur of 29 against
+          an offset of only 7 spills well above the edge, so the shadow reads
+          mostly as a halo above the curve. Offsetting downward instead would
+          push grey copies past the cap's lower edge and paint a band across
+          the white card beneath it; upward copies stay inside the cap's own
+          area and are covered by the solid fill drawn last.
+        */}
+        {SHADOW_STEPS.map(({ dy, opacity }) => (
+          <Path
+            key={dy}
+            d={FIGMA_PATH}
+            fill={SHADOW_COLOR}
+            opacity={opacity}
+            transform={`translate(0, ${dy})`}
+          />
+        ))}
+
         <Path d={FIGMA_PATH} fill={color} />
       </Svg>
     </View>
   );
 }
+
+/** Stacked offsets approximating a 29px blur above the curve. */
+const SHADOW_STEPS = [
+  { dy: -10, opacity: 0.035 },
+  { dy: -7, opacity: 0.04 },
+  { dy: -4.5, opacity: 0.045 },
+  { dy: -2.5, opacity: 0.05 },
+  { dy: -1, opacity: 0.06 },
+];
+const SHADOW_COLOR = 'rgb(100, 100, 111)'; // Figma's #64646F
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 0 },

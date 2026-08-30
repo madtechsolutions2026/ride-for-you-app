@@ -114,6 +114,18 @@ export const colors = {
     teal: '#0F766E',
   },
 
+  /*
+   * ---- Control internals ----
+   * The recessed slot at the right end of the primary CTA. Figma builds it as
+   * a 67x54 pill holding a 52x40 face — NOT a white circle overhanging the
+   * button's edge, which is what this was built as before.
+   */
+  control: {
+    slotTrack: '#F2F3F8', // the recessed pill
+    slotFace: '#F9F9FB', // the raised face inside it
+    slotArrow: '#12B76A', // the arrow glyph — a touch deeper than brand green
+  },
+
   /* ---- Disabled / inactive states ---- */
   state: {
     disabledFrom: '#C7D6CE', // the greyed-out primary button gradient
