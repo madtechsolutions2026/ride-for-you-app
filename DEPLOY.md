@@ -54,7 +54,11 @@ npm run dev
 
 ### Automatic (preferred)
 Push to `main`. `.github/workflows/eas-update.yml` typechecks and runs
-`eas update`. Installed APKs pick the change up on next launch.
+`eas update` on the **preview** branch — the channel a `--profile preview`
+APK listens on. Installed APKs pick the change up on next launch.
+
+> Channels map 1:1 to branches by name. A `--profile production` build listens
+> on `production`, so publish there instead if you ship that profile.
 
 One-time setup: add an **`EXPO_TOKEN`** repository secret
 (expo.dev → Account Settings → Access Tokens).
@@ -62,7 +66,7 @@ One-time setup: add an **`EXPO_TOKEN`** repository secret
 ### Manual
 ```bash
 cd mobile
-eas update --branch production --message "what changed"
+eas update --branch preview --message "what changed"
 ```
 
 ### When you must rebuild instead

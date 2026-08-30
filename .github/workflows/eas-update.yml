@@ -1,6 +1,10 @@
 # Publishes an over-the-air update to installed APKs whenever mobile code
 # lands on main. No rebuild, no reinstall — the app picks it up on next launch.
 #
+# Publishes to the "preview" branch, which is the channel the --profile preview
+# APK listens on. If you later ship a --profile production build, publish to
+# the "production" branch instead (channels map 1:1 to branches by name).
+#
 # Requires one repository secret:
 #   EXPO_TOKEN  -> expo.dev > Account Settings > Access Tokens
 #
@@ -43,4 +47,4 @@ jobs:
         run: npx tsc --noEmit -p tsconfig.json
 
       - name: Publish update
-        run: eas update --branch production --message "${{ github.event.head_commit.message }}" --non-interactive
+        run: eas update --branch preview --message "${{ github.event.head_commit.message }}" --non-interactive
