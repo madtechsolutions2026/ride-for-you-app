@@ -336,18 +336,16 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           <View style={styles.heroLeft}>
             <View style={styles.stepBadge}>
               <Ionicons name="shield-checkmark" size={13} color={colors.brand.primary} />
-              <Text style={styles.stepBadgeText}>Step 4 of 4</Text>
+              <Text style={styles.stepBadgeText}>Identity Verification</Text>
             </View>
 
             <Text style={styles.heroTitle}>Review & submit your information</Text>
             <Text style={styles.heroSub}>Please verify all details carefully before submitting.</Text>
           </View>
 
-          <Image
-            source={images.kycHero}
-            style={styles.heroImage}
-            resizeMode="contain"
-          />
+          <View style={styles.heroIconBadge}>
+            <Ionicons name="shield-checkmark-outline" size={30} color={colors.brand.primary} />
+          </View>
         </View>
 
         {/* ---------------- STEP PROGRESS BAR ---------------- */}
@@ -1004,9 +1002,15 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: 4,
   },
-  heroImage: {
-    width: 90,
-    height: 80,
+  heroIconBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.brand.mintSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.brand.mint,
   },
 
   /* Progress Bar */
