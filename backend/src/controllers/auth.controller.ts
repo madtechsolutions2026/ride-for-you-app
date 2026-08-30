@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../utils/prisma';
 import { generateAccessToken, generateRefreshToken, AuthRequest } from '../middleware/auth';
+import { getCache, setCache, delCache } from '../utils/cache';
 
 const generateId = (prefix: string) => `${prefix}_${crypto.randomBytes(12).toString('hex')}`;
 
@@ -206,6 +207,12 @@ export async function getCurrentUser(req: AuthRequest, res: Response) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    const cacheKey = `auth:me:${userId}`;
+    const cached = await getCache<any>(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId }
     });
@@ -214,7 +221,7 @@ export async function getCurrentUser(req: AuthRequest, res: Response) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    return res.json({
+    const payload = {
       id: user.id,
       phone: user.phone,
       fullName: user.fullName,
@@ -224,7 +231,11 @@ export async function getCurrentUser(req: AuthRequest, res: Response) {
       role: user.role,
       accountStatus: user.accountStatus,
       kycStatus: user.kycStatus,
-    });
+    };
+
+    await setCache(cacheKey, payload, 180);
+
+    return res.json(payload);
   } catch (error: any) {
     console.error('Error in getCurrentUser:', error);
     return res.status(500).json({ error: 'Internal server error' });

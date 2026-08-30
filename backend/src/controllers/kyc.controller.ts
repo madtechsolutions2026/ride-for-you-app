@@ -4,6 +4,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { r2, R2_BUCKET, isR2Configured, presignGet, PRESIGNED_URL_TTL_SECONDS } from '../utils/r2';
+import { getCache, setCache, delCache } from '../utils/cache';
 
 /**
  * KYC module.
@@ -146,6 +147,12 @@ export async function getMyKyc(req: AuthRequest, res: Response) {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
+    const cacheKey = `kyc:me:${userId}`;
+    const cached = await getCache<any>(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { kycStatus: true },
@@ -157,11 +164,15 @@ export async function getMyKyc(req: AuthRequest, res: Response) {
       orderBy: { submittedAt: 'desc' },
     });
 
-    return res.json({
+    const payload = {
       kycStatus: user.kycStatus,
       canSubmit: user.kycStatus === 'PENDING' || user.kycStatus === 'REJECTED',
       latestSubmission: latest ? await serialize(latest) : null,
-    });
+    };
+
+    await setCache(cacheKey, payload, 120);
+
+    return res.json(payload);
   } catch (error: any) {
     console.error('Error in getMyKyc:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -263,6 +274,11 @@ export async function submitKyc(req: AuthRequest, res: Response) {
       prisma.kycVerification.create({ data: { userId, status: 'SUBMITTED', ...data } }),
       prisma.user.update({ where: { id: userId }, data: { kycStatus: 'SUBMITTED' } }),
     ]);
+
+    // Invalidate user cache immediately
+    await delCache(`kyc:me:${userId}`);
+    await delCache(`user:profile:${userId}`);
+    await delCache(`auth:me:${userId}`);
 
     console.log(`[KYC] ${user.phone} submitted verification ${verification.id}`);
 

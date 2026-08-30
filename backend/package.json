@@ -15,9 +15,11 @@
     "@aws-sdk/client-s3": "^3.1121.0",
     "@aws-sdk/s3-request-presigner": "^3.1121.0",
     "@prisma/client": "^5.20.0",
+    "@types/ioredis": "^4.28.10",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.3.0",
     "prisma": "^5.20.0"

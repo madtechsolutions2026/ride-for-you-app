@@ -67,16 +67,14 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
     return () => clearInterval(id);
   }, [resendTimer]);
 
-  const handleVerify = async () => {
+  const handleVerify = async (codeToVerify?: string) => {
+    const finalOtp = (typeof codeToVerify === 'string' ? codeToVerify : otp).trim();
+    if (finalOtp.length !== OTP_LENGTH || loading) return;
     setError('');
     Keyboard.dismiss();
-    if (otp.length !== OTP_LENGTH) {
-      setError('Enter the 6-digit code');
-      return;
-    }
     setLoading(true);
     try {
-      const res = await apiClient.post('/auth/otp/verify', { challengeId, otp });
+      const res = await apiClient.post('/auth/otp/verify', { challengeId, otp: finalOtp });
       await setTokens(res.data.tokens.accessToken, res.data.tokens.refreshToken);
       onLoginSuccess();
     } catch (e: any) {
@@ -95,6 +93,7 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
       setChallengeId(res.data.challengeId);
       setResendTimer(res.data.resendAvailableIn || 30);
       setOtp('');
+      inputRef.current?.focus();
     } catch (e: any) {
       setError(e?.response?.data?.error || 'Could not resend the code.');
     } finally {
@@ -186,10 +185,16 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
             style={styles.hiddenInput}
             value={otp}
             onChangeText={(t) => {
-              setOtp(t.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH));
+              const clean = t.replace(/[^0-9]/g, '').slice(0, OTP_LENGTH);
+              setOtp(clean);
               if (error) setError('');
+              if (clean.length === OTP_LENGTH) {
+                handleVerify(clean);
+              }
             }}
             keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
             maxLength={OTP_LENGTH}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
@@ -209,10 +214,10 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
           </View>
 
           <PrimaryButton
-            label="Continue"
-            onPress={handleVerify}
+            label={loading ? 'Logging In…' : 'Continue'}
+            onPress={() => handleVerify()}
             loading={loading}
-            disabled={otp.length !== OTP_LENGTH}
+            disabled={otp.length !== OTP_LENGTH || loading}
             style={{ marginTop: spacing.md }}
           />
 
