@@ -33,7 +33,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendingKycCount }) => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   const navGroups = [
     {
@@ -80,28 +80,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
   ];
 
   return (
-    <aside className="w-64 bg-[#172B3A] border-r border-[#1e3648] flex flex-col flex-shrink-0 min-h-screen">
+    <aside className="w-64 bg-white border-r border-[#EDF2F1] flex flex-col flex-shrink-0 min-h-screen shadow-sm font-sans">
       {/* Brand Header */}
-      <div className="h-16 px-6 flex items-center gap-3 border-b border-[#1e3648] bg-[#12222E]">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#18B878] to-[#129461] flex items-center justify-center shadow-md shadow-black/20">
+      <div className="h-20 px-6 flex items-center gap-3 border-b border-[#EDF2F1] bg-white">
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#1FAE72] to-[#129461] flex items-center justify-center shadow-md shadow-emerald-600/25 ring-2 ring-[#E9F7F1]">
           <Bike className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-white font-bold text-base leading-tight tracking-tight">
+          <h1 className="text-[#172B3A] font-extrabold text-base leading-tight tracking-tight">
             RIDE FOR <span className="text-[#18B878]">YOU</span>
           </h1>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="w-2 h-2 rounded-full bg-[#18B878] animate-pulse"></span>
-            <span className="text-[10px] font-bold tracking-wider text-[#4BD49B] uppercase">Admin Portal</span>
+            <span className="text-[10px] font-bold tracking-wider text-[#18B878] uppercase">Admin Portal</span>
           </div>
         </div>
       </div>
 
       {/* Navigation Groups */}
-      <div className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+      <div className="flex-1 px-3.5 py-5 space-y-6 overflow-y-auto bg-white">
         {navGroups.map((group, gIdx) => (
           <div key={gIdx}>
-            <p className="px-3 text-[10px] font-bold tracking-widest text-[#8A97A0] uppercase mb-2">
+            <p className="px-3 text-[10px] font-extrabold tracking-widest text-[#8A97A0] uppercase mb-2">
               {group.title}
             </p>
             <div className="space-y-1">
@@ -112,20 +112,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id as ActiveTab)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 ${
                       isActive
-                        ? 'bg-gradient-to-r from-[#1FAE72] via-[#5FD9A4] to-[#9EE7C4] text-white shadow-md shadow-emerald-950/40'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                        ? 'bg-gradient-to-r from-[#1FAE72] via-[#5FD9A4] to-[#9EE7C4] text-white shadow-md shadow-emerald-500/20'
+                        : 'text-[#8A97A0] hover:text-[#172B3A] hover:bg-[#F3FAF6]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-[#8A97A0]'}`} />
                       <span>{item.label}</span>
                     </div>
                     {item.badge !== undefined && (
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm ${
-                          item.badgeColor || 'bg-slate-700 text-white'
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold shadow-sm ${
+                          item.badgeColor || 'bg-[#E9F7F1] text-[#129461]'
                         }`}
                       >
                         {item.badge}
@@ -139,23 +139,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
         ))}
       </div>
 
-      {/* Footer / Logout */}
-      <div className="p-4 border-t border-[#1e3648] bg-[#12222E]/80">
+      {/* Clean Neumorphic User Profile & Logout */}
+      <div className="p-4 border-t border-[#EDF2F1] bg-[#FBFBFD]">
         <div className="flex items-center gap-3 mb-3 px-2">
-          <div className="w-8 h-8 rounded-full bg-[#18B878]/20 border border-[#18B878]/40 flex items-center justify-center text-[#4BD49B] font-bold text-xs">
-            OP
+          <div className="w-9 h-9 rounded-2xl bg-[#E9F7F1] border border-[#DCF0E6] flex items-center justify-center text-[#18B878] font-extrabold text-xs shadow-sm">
+            AD
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">Operations Lead</p>
-            <p className="text-[10px] text-[#8A97A0] truncate">Super Admin Role</p>
+            <p className="text-xs font-extrabold text-[#172B3A] truncate">{user?.fullName || 'Super Admin'}</p>
+            <p className="text-[10px] font-medium text-[#8A97A0] truncate">{user?.phone || '+91 7095682464'}</p>
           </div>
         </div>
         <button
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-rose-300 hover:text-white hover:bg-rose-500/20 rounded-xl transition border border-rose-500/30"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold text-[#EF4444] bg-white hover:bg-[#FEE2E2] rounded-2xl transition border border-[#EDF2F1] shadow-sm"
         >
           <LogOut className="w-3.5 h-3.5" />
-          <span>Secure Sign Out</span>
+          <span>Sign Out</span>
         </button>
       </div>
     </aside>

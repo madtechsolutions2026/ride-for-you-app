@@ -16,15 +16,13 @@ import {
   Volume2,
   Activity,
   Layers,
-  ChevronRight,
-  Info,
+  RotateCcw,
 } from 'lucide-react';
 
 export interface VehicleAsset {
   id: string;
   plate: string;
   model: string;
-  category: 'High Speed' | 'Low Speed';
   status: 'MOVING' | 'PARKED' | 'AVAILABLE';
   speed: number;
   battery: number;
@@ -36,7 +34,6 @@ export interface VehicleAsset {
   rider: string;
   hub: string;
   lastPing: string;
-  odometerKm: number;
 }
 
 export interface HubAsset {
@@ -60,7 +57,6 @@ export interface SwapStationAsset {
   lng: number;
   chargedBatteries: number;
   totalDocks: number;
-  status: 'ONLINE' | 'MAINTENANCE';
 }
 
 const FLEET_VEHICLES: VehicleAsset[] = [
@@ -68,7 +64,6 @@ const FLEET_VEHICLES: VehicleAsset[] = [
     id: 'bike-01',
     plate: 'TS09EV3001',
     model: 'SPRINTO HS',
-    category: 'High Speed',
     status: 'MOVING',
     speed: 42,
     battery: 88,
@@ -80,13 +75,11 @@ const FLEET_VEHICLES: VehicleAsset[] = [
     rider: 'Madhu Kunchala',
     hub: 'Kondapur Main Hub',
     lastPing: '2s ago',
-    odometerKm: 1420,
   },
   {
     id: 'bike-02',
     plate: 'TS09EV3004',
     model: 'NEW Aeroflow',
-    category: 'High Speed',
     status: 'PARKED',
     speed: 0,
     battery: 18,
@@ -98,13 +91,11 @@ const FLEET_VEHICLES: VehicleAsset[] = [
     rider: 'Vikram Singh',
     hub: 'Hitech City Station',
     lastPing: '5s ago',
-    odometerKm: 980,
   },
   {
     id: 'bike-03',
     plate: 'TS09EV3012',
     model: 'ODYSSEY HS',
-    category: 'High Speed',
     status: 'MOVING',
     speed: 38,
     battery: 64,
@@ -116,13 +107,11 @@ const FLEET_VEHICLES: VehicleAsset[] = [
     rider: 'Ramesh Reddy',
     hub: 'Gachibowli Hub',
     lastPing: '1s ago',
-    odometerKm: 2150,
   },
   {
     id: 'bike-04',
     plate: 'TS09EV3019',
     model: 'EVTRIC Low-Speed',
-    category: 'Low Speed',
     status: 'AVAILABLE',
     speed: 0,
     battery: 100,
@@ -131,16 +120,14 @@ const FLEET_VEHICLES: VehicleAsset[] = [
     rangeKm: 90,
     lat: 17.4568,
     lng: 78.3689,
-    rider: 'Unassigned (Available)',
+    rider: 'Unassigned (Ready)',
     hub: 'Kondapur Main Hub',
     lastPing: 'Just now',
-    odometerKm: 430,
   },
   {
     id: 'bike-05',
     plate: 'TS09EV3022',
     model: 'HALA CKD',
-    category: 'Low Speed',
     status: 'MOVING',
     speed: 25,
     battery: 45,
@@ -152,13 +139,11 @@ const FLEET_VEHICLES: VehicleAsset[] = [
     rider: 'Suresh Kumar',
     hub: 'Hitech City Station',
     lastPing: '3s ago',
-    odometerKm: 1870,
   },
   {
     id: 'bike-06',
     plate: 'TS09EV3030',
     model: 'SPRINTO HS',
-    category: 'High Speed',
     status: 'PARKED',
     speed: 0,
     battery: 14,
@@ -170,7 +155,6 @@ const FLEET_VEHICLES: VehicleAsset[] = [
     rider: 'Kiran Verma',
     hub: 'Kondapur Main Hub',
     lastPing: '8s ago',
-    odometerKm: 3210,
   },
 ];
 
@@ -222,7 +206,6 @@ const SWAP_STATIONS: SwapStationAsset[] = [
     lng: 78.3812,
     chargedBatteries: 14,
     totalDocks: 16,
-    status: 'ONLINE',
   },
   {
     id: 'swap-02',
@@ -232,7 +215,6 @@ const SWAP_STATIONS: SwapStationAsset[] = [
     lng: 78.3719,
     chargedBatteries: 11,
     totalDocks: 12,
-    status: 'ONLINE',
   },
   {
     id: 'swap-03',
@@ -242,7 +224,6 @@ const SWAP_STATIONS: SwapStationAsset[] = [
     lng: 78.4068,
     chargedBatteries: 8,
     totalDocks: 10,
-    status: 'ONLINE',
   },
   {
     id: 'swap-04',
@@ -252,24 +233,21 @@ const SWAP_STATIONS: SwapStationAsset[] = [
     lng: 78.3482,
     chargedBatteries: 15,
     totalDocks: 16,
-    status: 'ONLINE',
   },
 ];
 
-type TabType = 'VEHICLES' | 'HUBS' | 'SWAP_STATIONS';
+type FilterType = 'ALL' | 'MOVING' | 'PARKED' | 'LOW_BATTERY' | 'HUBS' | 'SWAPS';
 
 export const FleetLiveMap: React.FC = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const markerMapRef = useRef<{ [key: string]: L.Marker }>({});
 
-  const [activeTab, setActiveTab] = useState<TabType>('VEHICLES');
-  const [selectedAsset, setSelectedAsset] = useState<any>(FLEET_VEHICLES[0]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('ALL');
+  const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
 
-  // Initialize Map with Clean Free OpenStreetMap Tiles (NO Watermarks!)
+  // Initialize Map with Silky Clean Carto Light (Zero Watermarks)
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
@@ -277,12 +255,13 @@ export const FleetLiveMap: React.FC = () => {
       center: [17.4435, 78.375],
       zoom: 13,
       zoomControl: false,
+      attributionControl: false,
     });
 
-    // Clean OpenStreetMap standard tile layer (100% Free, NO API Key, NO watermark)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Clean CartoDB Light_all tiles matching the mobile StylizedMap (100% Free, NO Watermark)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
+      subdomains: 'abcd',
     }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -297,493 +276,451 @@ export const FleetLiveMap: React.FC = () => {
     };
   }, []);
 
-  // Update Markers on Map
+  // Plot Clean Neumorphic Markers
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layerGroup = markersLayerRef.current;
     if (!map || !layerGroup) return;
 
     layerGroup.clearLayers();
-    markerMapRef.current = {};
 
-    // 1. Plot EV Hubs
-    FLEET_HUBS.forEach((hub) => {
-      const isSelected = selectedAsset?.id === hub.id;
-      const hubIcon = L.divIcon({
-        className: 'hub-pin',
-        html: `
-          <div style="
-            background: #129461;
-            color: #FFFFFF;
-            padding: 6px 12px;
-            border-radius: 16px;
-            border: ${isSelected ? '3px solid #172B3A' : '2px solid #FFFFFF'};
-            box-shadow: 0 6px 16px rgba(18, 148, 97, 0.45);
-            font-family: 'Poppins', sans-serif;
-            font-size: 11px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            white-space: nowrap;
-            transform: translate(-50%, -50%);
-            transition: all 0.2s;
-          ">
-            <span style="font-size: 13px;">🏢</span>
-            <span>${hub.name.split(' ')[0]} Hub</span>
-            <span style="background: rgba(255,255,255,0.25); padding: 1px 6px; border-radius: 999px; font-size: 10px;">${hub.availableBikes} Bikes</span>
-          </div>
-        `,
-        iconSize: [0, 0],
+    // 1. Hub Markers
+    if (activeFilter === 'ALL' || activeFilter === 'HUBS') {
+      FLEET_HUBS.forEach((hub) => {
+        const isSelected = selectedAsset?.id === hub.id;
+        const icon = L.divIcon({
+          className: 'custom-hub-pin',
+          html: `
+            <div style="
+              display: inline-flex;
+              align-items: center;
+              background: #FFFFFF;
+              border-radius: 9999px;
+              padding: 4px 10px 4px 4px;
+              box-shadow: 0 8px 20px rgba(18, 148, 97, 0.25);
+              border: ${isSelected ? '2px solid #18B878' : '1px solid #EDF2F1'};
+              cursor: pointer;
+              white-space: nowrap;
+              font-family: 'Poppins', sans-serif;
+              transform: translate(-50%, -50%);
+              transition: all 0.2s ease;
+            ">
+              <div style="
+                width: 24px;
+                height: 24px;
+                border-radius: 12px;
+                background: #18B878;
+                color: #FFFFFF;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 800;
+                margin-right: 6px;
+                box-shadow: 0 2px 6px rgba(24, 184, 120, 0.4);
+              ">🏢</div>
+              <div style="display: flex; flex-direction: column; line-height: 1.1;">
+                <span style="font-size: 11px; font-weight: 800; color: #172B3A;">${hub.name.split(' ')[0]} Hub</span>
+                <span style="font-size: 9px; font-weight: 700; color: #129461;">${hub.availableBikes} Bikes Ready</span>
+              </div>
+            </div>
+          `,
+          iconSize: [0, 0],
+        });
+
+        const marker = L.marker([hub.lat, hub.lng], { icon });
+        marker.on('click', () => {
+          setSelectedAsset({ ...hub, type: 'HUB' });
+          map.flyTo([hub.lat, hub.lng], 14, { duration: 0.8 });
+        });
+        layerGroup.addLayer(marker);
       });
+    }
 
-      const marker = L.marker([hub.lat, hub.lng], { icon: hubIcon });
-      marker.on('click', () => {
-        setSelectedAsset({ ...hub, assetType: 'HUB' });
-        setActiveTab('HUBS');
-        map.flyTo([hub.lat, hub.lng], 14);
+    // 2. Swap Stations
+    if (activeFilter === 'ALL' || activeFilter === 'SWAPS') {
+      SWAP_STATIONS.forEach((station) => {
+        const isSelected = selectedAsset?.id === station.id;
+        const icon = L.divIcon({
+          className: 'custom-swap-pin',
+          html: `
+            <div style="
+              display: inline-flex;
+              align-items: center;
+              background: #FFFFFF;
+              border-radius: 9999px;
+              padding: 4px 10px 4px 4px;
+              box-shadow: 0 8px 20px rgba(2, 132, 199, 0.2);
+              border: ${isSelected ? '2px solid #0284C7' : '1px solid #EDF2F1'};
+              cursor: pointer;
+              white-space: nowrap;
+              font-family: 'Poppins', sans-serif;
+              transform: translate(-50%, -50%);
+              transition: all 0.2s ease;
+            ">
+              <div style="
+                width: 24px;
+                height: 24px;
+                border-radius: 12px;
+                background: #0284C7;
+                color: #FFFFFF;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+                font-weight: 800;
+                margin-right: 6px;
+                box-shadow: 0 2px 6px rgba(2, 132, 199, 0.4);
+              ">⚡</div>
+              <div style="display: flex; flex-direction: column; line-height: 1.1;">
+                <span style="font-size: 11px; font-weight: 800; color: #172B3A;">${station.name.split(' ')[0]}</span>
+                <span style="font-size: 9px; font-weight: 700; color: #0284C7;">${station.chargedBatteries}/${station.totalDocks} Swaps</span>
+              </div>
+            </div>
+          `,
+          iconSize: [0, 0],
+        });
+
+        const marker = L.marker([station.lat, station.lng], { icon });
+        marker.on('click', () => {
+          setSelectedAsset({ ...station, type: 'SWAP' });
+          map.flyTo([station.lat, station.lng], 14, { duration: 0.8 });
+        });
+        layerGroup.addLayer(marker);
       });
-      layerGroup.addLayer(marker);
-      markerMapRef.current[hub.id] = marker;
-    });
+    }
 
-    // 2. Plot Swap Stations
-    SWAP_STATIONS.forEach((station) => {
-      const isSelected = selectedAsset?.id === station.id;
-      const swapIcon = L.divIcon({
-        className: 'swap-pin',
-        html: `
-          <div style="
-            background: #0284C7;
-            color: #FFFFFF;
-            padding: 6px 10px;
-            border-radius: 16px;
-            border: ${isSelected ? '3px solid #172B3A' : '2px solid #FFFFFF'};
-            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45);
-            font-family: 'Poppins', sans-serif;
-            font-size: 11px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-            white-space: nowrap;
-            transform: translate(-50%, -50%);
-          ">
-            <span style="font-size: 13px;">⚡</span>
-            <span>${station.chargedBatteries}/${station.totalDocks} Swaps</span>
-          </div>
-        `,
-        iconSize: [0, 0],
-      });
-
-      const marker = L.marker([station.lat, station.lng], { icon: swapIcon });
-      marker.on('click', () => {
-        setSelectedAsset({ ...station, assetType: 'SWAP_STATION' });
-        setActiveTab('SWAP_STATIONS');
-        map.flyTo([station.lat, station.lng], 14);
-      });
-      layerGroup.addLayer(marker);
-      markerMapRef.current[station.id] = marker;
-    });
-
-    // 3. Plot Vehicles
+    // 3. Vehicles
     FLEET_VEHICLES.forEach((bike) => {
+      if (activeFilter === 'MOVING' && bike.status !== 'MOVING') return;
+      if (activeFilter === 'PARKED' && bike.status !== 'PARKED') return;
+      if (activeFilter === 'LOW_BATTERY' && bike.battery >= 20) return;
+
       const isSelected = selectedAsset?.id === bike.id;
       const isLow = bike.battery < 20;
       const isMoving = bike.status === 'MOVING';
 
-      const bgHeader = isLow ? '#EF4444' : isMoving ? '#18B878' : '#172B3A';
+      const dotColor = isLow ? '#EF4444' : isMoving ? '#18B878' : '#172B3A';
+      const badgeBg = isLow ? '#FEE2E2' : '#E9F7F1';
+      const badgeColor = isLow ? '#EF4444' : '#129461';
 
-      const bikeIcon = L.divIcon({
-        className: 'bike-pin',
+      const icon = L.divIcon({
+        className: 'custom-bike-pin',
         html: `
           <div style="
-            background: #FFFFFF;
-            color: #172B3A;
-            border-radius: 14px;
-            border: 2px solid ${bgHeader};
-            box-shadow: 0 6px 18px rgba(23, 43, 58, 0.22);
-            font-family: 'Poppins', sans-serif;
-            display: flex;
+            display: inline-flex;
             align-items: center;
+            background: #FFFFFF;
+            border-radius: 9999px;
+            padding: 4px 8px 4px 5px;
+            box-shadow: 0 8px 22px rgba(23, 43, 58, 0.16);
+            border: ${isSelected ? '2px solid #18B878' : '1px solid #EDF2F1'};
             cursor: pointer;
             white-space: nowrap;
+            font-family: 'Poppins', sans-serif;
+            gap: 6px;
             transform: translate(-50%, -50%);
-            overflow: hidden;
-            font-size: 11px;
-            font-weight: 700;
-            ${isSelected ? 'transform: translate(-50%, -50%) scale(1.1); z-index: 999;' : ''}
+            transition: all 0.2s ease;
           ">
-            <div style="
-              background: ${bgHeader};
-              color: white;
-              padding: 4px 7px;
-              display: flex;
-              align-items: center;
-              gap: 4px;
+            <span style="
+              width: 8px;
+              height: 8px;
+              border-radius: 4px;
+              background: ${dotColor};
+              ${isMoving ? 'box-shadow: 0 0 0 3px rgba(24, 184, 120, 0.25);' : ''}
+            "></span>
+            <span style="font-size: 11px; font-weight: 800; color: #172B3A; font-family: monospace;">${bike.plate}</span>
+            <span style="
               font-size: 10px;
               font-weight: 800;
-            ">
-              <span style="font-size: 11px;">🛵</span>
-              <span>${bike.plate}</span>
-            </div>
-            <div style="
-              padding: 3px 7px;
-              display: flex;
-              align-items: center;
-              gap: 3px;
-              font-weight: 800;
-              color: ${isLow ? '#EF4444' : '#129461'};
-              background: #F8FAFC;
-            ">
-              <span>${bike.battery}%</span>
-              ${isMoving ? `<span style="font-size: 9px; color: #8A97A0;">• ${bike.speed}km/h</span>` : ''}
-            </div>
+              background: ${badgeBg};
+              color: ${badgeColor};
+              padding: 1px 6px;
+              border-radius: 9999px;
+            ">${bike.battery}%</span>
           </div>
         `,
         iconSize: [0, 0],
       });
 
-      const marker = L.marker([bike.lat, bike.lng], { icon: bikeIcon });
+      const marker = L.marker([bike.lat, bike.lng], { icon });
       marker.on('click', () => {
-        setSelectedAsset({ ...bike, assetType: 'VEHICLE' });
-        setActiveTab('VEHICLES');
-        map.flyTo([bike.lat, bike.lng], 15);
+        setSelectedAsset({ ...bike, type: 'BIKE' });
+        map.flyTo([bike.lat, bike.lng], 15, { duration: 0.8 });
       });
       layerGroup.addLayer(marker);
-      markerMapRef.current[bike.id] = marker;
     });
-  }, [selectedAsset]);
+  }, [activeFilter, selectedAsset]);
 
-  const handleSelectAsset = (asset: any, type: TabType) => {
-    setSelectedAsset({ ...asset, assetType: type === 'VEHICLES' ? 'VEHICLE' : type === 'HUBS' ? 'HUB' : 'SWAP_STATION' });
+  const handleCommand = (cmd: string) => {
+    setCommandFeedback(`Executing "${cmd}" on ${selectedAsset?.plate || 'device'}...`);
+    setTimeout(() => {
+      setCommandFeedback(`✓ Command confirmed by onboard IoT.`);
+      setTimeout(() => setCommandFeedback(null), 2500);
+    }, 900);
+  };
+
+  const handleRecenter = () => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([asset.lat, asset.lng], 15, { duration: 0.8 });
+      mapInstanceRef.current.flyTo([17.4435, 78.375], 13, { duration: 1 });
     }
   };
 
-  const handleTriggerCommand = (cmd: string) => {
-    setCommandFeedback(`Dispatching "${cmd}" to ${selectedAsset.plate}...`);
-    setTimeout(() => {
-      setCommandFeedback(`✓ Command confirmed by onboard IoT ECU.`);
-      setTimeout(() => setCommandFeedback(null), 3000);
-    }, 1000);
-  };
-
-  const filteredVehicles = FLEET_VEHICLES.filter(
-    (b) =>
-      b.plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.rider.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.model.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
-    <div className="bg-white rounded-3xl border border-[#EDF2F1] shadow-xl shadow-slate-200/50 overflow-hidden">
-      {/* 1. Header Bar with Clear Legend */}
-      <div className="p-5 border-b border-[#EDF2F1] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-white">
+    <div className="bg-white rounded-3xl border border-[#EDF2F1] shadow-xl shadow-slate-200/50 overflow-hidden relative font-sans">
+      {/* Top Floating Clean Neumorphic Category Bar */}
+      <div className="p-4 sm:p-5 border-b border-[#EDF2F1] bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#E9F7F1] text-[#18B878] flex items-center justify-center">
-              <Activity className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-base font-extrabold text-[#172B3A] tracking-tight">
-                Live Operations Map & IoT Telemetry
-              </h3>
-              <p className="text-xs font-medium text-[#8A97A0]">
-                Real-time tracking of active EV bikes, 2-minute battery swap docks, and main hubs in Hyderabad
-              </p>
-            </div>
-          </div>
+          <h3 className="text-base font-extrabold text-[#172B3A] tracking-tight flex items-center gap-2">
+            <span>Fleet GPS & IoT Battery Map</span>
+            <span className="text-[10px] font-extrabold text-[#129461] bg-[#E9F7F1] px-2.5 py-0.5 rounded-full">
+              Live Hyderabad
+            </span>
+          </h3>
+          <p className="text-xs text-[#8A97A0] font-medium mt-0.5">
+            Real-time visual map of all moving vehicles, charging stations, and main hubs.
+          </p>
         </div>
 
-        {/* Clear Color-Coded Map Legend for Client */}
-        <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold">
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#E9F7F1] text-[#129461] border border-[#DCF0E6]">
+        {/* Clean Neumorphic Filter Pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => setActiveFilter('ALL')}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 ${
+              activeFilter === 'ALL'
+                ? 'bg-gradient-to-r from-[#1FAE72] to-[#129461] text-white shadow-md shadow-emerald-500/25'
+                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+            }`}
+          >
+            All (54)
+          </button>
+
+          <button
+            onClick={() => setActiveFilter('MOVING')}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 flex items-center gap-1.5 ${
+              activeFilter === 'MOVING'
+                ? 'bg-gradient-to-r from-[#1FAE72] to-[#129461] text-white shadow-md shadow-emerald-500/25'
+                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+            }`}
+          >
             <span className="w-2 h-2 rounded-full bg-[#18B878]"></span>
-            <span>On Road (Moving)</span>
-          </span>
+            <span>Moving (14)</span>
+          </button>
 
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] text-[#172B3A] border border-[#EDF2F1]">
-            <span className="w-2 h-2 rounded-full bg-[#172B3A]"></span>
-            <span>Parked / Ready</span>
-          </span>
+          <button
+            onClick={() => setActiveFilter('PARKED')}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 ${
+              activeFilter === 'PARKED'
+                ? 'bg-[#172B3A] text-white shadow-sm'
+                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+            }`}
+          >
+            Parked (36)
+          </button>
 
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FEE2E2] text-[#EF4444] border border-[#FCA5A5]/60">
-            <span className="w-2 h-2 rounded-full bg-[#EF4444]"></span>
-            <span>Low Battery (&lt;20%)</span>
-          </span>
+          <button
+            onClick={() => setActiveFilter('LOW_BATTERY')}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 flex items-center gap-1 ${
+              activeFilter === 'LOW_BATTERY'
+                ? 'bg-[#EF4444] text-white shadow-sm'
+                : 'bg-[#FBFBFD] text-[#EF4444] hover:bg-[#FEE2E2] border border-[#FCA5A5]/60'
+            }`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>Low &lt;20%</span>
+          </button>
 
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#DCF0E6] text-[#129461]">
-            <span>🏢 EV Main Hub</span>
-          </span>
+          <button
+            onClick={() => setActiveFilter('HUBS')}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 ${
+              activeFilter === 'HUBS'
+                ? 'bg-[#18B878] text-white shadow-sm'
+                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+            }`}
+          >
+            🏢 Hubs (3)
+          </button>
 
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#E0F2FE] text-[#0284C7]">
-            <span>⚡ Battery Swap Dock</span>
-          </span>
+          <button
+            onClick={() => setActiveFilter('SWAPS')}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 ${
+              activeFilter === 'SWAPS'
+                ? 'bg-[#0284C7] text-white shadow-sm'
+                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+            }`}
+          >
+            ⚡ Swaps (4)
+          </button>
         </div>
       </div>
 
-      {/* 2. Split Screen: Left Interactive Telemetry Explorer | Right Clear Map */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
-        {/* Left Explorer (5 Cols) */}
-        <div className="lg:col-span-4 border-r border-[#EDF2F1] flex flex-col bg-[#FBFBFD]">
-          {/* Sub Navigation Tabs */}
-          <div className="p-3 border-b border-[#EDF2F1] bg-white flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('VEHICLES')}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
-                activeTab === 'VEHICLES'
-                  ? 'bg-[#18B878] text-white shadow-sm'
-                  : 'bg-[#F8FAFC] text-[#8A97A0] hover:text-[#172B3A]'
-              }`}
-            >
-              🛵 Bikes ({FLEET_VEHICLES.length})
-            </button>
+      {/* Map Surface */}
+      <div className="relative w-full h-[540px]">
+        {/* Leaflet Mount Element */}
+        <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-            <button
-              onClick={() => setActiveTab('HUBS')}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
-                activeTab === 'HUBS'
-                  ? 'bg-[#129461] text-white shadow-sm'
-                  : 'bg-[#F8FAFC] text-[#8A97A0] hover:text-[#172B3A]'
-              }`}
-            >
-              🏢 Hubs ({FLEET_HUBS.length})
-            </button>
+        {/* Floating Recenter Button on Top Right of Map */}
+        <button
+          onClick={handleRecenter}
+          className="absolute top-4 right-4 z-10 p-3 bg-white/95 backdrop-blur-md rounded-2xl border border-[#EDF2F1] shadow-lg text-[#172B3A] hover:text-[#18B878] transition"
+          title="Recenter Map to Hyderabad Hub"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </button>
 
-            <button
-              onClick={() => setActiveTab('SWAP_STATIONS')}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
-                activeTab === 'SWAP_STATIONS'
-                  ? 'bg-[#0284C7] text-white shadow-sm'
-                  : 'bg-[#F8FAFC] text-[#8A97A0] hover:text-[#172B3A]'
-              }`}
-            >
-              ⚡ Swaps ({SWAP_STATIONS.length})
-            </button>
+        {/* Floating Telemetry Stats on Bottom Left of Map */}
+        <div className="absolute bottom-4 left-4 z-10 hidden sm:flex items-center gap-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-[#EDF2F1] shadow-lg text-xs font-bold text-[#172B3A]">
+          <div className="flex items-center gap-1.5">
+            <Battery className="w-4 h-4 text-[#18B878]" />
+            <span>Avg Fleet SoC: <strong className="text-[#129461]">78%</strong></span>
           </div>
-
-          {/* Search Bar */}
-          {activeTab === 'VEHICLES' && (
-            <div className="p-3 border-b border-[#EDF2F1] bg-white">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-[#8A97A0] absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filter by plate, model, rider..."
-                  className="w-full bg-[#FBFBFD] border border-[#EDF2F1] rounded-xl pl-9 pr-3 py-2 text-xs font-semibold text-[#172B3A] focus:outline-none focus:border-[#18B878]"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* List Content */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[480px]">
-            {activeTab === 'VEHICLES' &&
-              filteredVehicles.map((bike) => {
-                const isSelected = selectedAsset?.id === bike.id;
-                const isLow = bike.battery < 20;
-                return (
-                  <div
-                    key={bike.id}
-                    onClick={() => handleSelectAsset(bike, 'VEHICLES')}
-                    className={`p-3.5 rounded-2xl border transition cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#E9F7F1] border-[#18B878] shadow-sm'
-                        : 'bg-white border-[#EDF2F1] hover:bg-[#F3FAF6]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-extrabold text-xs text-[#172B3A] bg-[#F8FAFC] px-2 py-0.5 rounded-lg border border-[#EDF2F1]">
-                          {bike.plate}
-                        </span>
-                        <span className="text-[11px] font-bold text-[#172B3A]">{bike.model}</span>
-                      </div>
-                      <span
-                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                          isLow
-                            ? 'bg-[#FEE2E2] text-[#EF4444]'
-                            : bike.status === 'MOVING'
-                            ? 'bg-[#DCF0E6] text-[#129461]'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        {bike.status === 'MOVING' ? `⚡ ${bike.speed} km/h` : bike.status}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-[#8A97A0] font-medium mt-2">
-                      <span>Rider: <strong className="text-[#172B3A]">{bike.rider}</strong></span>
-                      <span
-                        className={`font-bold flex items-center gap-1 ${
-                          isLow ? 'text-[#EF4444]' : 'text-[#129461]'
-                        }`}
-                      >
-                        <Battery className="w-3.5 h-3.5" />
-                        <span>{bike.battery}% ({bike.rangeKm} km)</span>
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-
-            {activeTab === 'HUBS' &&
-              FLEET_HUBS.map((hub) => {
-                const isSelected = selectedAsset?.id === hub.id;
-                return (
-                  <div
-                    key={hub.id}
-                    onClick={() => handleSelectAsset(hub, 'HUBS')}
-                    className={`p-3.5 rounded-2xl border transition cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#E9F7F1] border-[#18B878] shadow-sm'
-                        : 'bg-white border-[#EDF2F1] hover:bg-[#F3FAF6]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-xs font-bold text-[#172B3A] flex items-center gap-1.5">
-                        <span>🏢</span>
-                        <span>{hub.name}</span>
-                      </h4>
-                      <span className="text-[10px] font-extrabold text-[#129461] bg-[#DCF0E6] px-2 py-0.5 rounded-full">
-                        {hub.availableBikes} Ready
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#8A97A0] truncate">{hub.address}</p>
-                    <div className="mt-2 text-[10px] text-[#8A97A0] flex justify-between">
-                      <span>Hours: {hub.openTime}</span>
-                      <span className="font-mono text-[#172B3A]">{hub.contact}</span>
-                    </div>
-                  </div>
-                );
-              })}
-
-            {activeTab === 'SWAP_STATIONS' &&
-              SWAP_STATIONS.map((station) => {
-                const isSelected = selectedAsset?.id === station.id;
-                return (
-                  <div
-                    key={station.id}
-                    onClick={() => handleSelectAsset(station, 'SWAP_STATIONS')}
-                    className={`p-3.5 rounded-2xl border transition cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#E0F2FE] border-[#0284C7] shadow-sm'
-                        : 'bg-white border-[#EDF2F1] hover:bg-[#F0F9FF]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-xs font-bold text-[#172B3A] flex items-center gap-1.5">
-                        <span>⚡</span>
-                        <span>{station.name}</span>
-                      </h4>
-                      <span className="text-[10px] font-extrabold text-[#0284C7] bg-[#E0F2FE] px-2 py-0.5 rounded-full">
-                        {station.chargedBatteries}/{station.totalDocks} Swaps
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-[#8A97A0] truncate">{station.address}</p>
-                  </div>
-                );
-              })}
+          <span className="text-[#CBD6D6]">•</span>
+          <div className="flex items-center gap-1.5">
+            <Zap className="w-4 h-4 text-[#0284C7]" />
+            <span>2-Min Swaps Today: <strong>89</strong></span>
+          </div>
+          <span className="text-[#CBD6D6]">•</span>
+          <div className="flex items-center gap-1.5">
+            <Shield className="w-4 h-4 text-[#18B878]" />
+            <span>GPS Lock: <strong>54/54 Online</strong></span>
           </div>
         </div>
 
-        {/* Right Map Canvas (7 Cols) */}
-        <div className="lg:col-span-8 relative flex flex-col">
-          {/* Leaflet Map Mount */}
-          <div ref={mapContainerRef} className="w-full h-full min-h-[500px] z-0" />
+        {/* Floating Neumorphic Inspector Card when Pin is Clicked */}
+        {selectedAsset && (
+          <div className="absolute top-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 bg-white/95 backdrop-blur-md rounded-3xl border border-[#EDF2F1] shadow-2xl p-5 z-20 animate-in slide-in-from-top-4 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#EDF2F1]">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-extrabold text-sm shadow-md ${
+                    selectedAsset.type === 'BIKE'
+                      ? 'bg-gradient-to-br from-[#1FAE72] to-[#129461]'
+                      : selectedAsset.type === 'HUB'
+                      ? 'bg-[#18B878]'
+                      : 'bg-[#0284C7]'
+                  }`}
+                >
+                  {selectedAsset.type === 'BIKE' ? '🛵' : selectedAsset.type === 'HUB' ? '🏢' : '⚡'}
+                </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-[#172B3A]">
+                    {selectedAsset.plate || selectedAsset.name}
+                  </h4>
+                  <p className="text-xs font-medium text-[#8A97A0]">
+                    {selectedAsset.model || selectedAsset.address}
+                  </p>
+                </div>
+              </div>
 
-          {/* Selected Asset Floating Detail Card at Bottom */}
-          {selectedAsset && (
-            <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md rounded-2xl border border-[#EDF2F1] shadow-2xl p-4 z-10 animate-in slide-in-from-bottom duration-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-base shadow-sm ${
-                      selectedAsset.plate
-                        ? 'bg-gradient-to-br from-[#1FAE72] to-[#129461]'
-                        : selectedAsset.totalBikes
-                        ? 'bg-[#129461]'
-                        : 'bg-[#0284C7]'
-                    }`}
-                  >
-                    {selectedAsset.plate ? '🛵' : selectedAsset.totalBikes ? '🏢' : '⚡'}
+              <button
+                onClick={() => setSelectedAsset(null)}
+                className="w-7 h-7 rounded-full bg-[#F3FAF6] text-[#8A97A0] hover:text-[#172B3A] flex items-center justify-center text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Vehicle Details */}
+            {selectedAsset.type === 'BIKE' && (
+              <div className="mt-3.5 space-y-3.5 text-xs font-semibold text-[#172B3A]">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-3 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1]">
+                    <span className="text-[10px] text-[#8A97A0] uppercase font-bold">IoT State</span>
+                    <p className="text-xs font-extrabold mt-0.5 flex items-center gap-1.5">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          selectedAsset.status === 'MOVING' ? 'bg-[#18B878] animate-ping' : 'bg-[#172B3A]'
+                        }`}
+                      />
+                      <span>{selectedAsset.status} {selectedAsset.speed > 0 ? `(${selectedAsset.speed} km/h)` : ''}</span>
+                    </p>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-extrabold text-[#172B3A] flex items-center gap-2">
-                      <span>{selectedAsset.plate || selectedAsset.name}</span>
-                      {selectedAsset.status && (
-                        <span
-                          className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                            selectedAsset.battery < 20
-                              ? 'bg-[#FEE2E2] text-[#EF4444]'
-                              : selectedAsset.status === 'MOVING'
-                              ? 'bg-[#DCF0E6] text-[#129461]'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          {selectedAsset.status} {selectedAsset.speed > 0 ? `(${selectedAsset.speed} km/h)` : ''}
-                        </span>
-                      )}
-                    </h4>
-                    <p className="text-xs text-[#8A97A0] font-medium">
-                      {selectedAsset.model || selectedAsset.address}
+
+                  <div className="p-3 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1]">
+                    <span className="text-[10px] text-[#8A97A0] uppercase font-bold">Battery SoC</span>
+                    <p
+                      className={`text-xs font-extrabold mt-0.5 ${
+                        selectedAsset.battery < 20 ? 'text-[#EF4444]' : 'text-[#129461]'
+                      }`}
+                    >
+                      {selectedAsset.battery}% ({selectedAsset.rangeKm} km Range)
                     </p>
                   </div>
                 </div>
 
-                {/* IoT Metrics / Controls for Bike */}
-                {selectedAsset.plate ? (
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 px-3 bg-[#FBFBFD] rounded-xl border border-[#EDF2F1] text-right">
-                      <span className="text-[10px] text-[#8A97A0] font-bold uppercase">Battery SoC</span>
-                      <p
-                        className={`text-xs font-extrabold ${
-                          selectedAsset.battery < 20 ? 'text-[#EF4444]' : 'text-[#129461]'
-                        }`}
-                      >
-                        {selectedAsset.battery}% ({selectedAsset.rangeKm} km)
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => handleTriggerCommand('Immobilize / Lock')}
-                      className="py-2.5 px-3 rounded-xl bg-[#FEE2E2] text-[#EF4444] font-bold text-xs hover:bg-[#FCA5A5]/30 transition flex items-center gap-1"
-                    >
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Lock</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleTriggerCommand('Sound Alert Horn')}
-                      className="py-2.5 px-3 rounded-xl bg-[#E9F7F1] text-[#129461] font-bold text-xs hover:bg-[#DCF0E6] transition flex items-center gap-1"
-                    >
-                      <Volume2 className="w-3.5 h-3.5" />
-                      <span>Horn</span>
-                    </button>
+                <div className="p-3 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1] space-y-1.5 text-[11px]">
+                  <div className="flex justify-between text-[#8A97A0]">
+                    <span>Rider:</span>
+                    <strong className="text-[#172B3A]">{selectedAsset.rider}</strong>
                   </div>
-                ) : (
-                  <div className="text-xs text-[#129461] font-bold bg-[#E9F7F1] px-3 py-2 rounded-xl">
-                    {selectedAsset.availableBikes !== undefined
-                      ? `✓ ${selectedAsset.availableBikes} Bikes Ready for Rent`
-                      : `⚡ ${selectedAsset.chargedBatteries} Charged Docks Available`}
+                  <div className="flex justify-between text-[#8A97A0]">
+                    <span>Assigned Hub:</span>
+                    <strong className="text-[#172B3A]">{selectedAsset.hub}</strong>
                   </div>
-                )}
-              </div>
-
-              {commandFeedback && (
-                <div className="mt-2.5 p-2 rounded-xl bg-[#172B3A] text-white text-xs font-semibold text-center animate-in fade-in">
-                  {commandFeedback}
+                  <div className="flex justify-between text-[#8A97A0]">
+                    <span>Voltage / Temp:</span>
+                    <strong className="text-[#172B3A]">{selectedAsset.voltage} • {selectedAsset.temp}</strong>
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+
+                {/* Commands */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    onClick={() => handleCommand('Remote Immobilize')}
+                    className="py-2.5 px-3 rounded-2xl bg-[#FEE2E2] text-[#EF4444] font-bold text-xs hover:bg-[#FCA5A5]/30 transition flex items-center justify-center gap-1.5"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Immobilize</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleCommand('Sound Alert Horn')}
+                    className="py-2.5 px-3 rounded-2xl bg-[#E9F7F1] text-[#129461] font-bold text-xs hover:bg-[#DCF0E6] transition flex items-center justify-center gap-1.5"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>Sound Horn</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Hub Details */}
+            {selectedAsset.type === 'HUB' && (
+              <div className="mt-3.5 space-y-3 text-xs font-semibold text-[#172B3A]">
+                <div className="p-3 bg-[#E9F7F1] rounded-2xl border border-[#DCF0E6] text-center">
+                  <span className="text-[10px] text-[#129461] uppercase font-bold">Available Fleet</span>
+                  <h4 className="text-lg font-extrabold text-[#129461]">
+                    {selectedAsset.availableBikes} / {selectedAsset.totalBikes} Bikes Ready
+                  </h4>
+                </div>
+                <div className="text-[11px] text-[#8A97A0] space-y-1">
+                  <p><strong>Hours:</strong> {selectedAsset.openTime}</p>
+                  <p><strong>Contact:</strong> {selectedAsset.contact}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Swap Details */}
+            {selectedAsset.type === 'SWAP' && (
+              <div className="mt-3.5 space-y-3 text-xs font-semibold text-[#172B3A]">
+                <div className="p-3 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-center">
+                  <span className="text-[10px] text-[#0284C7] uppercase font-bold">Fast Swaps</span>
+                  <h4 className="text-lg font-extrabold text-[#0284C7]">
+                    {selectedAsset.chargedBatteries} / {selectedAsset.totalDocks} Batteries Ready
+                  </h4>
+                </div>
+                <p className="text-[11px] text-[#8A97A0]">~90 Second Automatic Swap Cycle Active</p>
+              </div>
+            )}
+
+            {commandFeedback && (
+              <div className="mt-3 p-2.5 rounded-2xl bg-[#172B3A] text-white text-xs font-bold text-center animate-in fade-in">
+                {commandFeedback}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
