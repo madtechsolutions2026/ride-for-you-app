@@ -1,0 +1,6 @@
+﻿{
+  "git.blame.editorDecoration.enabled": true,
+  "git.blame.statusBarItem.enabled": true,
+  "gitlens.currentLine.enabled": true,
+  "gitlens.hovers.enabled": true
+}
