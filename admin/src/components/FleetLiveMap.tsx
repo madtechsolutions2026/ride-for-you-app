@@ -742,3 +742,4 @@ export const FleetLiveMap: React.FC = () => {
     </div>
   );
 };
+

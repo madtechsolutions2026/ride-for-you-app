@@ -20,13 +20,27 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/scooter.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/scooter.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you upload KYC verification documents.",
+          "cameraPermission": "The app accesses your camera to take KYC verification selfies."
+        }
+      ]
     ],
     "extra": {
       "eas": {
