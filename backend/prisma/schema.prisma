@@ -16,21 +16,15 @@ model User {
   avatarUrl       String?
   role            String      @default("RIDER") // RIDER, DRIVER, ADMIN
   accountStatus   String      @default("ACTIVE") // ACTIVE, SUSPENDED
-  
-  // KYC Workflow Fields
+
+  // Cached KYC summary. Source of truth is the latest KycVerification row.
   kycStatus       String      @default("PENDING") // PENDING, SUBMITTED, APPROVED, REJECTED
-  kycSubmittedAt  DateTime?
-  kycReviewedAt   DateTime?
-  kycRejectReason String?
-  
-  // Submitted Document Details
-  aadhaarNumber   String?
-  addressProof    String?
-  selfieUrl       String?
-  
+
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
-  sessions        Session[]
+
+  sessions         Session[]
+  kycVerifications KycVerification[]
 }
 
 model OtpChallenge {
@@ -51,4 +45,41 @@ model Session {
   revoked      Boolean  @default(false)
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+}
+
+// One row per KYC submission attempt. Re-submissions (after a rejection) create a
+// new row so the full history is retained. User.kycStatus mirrors the latest row.
+model KycVerification {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status String @default("SUBMITTED") // SUBMITTED, APPROVED, REJECTED
+
+  // Applicant-entered details
+  fullName      String?
+  dateOfBirth   DateTime?
+  address       String?
+  aadhaarNumber String?
+  panNumber     String?
+
+  // R2 object keys. The bucket is private; API responses return short-lived
+  // presigned GET URLs derived from these keys, never the keys themselves.
+  aadhaarFrontKey String?
+  aadhaarBackKey  String?
+  panCardKey      String?
+  selfieKey       String?
+  addressProofKey String?
+
+  // Admin review
+  reviewedBy   String? // admin User.id
+  reviewedAt   DateTime?
+  rejectReason String?
+
+  submittedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }

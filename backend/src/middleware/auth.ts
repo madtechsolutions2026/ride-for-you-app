@@ -18,6 +18,22 @@ export function generateRefreshToken(userId: string): string {
   return jwt.sign({ id: userId, type: 'refresh' }, JWT_SECRET, { expiresIn: '30d' });
 }
 
+/**
+ * Route guard: allows the request through only if the authenticated user's role
+ * is one of `roles`. Must run after `authenticateToken`.
+ */
+export function requireRole(...roles: string[]) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    next();
+  };
+}
+
 export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];

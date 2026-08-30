@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
+import kycRoutes from './routes/kyc.routes';
 import adminRoutes from './routes/admin.routes';
 import { execSync } from 'child_process';
 import { prisma } from './utils/prisma';
@@ -21,6 +22,7 @@ app.use(express.json());
 // Register API Routes
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
+app.use('/kyc', kycRoutes);
 app.use('/admin', adminRoutes);
 
 // Health check endpoint

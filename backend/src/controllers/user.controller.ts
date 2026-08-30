@@ -1,10 +1,11 @@
-﻿import { Response } from 'express';
+import { Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
 
 /**
  * GET /user/profile
- * Retrieves the authenticated rider's profile and KYC verification status.
+ * Retrieves the authenticated rider's profile plus a short KYC summary.
+ * (Full KYC documents/history live under the /kyc module.)
  */
 export async function getProfile(req: AuthRequest, res: Response) {
   try {
@@ -25,12 +26,6 @@ export async function getProfile(req: AuthRequest, res: Response) {
         role: true,
         accountStatus: true,
         kycStatus: true,
-        kycSubmittedAt: true,
-        kycReviewedAt: true,
-        kycRejectReason: true,
-        aadhaarNumber: true,
-        addressProof: true,
-        selfieUrl: true,
         createdAt: true,
       },
     });
@@ -39,7 +34,19 @@ export async function getProfile(req: AuthRequest, res: Response) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    return res.json({ user });
+    const latestKyc = await prisma.kycVerification.findFirst({
+      where: { userId },
+      orderBy: { submittedAt: 'desc' },
+      select: {
+        id: true,
+        status: true,
+        submittedAt: true,
+        reviewedAt: true,
+        rejectReason: true,
+      },
+    });
+
+    return res.json({ user, kyc: latestKyc });
   } catch (error: any) {
     console.error('Error in getProfile:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -86,53 +93,6 @@ export async function updateProfile(req: AuthRequest, res: Response) {
     });
   } catch (error: any) {
     console.error('Error in updateProfile:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-/**
- * POST /user/kyc/submit
- * Submits KYC documents and sets status to SUBMITTED (Under Review).
- */
-export async function submitKyc(req: AuthRequest, res: Response) {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const { aadhaarNumber, addressProof, selfieUrl } = req.body;
-
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        kycStatus: 'SUBMITTED',
-        kycSubmittedAt: new Date(),
-        kycRejectReason: null,
-        ...(aadhaarNumber && { aadhaarNumber: String(aadhaarNumber) }),
-        ...(addressProof && { addressProof: String(addressProof) }),
-        ...(selfieUrl && { selfieUrl: String(selfieUrl) }),
-      },
-      select: {
-        id: true,
-        phone: true,
-        fullName: true,
-        kycStatus: true,
-        kycSubmittedAt: true,
-      },
-    });
-
-    console.log(`\n========================================`);
-    console.log(`[KYC SUBMITTED] User: ${userId} (${updatedUser.phone})`);
-    console.log(`Status changed to: SUBMITTED (Awaiting Admin Review)`);
-    console.log(`========================================\n`);
-
-    return res.json({
-      message: 'KYC documents submitted successfully. Our team will review them shortly.',
-      user: updatedUser,
-    });
-  } catch (error: any) {
-    console.error('Error in submitKyc:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
