@@ -1,112 +1,94 @@
 /**
  * HeroBlob.tsx
  * ------------
- * The frosted-teal curved shape at the top of the login screen with the
- * scooter photo composited inside. One clean sweep on the left; the bottom
- * edge dips in the centre and drapes over the login card, with a soft
- * shadow along that edge so the blob reads as a raised layer (neumorphic).
+ * The curved hero shape at the top of the auth screens, with the scooter photo
+ * composited inside it.
  *
- * `overhang` lets the SVG draw BELOW its nominal height so the curve can
- * spill over the top of the card (the card gets matching top padding + a
- * lower zIndex).
+ * THIS PATH IS NOT HAND-TUNED. It is the shape exactly as exported from Figma
+ * ("RIDE FOR YOU", 430x932 frame — the layer named "Vector 2"). Earlier
+ * versions approximated it with guessed control points; this is the real
+ * geometry, so it matches the design by construction.
+ *
+ * Everything is expressed in the Figma frame's own coordinates and scaled by
+ * the viewBox, which means the shape stays correct on any screen width without
+ * a single number being recalculated.
+ *
+ * In the frame the shape occupies x 152 -> 430 (it is anchored to the right
+ * edge) and y 0 -> 430, so the component renders a square 430x430 viewBox and
+ * lets the blob sit in its correct place inside it.
  */
 
 import React from 'react';
 import { View } from 'react-native';
-import Svg, {
-  Path,
-  ClipPath,
-  Defs,
-  Image as SvgImage,
-  LinearGradient,
-  Stop,
-} from 'react-native-svg';
+import Svg, { Path, ClipPath, Defs, Image as SvgImage, LinearGradient, Stop } from 'react-native-svg';
 import { colors } from '../theme';
 import { images } from '../assets';
 
+/** The blob outline, verbatim from the Figma export. */
+const FIGMA_BLOB =
+  'M430.094 375V0H279.094C249.894 37.6 249.761 80.6667 253.094 98.5C256.594 138.5 232.761 ' +
+  '170.833 219.094 180.5L201.094 197L184.594 214C122.594 281.5 163.093 349.5 191.093 ' +
+  '371L204.593 382L242.093 407.5L279.094 430C347.094 425.5 405.094 390 430.094 375Z';
+
+/** The design frame's width, and the blob's vertical extent within it. */
+const FRAME_W = 430;
+const BLOB_H = 430;
+
+/** Blob height as a multiple of screen width — use this to size the hero area. */
+export const HERO_RATIO = BLOB_H / FRAME_W; // 1.0
+
 type HeroBlobProps = {
+  /** Full screen width. The blob positions itself against the right edge. */
   width: number;
-  height: number;
-  /** extra pixels to draw below `height` so the curve can overlap the card */
-  overhang?: number;
 };
 
-
-export function HeroBlob({ width: w, height: h, overhang = 0 }: HeroBlobProps) {
-  const svgH = h + overhang;
-
-  // Left edge: one smooth S past the wordmark (card's top-left stays clear).
-  // Bottom edge: dips in the centre, rises to the right where the card tucks under.
-  const bottomEdge =
-    `C ${w * 0.32} ${h * 0.74}, ${w * 0.46} ${h * 0.78}, ${w * 0.62} ${h * 0.83} ` +
-    `C ${w * 0.76} ${h * 0.87}, ${w * 0.9} ${h * 0.8}, ${w} ${h * 0.66}`;
-
-  const blob = [
-    `M ${w * 0.46} 0`,
-    `C ${w * 0.28} ${h * 0.18}, ${w * 0.19} ${h * 0.45}, ${w * 0.26} ${h * 0.68}`,
-    bottomEdge,
-    `L ${w} 0 Z`,
-  ].join(' ');
-
-  // just the bottom curve, for the drop shadow
-  const seam = `M ${w * 0.26} ${h * 0.68} ${bottomEdge}`;
+export function HeroBlob({ width: w }: HeroBlobProps) {
+  const h = w * HERO_RATIO;
 
   return (
-    <View style={{ width: w, height: svgH }}>
-      <Svg width={w} height={svgH}>
+    <View style={{ width: w, height: h }} pointerEvents="none">
+      <Svg width={w} height={h} viewBox={`0 0 ${FRAME_W} ${BLOB_H}`}>
         <Defs>
           <ClipPath id="heroClip">
-            <Path d={blob} />
+            <Path d={FIGMA_BLOB} />
           </ClipPath>
 
-          <LinearGradient id="glassFill" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={colors.brand.glassTop} />
-            <Stop offset="1" stopColor={colors.brand.glassBottom} />
-          </LinearGradient>
-
-          <LinearGradient id="edgeFade" x1="0" y1="0" x2="1" y2="0.1">
-            <Stop offset="0" stopColor={colors.surface.background} stopOpacity={1} />
-            <Stop offset="0.2" stopColor={colors.surface.background} stopOpacity={0} />
-          </LinearGradient>
-
-          <LinearGradient id="bottomFade" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0.78" stopColor={colors.brand.glassBottom} stopOpacity={0} />
-            <Stop offset="1" stopColor={colors.brand.glassBottom} stopOpacity={0.55} />
+          {/*
+            Figma applies an inner shadow to this shape: dy 10, blur 8,
+            #BBDBD8. SVG has no inner-shadow primitive, so it is drawn as a
+            soft stroke clipped to the shape's own outline — the stroke's
+            outer half is cut away, leaving only the inside edge.
+          */}
+          <LinearGradient id="blobSheen" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={colors.overlay.blobSheen} stopOpacity={0.55} />
+            <Stop offset="0.35" stopColor={colors.overlay.blobSheen} stopOpacity={0} />
           </LinearGradient>
         </Defs>
 
-        {/* ---- soft shadow UNDER the curve (drawn first, so it sits on the card) ---- */}
-        <Path d={seam} transform="translate(0, 7)" stroke={colors.overlay.blobShade} strokeWidth={16} fill="none" strokeLinecap="round" />
-        <Path d={seam} transform="translate(0, 4)" stroke={colors.overlay.blobShade} strokeWidth={9} fill="none" strokeLinecap="round" />
-
-        {/* 1. teal glass base */}
-        <Path d={blob} fill="url(#glassFill)" />
-
-        {/* 2. scooter photo, cropped to the blob.
-              The source photo is portrait (1086x1448) but the hero is roughly
-              square, so the rect is given the PHOTO's aspect ratio (0.75) and
-              offset upward — otherwise "slice" crops the scooter's wheels off. */}
+        {/* 1. the photo, cropped to the blob outline */}
         <SvgImage
           href={images.authHero}
-          x={w * 0.13}
-          y={-h * 0.2}
-          width={w * 0.87}
-          height={h * 1.19}
+          x={152}
+          y={0}
+          width={278.094}
+          height={BLOB_H}
           preserveAspectRatio="xMidYMid slice"
           clipPath="url(#heroClip)"
         />
 
-        {/* 3. NO teal wash — the v2 photo is already cool-toned. Washing it here is
-              what made the hero read pale and blurry. */}
+        {/* 2. Figma's inner shadow, approximated as a clipped inside edge */}
+        <Path
+          d={FIGMA_BLOB}
+          stroke="#BBDBD8"
+          strokeWidth={16}
+          fill="none"
+          opacity={0.9}
+          transform="translate(0, 10)"
+          clipPath="url(#heroClip)"
+        />
 
-        {/* 4. soft fade on the inner (left) edge */}
-        <Path d={blob} fill="url(#edgeFade)" />
-
-        {/* 5. fade the bottom so the seam with the card is soft */}
-        <Path d={blob} fill="url(#bottomFade)" />
-
-        {/* 6. a bright hairline along the top of the curve (neumorphic highlight) */}
-        <Path d={seam} stroke={colors.overlay.blobSheen} strokeWidth={1.5} fill="none" />
+        {/* 3. a light sheen down the top of the shape */}
+        <Path d={FIGMA_BLOB} fill="url(#blobSheen)" />
       </Svg>
     </View>
   );

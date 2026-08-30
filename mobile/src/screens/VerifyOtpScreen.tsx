@@ -113,7 +113,7 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
         {/* ---------------- HERO ---------------- */}
         <View style={[styles.hero, { height: heroHeight }]}>
           <View style={styles.heroBlobWrap}>
-            <HeroBlob width={width} height={heroHeight} overhang={78} />
+            <HeroBlob width={width} />
           </View>
 
           <View style={styles.heroContent} pointerEvents="box-none">

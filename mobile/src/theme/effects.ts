@@ -1,18 +1,16 @@
 /**
  * effects.ts
  * ----------
- * The two surface "materials" from the reference design:
+ * The two surface "materials" from the design:
  *
  *   glass  — frosted / see-through (language pill, shield badge, trust circles)
- *   neo    — soft raised white plastic (the login card, the +91 pill, inputs,
- *            the Google button)
+ *   neo    — soft raised white plastic (the login card, the +91 pill, inputs)
  *
- * Design rule from the reference: NO hard borders anywhere. Depth comes from
- * large, very diffuse, low-opacity shadows in a cool grey-green — never black.
+ * Shadow values come from the Figma export's filter definitions, same source
+ * as shadows.ts — see the mapping note there for how a Figma <filter> becomes
+ * a boxShadow (in particular: stdDeviation is HALF the blur radius).
  *
- * See shadows.ts for why these moved from shadow* + elevation to `boxShadow`:
- * short version, the old props did nothing on Android, and boxShadow lets one
- * view carry several shadows so the neumorphism is real rather than faked.
+ * Design rule: no hard borders. Depth comes from shadow alone.
  */
 
 import { colors } from './colors';
@@ -27,46 +25,32 @@ export const glass = {
 };
 
 /* ---------------- Neumorphism ---------------- */
-const TINT = (a: number) => `rgba(70, 128, 110, ${a})`;
-
 export const neo = {
-  /*
-   * The big floating login card.
-   *
-   * Two shadows: a wide ambient halo, and a tight contact shadow just under
-   * the edge. Measured off the mockup, this shadow is subtle — the card sits
-   * only a few levels below pure white where it meets the page.
-   */
+  /* The big floating login card. Figma filter2_d. */
   card: {
     backgroundColor: colors.surface.card,
     boxShadow: [
-      { offsetX: 0, offsetY: 18, blurRadius: 44, spreadDistance: -10, color: TINT(0.18) },
-      { offsetX: 0, offsetY: 4, blurRadius: 12, spreadDistance: -6, color: TINT(0.1) },
+      { offsetX: 0, offsetY: 7, blurRadius: 29, spreadDistance: 0, color: 'rgba(100, 100, 111, 0.2)' },
     ],
   },
 
-  /* A raised white control: the +91 pill, the Google button, icon circles. */
+  /* A raised white control: the +91 pill, icon circles. Figma filter4_d. */
   raised: {
     backgroundColor: colors.surface.card,
     boxShadow: [
-      { offsetX: 0, offsetY: 8, blurRadius: 20, spreadDistance: -6, color: TINT(0.15) },
-      { offsetX: 0, offsetY: 2, blurRadius: 6, spreadDistance: -3, color: TINT(0.08) },
+      { offsetX: 0, offsetY: 4, blurRadius: 12, spreadDistance: 0, color: 'rgba(0, 0, 0, 0.2)' },
     ],
   },
 
   /*
-   * The phone-number field.
-   *
-   * Now genuinely inset: an INNER shadow along the top edge reads as "pressed
-   * into the card", which is what the mockup shows and what a single outer
-   * shadow could never express. Paired with a whisper of outer shadow so the
-   * pill still separates from the card behind it.
+   * The phone-number field. Figma draws it as a plain white rounded rect with
+   * only a light drop shadow — not the pressed-in inner shadow that was
+   * assumed here before. Kept faithful to the file.
    */
   inset: {
     backgroundColor: colors.surface.card,
     boxShadow: [
-      { offsetX: 0, offsetY: 2, blurRadius: 6, spreadDistance: 0, color: TINT(0.14), inset: true },
-      { offsetX: 0, offsetY: 1, blurRadius: 3, spreadDistance: 0, color: TINT(0.07) },
+      { offsetX: 0, offsetY: 1, blurRadius: 4, spreadDistance: 0, color: 'rgba(0, 0, 0, 0.16)' },
     ],
   },
 } as const;

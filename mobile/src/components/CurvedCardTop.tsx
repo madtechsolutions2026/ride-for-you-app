@@ -1,23 +1,28 @@
 /**
  * CurvedCardTop.tsx
  * -----------------
- * The soft, asymmetric curved lip that sits on top of the login/verify card.
+ * The soft, asymmetric lip on top of the login/verify card.
  *
- * The reference design's card is NOT a plain rounded rectangle — its top edge
- * sweeps up from the left, crests just left of centre, and settles lower on
- * the right, echoing the hero blob's curve above it.
+ * The card's top edge is not a rounded rectangle — it undulates: it rises from
+ * the left, crests early (around 14-19% across), dips through the middle where
+ * the hero blob overlaps, and settles lower on the right.
  *
- * React Native can't express that with `borderRadius`, so we draw it as an SVG
- * "cap" filled in the card's own colour and place it directly above the card
- * (whose own top corners are square). Cap + card read as one shape.
+ * THIS PATH IS NOT HAND-TUNED. It is lifted verbatim from the Figma export
+ * ("RIDE FOR YOU", 430x932 frame) — the white card-cap shape. Earlier versions
+ * of this file approximated the curve with guessed bezier control points and
+ * took several passes to look close. Now it is the design's own geometry, so
+ * it is exact by construction.
  *
- * Usage — the card must set `borderTopLeftRadius: 0` / `borderTopRightRadius: 0`
- * and reserve `height` px of top padding for the cap:
+ * The viewBox does the scaling, so the shape stays correct at any card width
+ * without touching a single coordinate.
  *
- *   <View style={{ paddingTop: CARD_CAP_HEIGHT + 24 }}>
+ * Usage — the card sets square top corners and reserves the overhang:
+ *
+ *   <NeoSurface style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0,
+ *                        paddingTop: capOverhang(cardWidth) + 24 }}>
  *     <CurvedCardTop width={cardWidth} />
  *     ...content...
- *   </View>
+ *   </NeoSurface>
  */
 
 import React from 'react';
@@ -25,8 +30,33 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../theme';
 
-/** How tall the curved lip is. Content should clear this. */
-export const CARD_CAP_HEIGHT = 52;
+/* ---- Geometry straight out of the Figma file (430pt frame coordinates) ---- */
+
+/** The cap path exactly as Figma exported it. */
+const FIGMA_PATH =
+  'M20 454.744V527L407.871 531.5V447.5C406.671 412.7 376.371 405 362.371 409.5L310.891 ' +
+  '425.087C277.871 434.5 246.429 428.42 234.262 425.087L179.871 411C138.271 401 91.8708 ' +
+  '400.667 73.8708 401.5C29.4708 399.5 21.3708 433.5 20 454.744Z';
+
+const VB_X = 20; // leftmost x of the shape
+const VB_Y = 399.5; // topmost y (the crest)
+const VB_W = 387.871; // 407.871 - 20
+const VB_H = 132; // 531.5 - 399.5
+
+/**
+ * How far the cap rises ABOVE the card body, in design units.
+ * The card body's top edge sits at y=455 in the Figma frame; the cap crests at
+ * y=399.5. Everything below 455 is drawn behind the card and simply blends in.
+ */
+const OVERHANG = 455 - VB_Y; // 55.5
+
+/**
+ * How much vertical space the cap needs above the card, for a given card width.
+ * The card should reserve this much top padding so content clears the curve.
+ */
+export function capOverhang(cardWidth: number): number {
+  return Math.round((OVERHANG / VB_W) * cardWidth);
+}
 
 type CurvedCardTopProps = {
   /** The card's own width (screen width minus its horizontal margins). */
@@ -36,41 +66,19 @@ type CurvedCardTopProps = {
 };
 
 export function CurvedCardTop({ width: w, color = colors.surface.card }: CurvedCardTopProps) {
-  const C = CARD_CAP_HEIGHT;
-
-  // Corner softness at the two ends of the lip.
-  const r = 30;
-  // Where each end of the curve sits vertically inside the cap.
-  const leftY = 22;
-  const rightY = 30;
-
-  const path = [
-    `M 0 ${C}`,
-    `L 0 ${leftY + r}`,
-    `Q 0 ${leftY}, ${r} ${leftY - 6}`, // rounded top-left, already rising
-    // Crest sits at roughly 20% across, NOT near the middle.
-    // Measured from the mockup: the white card's top edge first appears as a
-    // narrow band around x = 76dp of 360dp and spreads outward from there, so
-    // the high point is well into the left third. The old control points put
-    // it near w*0.34 and the edge then fell away too symmetrically.
-    `C ${w * 0.08} ${5}, ${w * 0.14} ${1}, ${w * 0.28} ${5}`,
-    // …then a long, shallow descent to the right, where the hero blob overlaps.
-    `C ${w * 0.5} ${13}, ${w * 0.78} ${rightY - 10}, ${w - r} ${rightY - 4}`,
-    `Q ${w} ${rightY}, ${w} ${rightY + r}`, // rounded top-right
-    `L ${w} ${C}`,
-    'Z',
-  ].join(' ');
+  const scale = w / VB_W;
+  const height = VB_H * scale;
+  const top = -(OVERHANG * scale);
 
   return (
-    <View style={[styles.wrap, { width: w, height: C }]} pointerEvents="none">
-      <Svg width={w} height={C}>
-        <Path d={path} fill={color} />
+    <View style={[styles.wrap, { width: w, height, top }]} pointerEvents="none">
+      <Svg width={w} height={height} viewBox={`${VB_X} ${VB_Y} ${VB_W} ${VB_H}`}>
+        <Path d={FIGMA_PATH} fill={color} />
       </Svg>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Sits just above the card body; the card reserves matching top padding.
-  wrap: { position: 'absolute', top: -CARD_CAP_HEIGHT, left: 0 },
+  wrap: { position: 'absolute', left: 0 },
 });

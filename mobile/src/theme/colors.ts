@@ -13,7 +13,7 @@
 export const colors = {
   /* ---- Brand greens (sampled from the reference) ---- */
   brand: {
-    primary: '#18B878', // main green — buttons, active icons, links, "YOU"
+    primary: '#1FAF7A', // main green — buttons, active icons, links, "YOU"
     dark: '#129461', // pressed states, darker accents
     light: '#4BD49B', // lighter green highlights
     mint: '#E9F7F1', // pale green — icon circles, badges
@@ -26,9 +26,9 @@ export const colors = {
     mintSoft: '#F3FAF6', // barely-there wash - row backgrounds
     mintStrong: '#DCF0E6', // deeper mint - selected chips, active states
     // "Continue with OTP" is a left-to-right gradient of these:
-    gradientFrom: '#1FAE72',
-    gradientTo: '#5FD9A4',
-    gradientEnd: '#9EE7C4', // the pale right-hand end, where the arrow overhangs
+    gradientFrom: '#62CE90',
+    gradientTo: '#B4EBD8',
+    gradientEnd: '#B4EBD8', // the pale right-hand end, where the arrow overhangs
     // The frosted hero blob fades between these top→bottom:
     glassTop: '#EFF7F5',
     glassBottom: '#DCEDE8',
@@ -36,27 +36,22 @@ export const colors = {
 
   /* ---- Text ---- */
   text: {
-    primary: '#172B3A', // dark navy — headings, body
-    secondary: '#8A97A0', // soft cool grey — captions, placeholders, hints
+    primary: '#334155', // dark navy — headings, body
+    secondary: '#6B7280', // soft cool grey — captions, placeholders, hints
     inverse: '#FFFFFF', // text on top of a green button or dark photo
-    link: '#18B878',
+    link: '#1FAF7A',
   },
 
   /* ---- Surfaces (backgrounds of things) ---- */
   /*
-   * These three were sampled directly out of the login mockup rather than
-   * eyeballed. The old values were mint-tinted (green == blue, red lower);
-   * the mockup's ground is actually BLUE-tinted (blue highest). #FBFBFD alone
-   * is 48% of every pixel in the mockup, so this is the colour the whole app
-   * sits on — getting its temperature wrong made screens feel subtly off even
-   * when every element on them was correct.
-   *
-   * To go back to the mint ground, restore: #F7FAFA / #EFF6F7 / #FDFEFE.
+   * Taken from the Figma export ("RIDE FOR YOU", 430x932 frame), not measured
+   * off a raster. The frame's background rect is #F8F7FD — a cool blue-violet
+   * white, not the mint the earlier guess assumed.
    */
   surface: {
-    background: '#FBFBFD', // measured: dominant page colour, 48% of the mockup
-    backgroundTintTop: '#F5F6FB', // measured: cooler wash at the top of the page
-    backgroundTintBottom: '#FDFDFF', // measured: near-white at the bottom
+    background: '#F8F7FD', // Figma: the frame background rect
+    backgroundTintTop: '#F5F6FB', // slightly cooler wash toward the top
+    backgroundTintBottom: '#FDFDFF', // near-white at the bottom
     card: '#FFFFFF', // white cards / panels that float on the background
     field: '#FFFFFF', // input backgrounds
   },

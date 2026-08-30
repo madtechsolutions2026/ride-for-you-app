@@ -17,12 +17,27 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
-import { CurvedCardTop, Glass, HeroBlob, NeoSurface, PrimaryButton } from '../components';
+import { capOverhang, CurvedCardTop, Glass, HeroBlob, NeoSurface, PrimaryButton } from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RequestOtp'>;
 
-/** Card gutter — shared by the card style and the curved cap's width. */
-const CARD_MARGIN = 18;
+/**
+ * The Figma frame is 430pt wide. Every measurement below is expressed in that
+ * frame's own units and converted with `u()`, so the screen is a proportional
+ * reproduction of the design at any device width rather than a pile of
+ * numbers that happened to look right on one emulator.
+ *
+ *   Figma            design pt      -> dp on a 360dp screen
+ *   card left/right     19 / 20                16 / 17
+ *   card body top          455                   381
+ *   card bottom radius      54                    45
+ */
+const FRAME_W = 430;
+const DESIGN = {
+  cardMargin: 19.5, // card spans x 19..410 in the frame
+  cardTop: 455, // y of the card body's top edge
+  cardRadius: 54, // bottom corner radius
+};
 
 export default function RequestOtpScreen({ navigation }: Props) {
   const { width, height } = useWindowDimensions();
@@ -30,8 +45,17 @@ export default function RequestOtpScreen({ navigation }: Props) {
   // which only happened to look right on one device — Android status bars run
   // 24-48dp depending on hardware, and SDK 54 draws edge-to-edge by default.
   const insets = useSafeAreaInsets();
-  const heroHeight = Math.round(height * 0.44);
-  const cardWidth = width - CARD_MARGIN * 2;
+
+  /** design pt -> dp for this device */
+  const u = (pt: number) => (pt / FRAME_W) * width;
+
+  const cardMargin = Math.round(u(DESIGN.cardMargin));
+  const cardWidth = width - cardMargin * 2;
+  // Space above the card body, taken straight from the design frame rather
+  // than a percentage of screen height. The blob and the curved cap both live
+  // inside this band.
+  const heroHeight = Math.round(u(DESIGN.cardTop));
+  const capClearance = capOverhang(cardWidth);
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -78,9 +102,9 @@ export default function RequestOtpScreen({ navigation }: Props) {
       >
         {/* ---------------------- HERO ---------------------- */}
         <View style={[styles.hero, { height: heroHeight }]}>
-          {/* blob draws 78px past the hero and sits above the card (zIndex) */}
+          {/* blob geometry comes from Figma; it self-scales to the screen width */}
           <View style={styles.heroBlobWrap}>
-            <HeroBlob width={width} height={heroHeight} overhang={78} />
+            <HeroBlob width={width} />
           </View>
 
           <View
@@ -125,7 +149,19 @@ export default function RequestOtpScreen({ navigation }: Props) {
         </View>
 
         {/* ---------------------- LOGIN CARD ---------------------- */}
-        <NeoSurface variant="card" borderRadius={radius.card} style={styles.card}>
+        <NeoSurface
+          variant="card"
+          borderRadius={radius.card}
+          style={[
+            styles.card,
+            {
+              marginHorizontal: cardMargin,
+              paddingTop: capClearance + spacing.md,
+              borderBottomLeftRadius: Math.round(u(DESIGN.cardRadius)),
+              borderBottomRightRadius: Math.round(u(DESIGN.cardRadius)),
+            },
+          ]}
+        >
           {/* soft asymmetric lip that echoes the hero curve above */}
           <CurvedCardTop width={cardWidth} />
 
@@ -276,17 +312,12 @@ const styles = StyleSheet.create({
     // Fill the height the hero doesn't use, so the card always reaches the
     // bottom of the screen regardless of how much content it holds.
     flex: 1,
-    marginHorizontal: CARD_MARGIN,
-    // the cap draws CARD_CAP_HEIGHT above this box, so the card's *visual*
-    // top is that much higher than its layout box
-    marginTop: -20,
+    // marginHorizontal, paddingTop and the bottom radii are supplied inline
+    // from the design-frame scale - see DESIGN at the top of this file.
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     borderTopLeftRadius: 0, // the curved cap supplies the top edge
     borderTopRightRadius: 0,
-    borderBottomLeftRadius: 34,
-    borderBottomRightRadius: 34,
   },
   // The card used to draw a small grey "grabber" pill here. The mockup has no
   // such element — the card is not a draggable sheet — so it was removed.
