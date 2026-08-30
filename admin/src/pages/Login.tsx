@@ -28,7 +28,7 @@ export const Login: React.FC = () => {
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.trim() || phone.length < 10) {
-      setError('Please enter a valid phone number (e.g. +91 7095682464)');
+      setError('Please enter a valid phone number (e.g. +91 7095682464 or 7095682464)');
       return;
     }
 

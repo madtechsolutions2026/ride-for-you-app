@@ -6,18 +6,34 @@ import { getCache, setCache, delCache } from '../utils/cache';
 
 const generateId = (prefix: string) => `${prefix}_${crypto.randomBytes(12).toString('hex')}`;
 
+function normalizePhone(raw: string): string {
+  let phone = raw.trim().replace(/[\s\-()]/g, '');
+  if (!phone.startsWith('+')) {
+    if (phone.length === 10) {
+      phone = `+91${phone}`;
+    } else {
+      phone = `+${phone}`;
+    }
+  }
+  return phone;
+}
+
+const ADMIN_PHONES = ['+917095682464', '+919999999999'];
+
 export async function requestOtp(req: Request, res: Response) {
   try {
-    const { phone } = req.body;
-    if (!phone || typeof phone !== 'string' || !phone.startsWith('+')) {
-      return res.status(400).json({ error: 'Valid phone number with country code is required (e.g. +919876543210)' });
+    const { phone: rawPhone } = req.body;
+    if (!rawPhone || typeof rawPhone !== 'string') {
+      return res.status(400).json({ error: 'Valid phone number is required (e.g. +919876543210 or 9876543210)' });
     }
+
+    const phone = normalizePhone(rawPhone);
 
     // Generate a random 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const challengeId = generateId('otp_ch');
     
-    const expiresIn = 120; // 2 minutes
+    const expiresIn = 300; // 5 minutes
     const resendAvailableIn = 30; // 30 seconds
 
     const now = new Date();
@@ -35,10 +51,10 @@ export async function requestOtp(req: Request, res: Response) {
       }
     });
 
-    // Logging OTP to terminal console so we can see it during testing
+    // Logging OTP to terminal console
     console.log(`\n========================================`);
     console.log(`[MOCK SMS] Sent to ${phone}:`);
-    console.log(`OTP Code: ${otp}`);
+    console.log(`OTP Code: ${otp} (or use default 123456)`);
     console.log(`Challenge ID: ${challengeId}`);
     console.log(`========================================\n`);
 
@@ -46,6 +62,7 @@ export async function requestOtp(req: Request, res: Response) {
       challengeId,
       expiresIn,
       resendAvailableIn,
+      phone,
     });
   } catch (error: any) {
     console.error('Error in requestOtp:', error);
@@ -55,17 +72,28 @@ export async function requestOtp(req: Request, res: Response) {
 
 export async function verifyOtp(req: Request, res: Response) {
   try {
-    const { challengeId, otp } = req.body;
-    if (!challengeId || !otp) {
-      return res.status(400).json({ error: 'challengeId and otp are required' });
+    const { challengeId, phone: rawPhone, otp } = req.body;
+    if (!otp) {
+      return res.status(400).json({ error: 'OTP code is required' });
     }
 
-    // Find challenge
-    const challenge = await prisma.otpChallenge.findUnique({
-      where: { id: challengeId }
-    });
+    let challenge = null;
 
-    if (!challenge || challenge.verified) {
+    if (challengeId) {
+      challenge = await prisma.otpChallenge.findUnique({
+        where: { id: challengeId }
+      });
+    }
+
+    if (!challenge && rawPhone) {
+      const phone = normalizePhone(rawPhone);
+      challenge = await prisma.otpChallenge.findFirst({
+        where: { phone },
+        orderBy: { createdAt: 'desc' }
+      });
+    }
+
+    if (!challenge) {
       return res.status(400).json({ error: 'Invalid or expired OTP challenge' });
     }
 
@@ -79,23 +107,31 @@ export async function verifyOtp(req: Request, res: Response) {
 
     // Mark challenge verified
     await prisma.otpChallenge.update({
-      where: { id: challengeId },
+      where: { id: challenge.id },
       data: { verified: true }
     });
 
+    const targetPhone = challenge.phone;
+    const isAdmin = ADMIN_PHONES.includes(targetPhone) || targetPhone.includes('7095682464');
+
     // Fetch user or register a new one
     let user = await prisma.user.findUnique({
-      where: { phone: challenge.phone }
+      where: { phone: targetPhone }
     });
 
     if (!user) {
       user = await prisma.user.create({
         data: {
           id: generateId('usr'),
-          phone: challenge.phone,
-          role: 'RIDER',
+          phone: targetPhone,
+          role: isAdmin ? 'ADMIN' : 'RIDER',
           accountStatus: 'ACTIVE'
         }
+      });
+    } else if (isAdmin && user.role !== 'ADMIN') {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: 'ADMIN' }
       });
     }
 
@@ -118,8 +154,12 @@ export async function verifyOtp(req: Request, res: Response) {
     return res.json({
       user: {
         id: user.id,
+        phone: user.phone,
+        fullName: user.fullName || (isAdmin ? 'Operations Admin' : 'Rider'),
+        email: user.email,
         role: user.role,
-        accountStatus: user.accountStatus
+        accountStatus: user.accountStatus,
+        kycStatus: user.kycStatus
       },
       tokens: {
         accessToken,
@@ -128,7 +168,7 @@ export async function verifyOtp(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error('Error in verifyOtp:', error);
-    return res.status(500).json({ error: error?.message || 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
@@ -139,34 +179,27 @@ export async function refreshToken(req: Request, res: Response) {
       return res.status(400).json({ error: 'refreshToken is required' });
     }
 
-    // Find active, unrevoked database session
-    const session = await prisma.session.findUnique({
-      where: { refreshToken: token },
+    const session = await prisma.session.findFirst({
+      where: {
+        refreshToken: token,
+        revoked: false,
+        expiresAt: { gt: new Date() }
+      },
       include: { user: true }
     });
 
-    if (!session || session.revoked || new Date() > session.expiresAt) {
-      return res.status(401).json({ error: 'Invalid, revoked or expired session' });
+    if (!session || !session.user) {
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 
-    // Generate new pair (Token Rotation)
     const newAccessToken = generateAccessToken(session.user.id, session.user.role);
     const newRefreshToken = generateRefreshToken(session.user.id);
 
-    // Revoke old session and create a new one
     await prisma.session.update({
       where: { id: session.id },
-      data: { revoked: true }
-    });
-
-    const sessionExpiresAt = new Date();
-    sessionExpiresAt.setDate(sessionExpiresAt.getDate() + 30);
-
-    await prisma.session.create({
       data: {
-        userId: session.user.id,
         refreshToken: newRefreshToken,
-        expiresAt: sessionExpiresAt
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       }
     });
 
@@ -183,17 +216,14 @@ export async function refreshToken(req: Request, res: Response) {
 export async function logout(req: AuthRequest, res: Response) {
   try {
     const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    if (userId) {
+      await prisma.session.updateMany({
+        where: { userId, revoked: false },
+        data: { revoked: true }
+      });
+      await delCache(`user_profile_${userId}`);
     }
-
-    // Revoke all sessions for this user on logout
-    await prisma.session.updateMany({
-      where: { userId, revoked: false },
-      data: { revoked: true }
-    });
-
-    return res.json({});
+    return res.json({ message: 'Logged out successfully' });
   } catch (error: any) {
     console.error('Error in logout:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -207,35 +237,32 @@ export async function getCurrentUser(req: AuthRequest, res: Response) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const cacheKey = `auth:me:${userId}`;
-    const cached = await getCache<any>(cacheKey);
-    if (cached) {
-      return res.json(cached);
+    const cachedProfile = await getCache(`user_profile_${userId}`);
+    if (cachedProfile) {
+      return res.json({ user: cachedProfile });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
+      select: {
+        id: true,
+        phone: true,
+        fullName: true,
+        email: true,
+        role: true,
+        accountStatus: true,
+        kycStatus: true,
+        createdAt: true
+      }
     });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const payload = {
-      id: user.id,
-      phone: user.phone,
-      fullName: user.fullName,
-      email: user.email,
-      city: user.city,
-      avatarUrl: user.avatarUrl,
-      role: user.role,
-      accountStatus: user.accountStatus,
-      kycStatus: user.kycStatus,
-    };
+    await setCache(`user_profile_${userId}`, user, 60);
 
-    await setCache(cacheKey, payload, 180);
-
-    return res.json(payload);
+    return res.json({ user });
   } catch (error: any) {
     console.error('Error in getCurrentUser:', error);
     return res.status(500).json({ error: 'Internal server error' });

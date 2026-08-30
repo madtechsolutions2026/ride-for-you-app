@@ -23,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -49,8 +50,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const requestOtp = async (phone: string) => {
     try {
-      const res = await apiClient.post('/auth/request-otp', { phone });
-      return { success: true, challengeId: res.data?.challengeId };
+      let res;
+      try {
+        res = await apiClient.post('/auth/otp/request', { phone });
+      } catch {
+        res = await apiClient.post('/auth/request-otp', { phone });
+      }
+
+      if (res?.data?.challengeId) {
+        setChallengeId(res.data.challengeId);
+      }
+      return { success: true, challengeId: res?.data?.challengeId };
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Failed to send OTP. Please check the phone number.';
       return { success: false, error: msg };
@@ -59,7 +69,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithOtp = async (phone: string, otp: string) => {
     try {
-      const res = await apiClient.post('/auth/verify-otp', { phone, otp });
+      const payload: any = { phone, otp };
+      if (challengeId) {
+        payload.challengeId = challengeId;
+      }
+
+      let res;
+      try {
+        res = await apiClient.post('/auth/otp/verify', payload);
+      } catch {
+        res = await apiClient.post('/auth/verify-otp', payload);
+      }
+
       const { user: authUser, tokens } = res.data;
 
       if (!authUser || authUser.role !== 'ADMIN') {
@@ -91,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     setToken(null);
+    setChallengeId(null);
     localStorage.removeItem('rfy_admin_token');
     localStorage.removeItem('rfy_admin_user');
   };
