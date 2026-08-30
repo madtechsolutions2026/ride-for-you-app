@@ -115,10 +115,14 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
       setEditModalVisible(false);
       Alert.alert('Profile Saved', 'Your details have been saved to your account.');
     } catch (e: any) {
-      setFullName(tempName.trim());
-      setEmail(tempEmail.trim());
-      setCity(tempCity.trim());
-      setEditModalVisible(false);
+      // Do NOT pretend the save worked — the next focus refetch would silently
+      // revert the fields and look like 'my changes don't stick'.
+      const msg =
+        e?.response?.data?.error ||
+        (e?.code === 'ECONNABORTED'
+          ? 'The server took too long to respond (it may be waking up). Please try again.'
+          : 'Could not reach the server. Check your connection and try again.');
+      Alert.alert('Could not save', msg);
     } finally {
       setSaving(false);
     }
