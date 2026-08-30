@@ -34,77 +34,92 @@ type VehicleItem = {
   pricePerDay: number;
   pricePerWeek: number;
   pricePerMonth: number;
+  platformFee: number;
+  bookingFee: number;
+  totalDueToday: number;
   image: any;
   features: string[];
 };
 
 const FLEET_DATA: VehicleItem[] = [
-  // Battery Swap Category Bikes
+  // Battery Swap Category Bikes from rideforyouev.com
   {
-    id: 'bike-s1-pro',
-    name: 'RFY Swapper S1 Pro',
+    id: 'bm_new_aeroflow',
+    name: 'NEW (Aeroflow)',
     category: 'swap',
-    tag: '⚡ Most Popular',
+    tag: '⚡ UNLIMITED SWAPPING',
     tagBg: colors.brand.mint,
     tagColor: colors.brand.primary,
     rangeKm: 110,
     topSpeed: 55,
     batteryPercent: 100,
-    pricePerDay: 249,
-    pricePerWeek: 1499,
-    pricePerMonth: 5499,
+    pricePerDay: 275,
+    pricePerWeek: 1925,
+    pricePerMonth: 6999,
+    platformFee: 1500,
+    bookingFee: 200,
+    totalDueToday: 3625,
     image: images.vehicleS1,
-    features: ['Unlimited Free Swaps', 'Smart Digital Dash', 'Sanitized Helmet', 'Full Insurance'],
+    features: ['Unlimited Free Swaps', 'Aeroflow Cargo Carrier', 'Sanitized Helmet', 'Full Insurance'],
   },
   {
-    id: 'bike-s1-eco',
-    name: 'RFY Swapper S1 Eco',
+    id: 'bm_esprinto',
+    name: 'ESPRINTO',
     category: 'swap',
-    tag: '🌱 Maximum Efficiency',
+    tag: '⚡ UNLIMITED SWAPPING',
     tagBg: colors.brand.mint,
-    tagColor: colors.status.success,
-    rangeKm: 95,
-    topSpeed: 45,
-    batteryPercent: 95,
-    pricePerDay: 199,
-    pricePerWeek: 1199,
-    pricePerMonth: 4499,
+    tagColor: colors.brand.primary,
+    rangeKm: 100,
+    topSpeed: 50,
+    batteryPercent: 100,
+    pricePerDay: 275,
+    pricePerWeek: 1925,
+    pricePerMonth: 6999,
+    platformFee: 2000,
+    bookingFee: 200,
+    totalDueToday: 4120,
     image: images.vehicleZ1,
-    features: ['2-Min Station Swap', 'Lightweight Alloy Frame', 'Sanitized Helmet', 'GPS Tracked'],
+    features: ['Unlimited Free Swaps', 'Urban Delivery Edition', 'Sanitized Helmet', 'GPS Tracked'],
+  },
+  {
+    id: 'bm_odyssey',
+    name: 'ODYSSEY',
+    category: 'swap',
+    tag: '⚡ UNLIMITED SWAPPING',
+    tagBg: colors.brand.mint,
+    tagColor: colors.brand.primary,
+    rangeKm: 120,
+    topSpeed: 60,
+    batteryPercent: 100,
+    pricePerDay: 275,
+    pricePerWeek: 1925,
+    pricePerMonth: 6999,
+    platformFee: 2500,
+    bookingFee: 200,
+    totalDueToday: 4620,
+    image: images.vehicleS1,
+    features: ['Unlimited Free Swaps', 'Heavy Duty Cargo Box', 'Dual Disc Brakes', 'Full Insurance'],
   },
 
   // Home Charge Category Bikes
   {
-    id: 'bike-x1-max',
-    name: 'RFY Home Pro X1 Max',
+    id: 'bm_home_pro_x1',
+    name: 'HOME PRO X1',
     category: 'home',
-    tag: '🔌 3-Pin Charger Included',
+    tag: '🔌 3-PIN CHARGER INCLUDED',
     tagBg: colors.status.infoTint,
     tagColor: colors.status.info,
     rangeKm: 130,
     topSpeed: 60,
     batteryPercent: 100,
-    pricePerDay: 299,
-    pricePerWeek: 1799,
-    pricePerMonth: 6499,
+    pricePerDay: 275,
+    pricePerWeek: 1925,
+    pricePerMonth: 6999,
+    platformFee: 2000,
+    bookingFee: 200,
+    totalDueToday: 4120,
     image: images.vehicleX1,
     features: ['Fast Home Charger Included', 'Long Distance Battery', 'Dual Disc Brakes', 'Full Insurance'],
-  },
-  {
-    id: 'bike-x1-city',
-    name: 'RFY Home City X1',
-    category: 'home',
-    tag: '🏠 Daily Commuter',
-    tagBg: colors.accent.purpleTint,
-    tagColor: colors.accent.purple,
-    rangeKm: 105,
-    topSpeed: 50,
-    batteryPercent: 98,
-    pricePerDay: 229,
-    pricePerWeek: 1399,
-    pricePerMonth: 4999,
-    image: images.vehicleS1,
-    features: ['Standard Portable Charger', 'Regenerative Braking', 'Sanitized Helmet', 'Zero Emissions'],
   },
 ];
 
@@ -141,30 +156,36 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
                 ? images.vehicleX1
                 : images.vehicleS1;
 
+            let platformFee = 2000;
+            let totalDue = 4120;
+            if (m.name.toUpperCase().includes('NEW') || m.id.includes('new')) {
+              platformFee = 1500;
+              totalDue = 3625;
+            } else if (m.name.toUpperCase().includes('ODYSSEY') || m.id.includes('odyssey')) {
+              platformFee = 2500;
+              totalDue = 4620;
+            }
+
             return {
               id: m.modelId,
               name: m.name,
               category: m.category.toLowerCase() as 'swap' | 'home',
-              tag:
-                m.category === 'SWAP'
-                  ? idx === 0
-                    ? '⚡ Most Popular'
-                    : '🌱 2-Min Swap'
-                  : idx === 0
-                  ? '🔌 3-Pin Charger Included'
-                  : '🏠 Daily Commuter',
+              tag: m.category === 'SWAP' ? '⚡ UNLIMITED SWAPPING' : '🔌 3-PIN CHARGER INCLUDED',
               tagBg: m.category === 'SWAP' ? colors.brand.mint : colors.status.infoTint,
               tagColor: m.category === 'SWAP' ? colors.brand.primary : colors.status.info,
               rangeKm: m.rangeKm,
               topSpeed: m.topSpeedKmph,
               batteryPercent: 100,
-              pricePerDay: dayPlan ? dayPlan.price : (weekPlan ? Math.round(weekPlan.price / 7) : 249),
-              pricePerWeek: weekPlan ? weekPlan.price : 1499,
-              pricePerMonth: monthPlan ? monthPlan.price : 5499,
+              pricePerDay: dayPlan ? dayPlan.price : 275,
+              pricePerWeek: weekPlan ? weekPlan.price : 1925,
+              pricePerMonth: monthPlan ? monthPlan.price : 6999,
+              platformFee,
+              bookingFee: 200,
+              totalDueToday: totalDue,
               image: m.imageUrl ? { uri: m.imageUrl } : fallbackImage,
               features:
                 m.category === 'SWAP'
-                  ? ['Unlimited Free Swaps', 'Smart Digital Dash', 'Sanitized Helmet', 'Full Insurance']
+                  ? ['Unlimited Free Swaps', 'Delivery Cargo Box Included', 'Sanitized Helmet', 'Full Insurance']
                   : ['Fast Home Charger Included', 'Long Distance Battery', 'Dual Disc Brakes', 'Full Insurance'],
             };
           });
@@ -176,7 +197,6 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
       });
   }, [categoryId]);
 
-  // Filter bikes matching active chip
   const filteredBikes = bikesList.filter((b) => {
     if (selectedFilter === 'high-range') return b.rangeKm >= 110;
     if (selectedFilter === 'top-speed') return b.topSpeed >= 55;
@@ -197,7 +217,6 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
     <View style={styles.root}>
       <StatusBar style="dark" />
 
-      {/* ---------------- HEADER ---------------- */}
       <View style={styles.header}>
         <Pressable
           style={styles.backBtn}
@@ -226,7 +245,6 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
         <View style={styles.headerRightPlaceholder} />
       </View>
 
-      {/* ---------------- HUB BANNER ---------------- */}
       <View style={styles.hubBanner}>
         <Ionicons name="location-sharp" size={16} color={colors.brand.primary} />
         <Text style={styles.hubAddressText} numberOfLines={1}>
@@ -234,18 +252,17 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
         </Text>
         <View style={styles.liveTag}>
           <View style={styles.liveDot} />
-          <Text style={styles.liveText}>{filteredBikes.length} Available</Text>
+          <Text style={styles.liveText}>{filteredBikes.length} Models</Text>
         </View>
       </View>
 
-      {/* ---------------- FILTER CHIPS ---------------- */}
       <View style={styles.filterRow}>
         <Pressable
           style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
           onPress={() => setSelectedFilter('all')}
         >
           <Text style={[styles.filterText, selectedFilter === 'all' && styles.filterTextActive]}>
-            All Bikes ({bikesList.length})
+            All Fleet ({bikesList.length})
           </Text>
         </Pressable>
 
@@ -263,23 +280,21 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
           onPress={() => setSelectedFilter('top-speed')}
         >
           <Text style={[styles.filterText, selectedFilter === 'top-speed' && styles.filterTextActive]}>
-            🚀 55+ km/h
+            🏎️ High Speed (55+ km/h)
           </Text>
         </Pressable>
       </View>
 
-      {/* ---------------- VEHICLES LIST ---------------- */}
       <ScrollView
-        showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollList}
+        showsVerticalScrollIndicator={false}
       >
         {filteredBikes.map((bike) => {
-          const duration = selectedDuration[bike.id] || 'day';
+          const duration = selectedDuration[bike.id] || 'week';
           const price = getPrice(bike, duration);
 
           return (
             <NeoSurface key={bike.id} borderRadius={radius.xl} style={styles.bikeCard}>
-              {/* Card Header Tag & Battery */}
               <View style={styles.cardHeader}>
                 <View style={[styles.tagPill, { backgroundColor: bike.tagBg }]}>
                   <Text style={[styles.tagPillText, { color: bike.tagColor }]}>
@@ -293,7 +308,6 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
                 </View>
               </View>
 
-              {/* Scooter Image & Key Specs */}
               <View style={styles.heroSection}>
                 <Image source={bike.image} style={styles.scooterImg} contentFit="contain" />
 
@@ -314,46 +328,44 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
                 </View>
               </View>
 
-              {/* Rental Duration Plan Selector */}
-              <View style={styles.planSelector}>
-                <Pressable
-                  style={[styles.planTab, duration === 'day' && styles.planTabActive]}
-                  onPress={() => handleSelectDuration(bike.id, 'day')}
-                >
-                  <Text style={[styles.planTabTitle, duration === 'day' && styles.planTabTitleActive]}>
-                    Daily
-                  </Text>
-                  <Text style={[styles.planTabPrice, duration === 'day' && styles.planTabPriceActive]}>
-                    ₹{bike.pricePerDay}
-                  </Text>
-                </Pressable>
+              <View style={styles.feeBreakdownBox}>
+                <View style={styles.feeRow}>
+                  <View>
+                    <Text style={styles.feeLabel}>Weekly Rental</Text>
+                    <Text style={styles.feeSub}>7 DAYS</Text>
+                  </View>
+                  <Text style={styles.feeValue}>₹{bike.pricePerWeek}</Text>
+                </View>
 
-                <Pressable
-                  style={[styles.planTab, duration === 'week' && styles.planTabActive]}
-                  onPress={() => handleSelectDuration(bike.id, 'week')}
-                >
-                  <Text style={[styles.planTabTitle, duration === 'week' && styles.planTabTitleActive]}>
-                    Weekly
-                  </Text>
-                  <Text style={[styles.planTabPrice, duration === 'week' && styles.planTabPriceActive]}>
-                    ₹{bike.pricePerWeek}
-                  </Text>
-                </Pressable>
+                <View style={styles.feeRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.feeLabel}>Platform Fee</Text>
+                    <View style={styles.nonRefundableBadge}>
+                      <Text style={styles.nonRefundableText}>NON-REFUNDABLE</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.feeValue}>₹{bike.platformFee}</Text>
+                </View>
 
-                <Pressable
-                  style={[styles.planTab, duration === 'month' && styles.planTabActive]}
-                  onPress={() => handleSelectDuration(bike.id, 'month')}
-                >
-                  <Text style={[styles.planTabTitle, duration === 'month' && styles.planTabTitleActive]}>
-                    Monthly
-                  </Text>
-                  <Text style={[styles.planTabPrice, duration === 'month' && styles.planTabPriceActive]}>
-                    ₹{bike.pricePerMonth}
-                  </Text>
-                </Pressable>
+                <View style={styles.feeRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.feeLabel}>Booking Fee</Text>
+                    <View style={styles.nonRefundableBadge}>
+                      <Text style={styles.nonRefundableText}>NON-REFUNDABLE</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.feeValue}>₹{bike.bookingFee}</Text>
+                </View>
+
+                <View style={styles.totalDueRow}>
+                  <View>
+                    <Text style={styles.totalDueLabel}>TOTAL AMOUNT</Text>
+                    <Text style={styles.totalDueSub}>Due Today</Text>
+                  </View>
+                  <Text style={styles.totalDueValue}>₹{bike.totalDueToday}/-</Text>
+                </View>
               </View>
 
-              {/* Features List */}
               <View style={styles.featuresRow}>
                 {bike.features.map((feat, idx) => (
                   <View key={idx} style={styles.featureItem}>
@@ -363,14 +375,13 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
                 ))}
               </View>
 
-              {/* Bottom Price & Booking Button */}
               <View style={styles.cardFooter}>
                 <View>
-                  <Text style={styles.footerPricePrefix}>Total Rental</Text>
+                  <Text style={styles.footerPricePrefix}>Starting Rental</Text>
                   <View style={styles.footerPriceRow}>
                     <Text style={styles.footerPriceSymbol}>₹</Text>
-                    <Text style={styles.footerPriceVal}>{price.amount}</Text>
-                    <Text style={styles.footerPriceLbl}>{price.label}</Text>
+                    <Text style={styles.footerPriceVal}>{bike.pricePerWeek}</Text>
+                    <Text style={styles.footerPriceLbl}>/week</Text>
                   </View>
                 </View>
 
@@ -388,16 +399,11 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
         })}
       </ScrollView>
 
-      {/* ---------------- BOOKING CONFIRMATION MODAL ---------------- */}
       {activeBookingBike && (
         <ThemedModal
           visible={Boolean(activeBookingBike)}
           title={`Book ${activeBookingBike.name}`}
-          message={`Selected Hub: ${hubName}\nTotal Fare: ₹${
-            getPrice(activeBookingBike, selectedDuration[activeBookingBike.id] || 'day').amount
-          } ${
-            getPrice(activeBookingBike, selectedDuration[activeBookingBike.id] || 'day').label
-          }\n\nSanitized helmet, insurance & roadside support are included.`}
+          message={`Selected Hub: ${hubName}\nWeekly Rental: ₹${activeBookingBike.pricePerWeek}\nPlatform Fee: ₹${activeBookingBike.platformFee}\nBooking Fee: ₹${activeBookingBike.bookingFee}\n\nTotal Due Today: ₹${activeBookingBike.totalDueToday}/-\n\nSanitized helmet, delivery cargo carrier & roadside assistance included.`}
           icon={isSwap ? 'flash' : 'home'}
           confirmLabel="Proceed to Verification"
           cancelLabel="Cancel"
@@ -653,12 +659,81 @@ const styles = StyleSheet.create({
     color: colors.brand.primary,
   },
 
+  /* Fee Breakdown matching website */
+  feeBreakdownBox: {
+    backgroundColor: colors.neutral[50],
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginVertical: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  feeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  feeLabel: {
+    fontFamily: fontFamily.medium,
+    fontSize: 12,
+    color: colors.text.secondary,
+  },
+  feeSub: {
+    fontFamily: fontFamily.regular,
+    fontSize: 9.5,
+    color: colors.neutral[400],
+  },
+  feeValue: {
+    fontFamily: fontFamily.bold,
+    fontSize: 13,
+    color: colors.text.primary,
+  },
+  nonRefundableBadge: {
+    backgroundColor: colors.neutral[200],
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  nonRefundableText: {
+    fontFamily: fontFamily.bold,
+    fontSize: 8.5,
+    color: colors.text.secondary,
+    letterSpacing: 0.3,
+  },
+  totalDueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  totalDueLabel: {
+    fontFamily: fontFamily.bold,
+    fontSize: 11,
+    color: colors.brand.primary,
+    letterSpacing: 0.5,
+  },
+  totalDueSub: {
+    fontFamily: fontFamily.regular,
+    fontSize: 9,
+    color: colors.text.secondary,
+  },
+  totalDueValue: {
+    fontFamily: fontFamily.bold,
+    fontSize: 16,
+    color: colors.brand.primary,
+  },
+
   /* Features */
   featuresRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
   },
   featureItem: {
     flexDirection: 'row',
