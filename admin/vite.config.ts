@@ -8,7 +8,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/auth': 'http://localhost:3000',
-      '/admin': 'http://localhost:3000',
+      '/admin/api': 'http://localhost:3000',
       '/kyc': 'http://localhost:3000',
       '/rental': 'http://localhost:3000',
     },

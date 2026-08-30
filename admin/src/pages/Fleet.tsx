@@ -22,7 +22,7 @@ export const Fleet: React.FC = () => {
   const fetchFleet = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/admin/fleet');
+      const res = await apiClient.get('/admin/api/fleet');
       setFleetData(res.data);
       if (res.data?.models?.length > 0) setModelId(res.data.models[0].id);
       if (res.data?.hubs?.length > 0) setHubId(res.data.hubs[0].id);
@@ -46,7 +46,7 @@ export const Fleet: React.FC = () => {
 
     setSubmitting(true);
     try {
-      await apiClient.post('/admin/fleet/bikes', {
+      await apiClient.post('/admin/api/fleet/bikes', {
         modelId,
         hubId,
         registrationNumber: registrationNumber.toUpperCase().trim(),

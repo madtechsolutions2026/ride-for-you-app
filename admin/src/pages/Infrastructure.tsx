@@ -27,7 +27,7 @@ export const Infrastructure: React.FC = () => {
   const fetchInfra = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/admin/infrastructure');
+      const res = await apiClient.get('/admin/api/infrastructure');
       setData(res.data);
     } catch (e) {
       console.error('Error fetching infrastructure:', e);
@@ -43,7 +43,7 @@ export const Infrastructure: React.FC = () => {
   const handleCreateHub = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await apiClient.post('/admin/hubs', {
+      await apiClient.post('/admin/api/hubs', {
         name: hubName,
         address: hubAddress,
         lat: Number(hubLat),
@@ -66,7 +66,7 @@ export const Infrastructure: React.FC = () => {
   const handleCreateStation = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await apiClient.post('/admin/swap-stations', {
+      await apiClient.post('/admin/api/swap-stations', {
         name: stName,
         address: stAddress,
         lat: Number(stLat),

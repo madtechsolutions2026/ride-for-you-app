@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Users,
   Bike,
-  KeyRound,
   FileCheck2,
   Receipt,
   Wrench,
@@ -12,7 +11,6 @@ import {
   MapPin,
   Settings,
   LogOut,
-  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 

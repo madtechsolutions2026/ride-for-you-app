@@ -24,7 +24,7 @@ export const KycReview: React.FC = () => {
   const fetchSubmissions = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/admin/kyc/submissions');
+      const res = await apiClient.get('/admin/api/kyc/submissions');
       setSubmissions(res.data?.submissions || []);
       if (res.data?.submissions?.length > 0 && !selectedSub) {
         setSelectedSub(res.data.submissions[0]);
@@ -49,7 +49,7 @@ export const KycReview: React.FC = () => {
 
     setProcessing(true);
     try {
-      await apiClient.post(`/admin/kyc/review/${selectedSub.id}`, {
+      await apiClient.post(`/admin/api/kyc/review/${selectedSub.id}`, {
         action,
         reason: action === 'REJECT' ? rejectReason : undefined,
       });

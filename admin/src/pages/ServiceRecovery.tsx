@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wrench, Truck, AlertTriangle, CheckCircle2, Clock, Phone, MapPin } from 'lucide-react';
+import { Wrench, Truck, MapPin } from 'lucide-react';
 
 export const ServiceRecovery: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'service' | 'recovery'>('service');

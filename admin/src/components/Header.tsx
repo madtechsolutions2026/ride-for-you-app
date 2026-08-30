@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Bell, RefreshCw, Zap, Server } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface HeaderProps {

@@ -4,11 +4,7 @@ import {
   Bike,
   FileCheck2,
   Receipt,
-  TrendingUp,
   MapPin,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
   ArrowUpRight,
 } from 'lucide-react';
 import { ActiveTab } from '../components/Sidebar';
@@ -21,7 +17,6 @@ interface OverviewProps {
 export const Overview: React.FC<OverviewProps> = ({ stats, setActiveTab }) => {
   const riders = stats?.riders || { total: 1, verified: 1, pendingKyc: 0 };
   const fleet = stats?.fleet || { totalBikes: 54, availableBikes: 42, rentedBikes: 12, utilizationRate: 22 };
-  const infra = stats?.infrastructure || { hubs: 3, swapStations: 3 };
   const finance = stats?.finance || { estimatedWeeklyRevenue: 23100, totalRevenue: 104500 };
 
   const cards = [

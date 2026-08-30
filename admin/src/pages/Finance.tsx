@@ -1,5 +1,5 @@
 import React from 'react';
-import { Receipt, DollarSign, TrendingUp, CreditCard, ArrowUpRight, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Clock } from 'lucide-react';
 
 export const Finance: React.FC = () => {
   const transactions = [

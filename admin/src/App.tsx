@@ -21,7 +21,7 @@ export const App: React.FC = () => {
   const fetchStats = async () => {
     setIsRefreshing(true);
     try {
-      const res = await apiClient.get('/admin/stats');
+      const res = await apiClient.get('/admin/api/stats');
       setStats(res.data);
     } catch (e) {
       console.error('Error fetching admin stats:', e);

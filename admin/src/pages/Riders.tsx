@@ -16,7 +16,7 @@ export const Riders: React.FC = () => {
       if (search) params.search = search;
       if (kycFilter) params.kycStatus = kycFilter;
 
-      const res = await apiClient.get('/admin/users', { params });
+      const res = await apiClient.get('/admin/api/users', { params });
       setRiders(res.data?.users || []);
     } catch (e) {
       console.error('Error fetching riders:', e);
@@ -33,7 +33,7 @@ export const Riders: React.FC = () => {
     const nextStatus = user.accountStatus === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED';
     setUpdatingId(user.id);
     try {
-      await apiClient.put(`/admin/users/${user.id}/status`, {
+      await apiClient.put(`/admin/api/users/${user.id}/status`, {
         accountStatus: nextStatus,
       });
       setRiders((prev) =>

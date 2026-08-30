@@ -5,7 +5,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,
-  timeout: 15000,
+  timeout: 20000,
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -21,7 +21,6 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
       if (window.location.pathname.includes('/admin') && !window.location.pathname.includes('/login')) {
-        // Clear token on auth failure
         localStorage.removeItem('rfy_admin_token');
         localStorage.removeItem('rfy_admin_user');
       }

@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import kycRoutes from './routes/kyc.routes';
@@ -13,56 +15,61 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS for all origins (important for Android emulator connections)
+// Enable CORS for all origins (important for Android emulator & Web Dashboard connections)
 app.use(cors());
 
 // Parse JSON request bodies
 app.use(express.json());
 
-// Register API Routes
+// 1. Register API Routes
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/kyc', kycRoutes);
 app.use('/rental', rentalRoutes);
-app.use('/admin', adminRoutes);
 
-import path from 'path';
-import fs from 'fs';
-
-// Serve Admin Dashboard Web App
-const adminDistPath = path.join(__dirname, '../../admin/dist');
-const publicPath = path.join(__dirname, '../public');
-
-if (fs.existsSync(adminDistPath)) {
-  app.use('/admin', express.static(adminDistPath));
-  app.get('/admin/*', (_req, res) => {
-    res.sendFile(path.join(adminDistPath, 'index.html'));
-  });
-} else if (fs.existsSync(publicPath)) {
-  app.use('/admin', express.static(publicPath));
-  app.get('/admin/*', (_req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-  });
-}
+// Admin API endpoints (available under /admin/api and /api/admin)
+app.use('/admin/api', adminRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'ride-for-you-backend' });
 });
+
+// 2. Serve Static Admin Web App
+const publicPath = path.join(__dirname, '../public');
+const adminDistPath = path.join(__dirname, '../../admin/dist');
+const resolvedStaticPath = fs.existsSync(publicPath)
+  ? publicPath
+  : fs.existsSync(adminDistPath)
+  ? adminDistPath
+  : null;
+
+if (resolvedStaticPath) {
+  // Serve static assets under /admin
+  app.use('/admin', express.static(resolvedStaticPath));
+  app.use(express.static(resolvedStaticPath));
+
+  // SPA fallback for /admin and subroutes
+  app.get('/admin/*', (_req, res) => {
+    res.sendFile(path.join(resolvedStaticPath, 'index.html'));
+  });
+  app.get('/admin', (_req, res) => {
+    res.sendFile(path.join(resolvedStaticPath, 'index.html'));
+  });
+  app.get('/', (_req, res) => {
+    res.redirect('/admin/');
+  });
+}
 
 // Start Express server
 const server = app.listen(PORT, async () => {
   try {
-    /*
-     * Schema changes are applied by `prisma migrate deploy` in the deploy
-     * command, NOT here. This used to run `prisma db push --accept-data-loss`
-     * on every boot, which lets Prisma drop columns and tables to match the
-     * schema — silently, on a live database, every restart.
-     */
     await prisma.$connect();
     console.log(`\n========================================`);
     console.log(`Ride For You Auth Backend is running on port ${PORT}`);
     console.log(`Database connected successfully (PostgreSQL)`);
+    console.log(`Admin Dashboard available at http://localhost:${PORT}/admin/`);
     console.log(`========================================\n`);
   } catch (error) {
     console.error('Failed to connect to the database:', error);
