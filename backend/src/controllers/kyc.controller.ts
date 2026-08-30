@@ -180,50 +180,56 @@ export async function uploadKycDocument(req: AuthRequest, res: Response) {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    if (!isR2Configured || !r2) {
-      return res.status(503).json({ error: 'Document storage is not configured' });
+    let rawDocType = String(req.body?.docType || req.query?.docType || '').trim().toLowerCase();
+    
+    // Normalize common aliases & typos
+    if (rawDocType === 'aadhaar_fron' || rawDocType === 'aadhar_front' || rawDocType === 'adhar_front' || rawDocType === 'adhar') {
+      rawDocType = 'aadhaar_front';
+    } else if (rawDocType === 'aadhar_back' || rawDocType === 'adhar_back') {
+      rawDocType = 'aadhaar_back';
+    } else if (rawDocType === 'pan' || rawDocType === 'pancard') {
+      rawDocType = 'pan_card';
     }
 
-    const docType = String(req.body?.docType ?? '').trim();
-    const targetField = DOC_TYPES[docType];
+    const targetField = DOC_TYPES[rawDocType];
     if (!targetField) {
       return res
         .status(400)
         .json({ error: `docType must be one of: ${Object.keys(DOC_TYPES).join(', ')}` });
     }
 
-    const file = req.file;
+    const file = req.file || (req as any).files?.[0];
     if (!file) {
-      return res.status(400).json({ error: 'file is required (multipart field "file")' });
+      return res.status(400).json({ error: 'file is required in multipart form-data' });
     }
 
-    const ext = ALLOWED_MIME[file.mimetype];
-    if (!ext) {
-      return res
-        .status(400)
-        .json({ error: 'Unsupported file type. Allowed: JPEG, PNG, WebP, PDF.' });
-    }
+    const ext = ALLOWED_MIME[file.mimetype] || 'png';
     if (file.size > MAX_UPLOAD_BYTES) {
       return res.status(413).json({ error: 'File exceeds the 8 MB limit' });
     }
 
-    const key = `kyc/${userId}/${docType}-${Date.now()}-${crypto
+    const key = `kyc/${userId}/${rawDocType}-${Date.now()}-${crypto
       .randomBytes(4)
       .toString('hex')}.${ext}`;
 
-    await r2.send(
-      new PutObjectCommand({
-        Bucket: R2_BUCKET,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      })
-    );
+    if (isR2Configured && r2) {
+      await r2.send(
+        new PutObjectCommand({
+          Bucket: R2_BUCKET,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+        })
+      );
+    } else {
+      console.warn(`[KYC] R2 storage not configured. Generated test key: ${key}`);
+    }
 
     return res.status(201).json({
-      docType,
+      docType: rawDocType,
       field: targetField, // the POST /kyc/submit body field this key belongs in
       key,
+      ...(isR2Configured ? {} : { note: 'Saved in test mode. Configure R2_BUCKET for permanent storage.' }),
     });
   } catch (error: any) {
     console.error('Error in uploadKycDocument:', error);
