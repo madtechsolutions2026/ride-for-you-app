@@ -9,8 +9,15 @@
 const SCOOTER_CUTOUT = require('../assets/scooter-cutout.png');
 
 export const images = {
-  /** Full scene w/ city + turbine — sits behind the auth screens' curved blob. */
-  authHero: require('../assets/loginimg-v2.png'),
+  /**
+   * Full scene w/ city + turbine — sits behind the auth screens' curved blob.
+   *
+   * This is the exact 852x1846 image embedded in the Figma file, so HeroBlob
+   * can position it with Figma's own transform instead of a hand-tuned crop.
+   * The previous asset (loginimg-v2.png) was a different 1086x1448 crop and
+   * needed an offset fudge to stop it clipping the scooter's wheels.
+   */
+  authHero: require('../assets/auth-hero.png'),
 
   /** Transparent scooter for the Home hero. */
   heroScooter: SCOOTER_CUTOUT,

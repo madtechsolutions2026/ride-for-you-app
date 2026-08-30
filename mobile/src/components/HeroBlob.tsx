@@ -65,14 +65,29 @@ export function HeroBlob({ width: w }: HeroBlobProps) {
           </LinearGradient>
         </Defs>
 
-        {/* 1. the photo, cropped to the blob outline */}
+        {/*
+          1. The photo, cropped to the blob outline.
+
+          These four numbers are not a guess. Figma fills this shape with a
+          pattern carrying the transform:
+
+            matrix(0.00117371 0 0 0.000759073 -0.000828276 -0.0801645)
+
+          in objectBoundingBox units against the shape's 278.094 x 430 box.
+          Decoded against the source image (852 x 1846) that resolves to the
+          placement below, at a uniform 0.3264 scale on both axes — so the
+          photo is neither stretched nor cropped differently from the design.
+
+          Note the negative y: the image is taller than the shape and sits
+          pulled upward, which is what frames the scooter where it should be.
+        */}
         <SvgImage
           href={images.authHero}
-          x={152}
-          y={0}
+          x={151.77}
+          y={-34.471}
           width={278.094}
-          height={BLOB_H}
-          preserveAspectRatio="xMidYMid slice"
+          height={602.537}
+          preserveAspectRatio="none"
           clipPath="url(#heroClip)"
         />
 
