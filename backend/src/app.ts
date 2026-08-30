@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import kycRoutes from './routes/kyc.routes';
+import rentalRoutes from './routes/rental.routes';
 import adminRoutes from './routes/admin.routes';
 import { prisma } from './utils/prisma';
 
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/kyc', kycRoutes);
+app.use('/rental', rentalRoutes);
 app.use('/admin', adminRoutes);
 
 // Health check endpoint

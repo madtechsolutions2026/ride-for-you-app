@@ -83,3 +83,105 @@ model KycVerification {
   @@index([userId])
   @@index([status])
 }
+
+// ---------------------------------------------------------------------------
+// Rental discovery (slice: map + bike views)
+//
+// Read-only for riders. There is ONE rental Hub where every bike is picked up
+// and returned; SwapStation rows are just extra map pins where a SWAP rider
+// swaps a drained battery mid-rental. Riders browse by BikeModel (the
+// catalogue); a physical Bike unit is only assigned later, at handover.
+// No User relation in this slice — "who booked what" arrives with Booking.
+// ---------------------------------------------------------------------------
+
+model Hub {
+  id           String   @id @default(uuid())
+  name         String
+  address      String
+  lat          Float
+  lng          Float
+  city         String?
+  status       String   @default("ACTIVE") // ACTIVE, INACTIVE
+  openTime     String? // "09:00" (Asia/Kolkata)
+  closeTime    String? // "20:00"
+  contactPhone String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bikes Bike[]
+
+  @@index([status])
+}
+
+model SwapStation {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  lat       Float
+  lng       Float
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  openTime  String?
+  closeTime String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+// The catalogue. One row per model, shared by every physical unit of it.
+model BikeModel {
+  id              String   @id @default(uuid())
+  name            String
+  category        String // SWAP, HOME
+  topSpeedKmph    Int
+  rangeKm         Int // rated range on a full charge
+  requiresLicense Boolean  @default(false)
+  chargerIncluded Boolean  @default(false)
+  imageKey        String? // private R2 object key; responses return a presigned URL
+  status          String   @default("ACTIVE") // ACTIVE = visible to riders, INACTIVE = hidden
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  bikes Bike[]
+  plans RentalPlan[]
+
+  @@index([category])
+  @@index([status])
+}
+
+// A physical bike in the fleet.
+model Bike {
+  id                 String   @id @default(uuid())
+  modelId            String
+  model              BikeModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  hubId              String
+  hub                Hub       @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  registrationNumber String    @unique
+  colour             String?
+  batteryPercent     Int       @default(100)
+  odometerKm         Int       @default(0)
+  status             String    @default("AVAILABLE") // AVAILABLE, RESERVED, RENTED, MAINTENANCE
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([modelId])
+  @@index([hubId])
+  @@index([status])
+}
+
+// Pricing tiers for a model. One row per (model, duration).
+model RentalPlan {
+  id        String   @id @default(uuid())
+  modelId   String
+  model     BikeModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  duration  String // DAY, WEEK, MONTH
+  price     Int // integer rupees
+  deposit   Int      @default(0)
+  kmLimit   Int? // null = unlimited
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([modelId, duration])
+  @@index([modelId])
+}
