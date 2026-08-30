@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
+  Dimensions,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -15,16 +15,20 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/types';
 import { images } from '../assets';
-import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
-import { Glass, NeoSurface, ThemedModal } from '../components';
+import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
+import { ThemedModal } from '../components';
 import { apiClient } from '../api/client';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - screenPadding * 2 - 12) / 2;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehiclesList'>;
 
-type VehicleItem = {
+export type VehicleItem = {
   id: string;
   name: string;
   category: 'swap' | 'home';
+  speedCategory: 'high' | 'low';
   tag: string;
   tagBg: string;
   tagColor: string;
@@ -42,11 +46,91 @@ type VehicleItem = {
 };
 
 const FLEET_DATA: VehicleItem[] = [
-  // Battery Swap Category Bikes from rideforyouev.com
+  {
+    id: 'bm_sprinto_hs',
+    name: 'SPRINTO HS',
+    category: 'swap',
+    speedCategory: 'high',
+    tag: '⚡ UNLIMITED SWAPPING',
+    tagBg: colors.brand.mint,
+    tagColor: colors.brand.primary,
+    rangeKm: 90,
+    topSpeed: 45,
+    batteryPercent: 100,
+    pricePerDay: 235,
+    pricePerWeek: 1645,
+    pricePerMonth: 5999,
+    platformFee: 1500,
+    bookingFee: 200,
+    totalDueToday: 3345,
+    image: images.vehicleS1,
+    features: ['Unlimited Free Swaps', 'Delivery Carrier Box', 'Sanitized Helmet', 'Full Insurance'],
+  },
+  {
+    id: 'bm_evtric',
+    name: 'EVTRIC',
+    category: 'swap',
+    speedCategory: 'low',
+    tag: '⚡ UNLIMITED SWAPPING',
+    tagBg: colors.brand.mint,
+    tagColor: colors.brand.primary,
+    rangeKm: 90,
+    topSpeed: 30,
+    batteryPercent: 100,
+    pricePerDay: 230,
+    pricePerWeek: 1610,
+    pricePerMonth: 5899,
+    platformFee: 1500,
+    bookingFee: 200,
+    totalDueToday: 3310,
+    image: images.vehicleZ1,
+    features: ['Unlimited Free Swaps', 'High Efficiency Motor', 'Sanitized Helmet', 'GPS Tracked'],
+  },
+  {
+    id: 'bm_hala_ckd',
+    name: 'HALA CKD',
+    category: 'swap',
+    speedCategory: 'low',
+    tag: '⚡ UNLIMITED SWAPPING',
+    tagBg: colors.brand.mint,
+    tagColor: colors.brand.primary,
+    rangeKm: 90,
+    topSpeed: 35,
+    batteryPercent: 100,
+    pricePerDay: 230,
+    pricePerWeek: 1610,
+    pricePerMonth: 5899,
+    platformFee: 1500,
+    bookingFee: 200,
+    totalDueToday: 3310,
+    image: images.vehicleS1,
+    features: ['Unlimited Free Swaps', 'Lightweight City Frame', 'Sanitized Helmet', 'Full Insurance'],
+  },
+  {
+    id: 'bm_sprinto_hs_sun',
+    name: 'SPRINTO HS SUN',
+    category: 'swap',
+    speedCategory: 'low',
+    tag: '⚡ UNLIMITED SWAPPING',
+    tagBg: colors.brand.mint,
+    tagColor: colors.brand.primary,
+    rangeKm: 75,
+    topSpeed: 30,
+    batteryPercent: 100,
+    pricePerDay: 275,
+    pricePerWeek: 1925,
+    pricePerMonth: 6999,
+    platformFee: 2000,
+    bookingFee: 200,
+    totalDueToday: 4125,
+    image: images.vehicleZ1,
+    features: ['Unlimited Free Swaps', 'Heavy Duty Suspension', 'Sanitized Helmet', 'Zero Downtime'],
+  },
   {
     id: 'bm_new_aeroflow',
     name: 'NEW (Aeroflow)',
     category: 'swap',
+    speedCategory: 'high',
     tag: '⚡ UNLIMITED SWAPPING',
     tagBg: colors.brand.mint,
     tagColor: colors.brand.primary,
@@ -63,28 +147,10 @@ const FLEET_DATA: VehicleItem[] = [
     features: ['Unlimited Free Swaps', 'Aeroflow Cargo Carrier', 'Sanitized Helmet', 'Full Insurance'],
   },
   {
-    id: 'bm_esprinto',
-    name: 'ESPRINTO',
-    category: 'swap',
-    tag: '⚡ UNLIMITED SWAPPING',
-    tagBg: colors.brand.mint,
-    tagColor: colors.brand.primary,
-    rangeKm: 100,
-    topSpeed: 50,
-    batteryPercent: 100,
-    pricePerDay: 275,
-    pricePerWeek: 1925,
-    pricePerMonth: 6999,
-    platformFee: 2000,
-    bookingFee: 200,
-    totalDueToday: 4120,
-    image: images.vehicleZ1,
-    features: ['Unlimited Free Swaps', 'Urban Delivery Edition', 'Sanitized Helmet', 'GPS Tracked'],
-  },
-  {
     id: 'bm_odyssey',
     name: 'ODYSSEY',
     category: 'swap',
+    speedCategory: 'high',
     tag: '⚡ UNLIMITED SWAPPING',
     tagBg: colors.brand.mint,
     tagColor: colors.brand.primary,
@@ -96,16 +162,15 @@ const FLEET_DATA: VehicleItem[] = [
     pricePerMonth: 6999,
     platformFee: 2500,
     bookingFee: 200,
-    totalDueToday: 4620,
+    totalDueToday: 4625,
     image: images.vehicleS1,
     features: ['Unlimited Free Swaps', 'Heavy Duty Cargo Box', 'Dual Disc Brakes', 'Full Insurance'],
   },
-
-  // Home Charge Category Bikes
   {
     id: 'bm_home_pro_x1',
     name: 'HOME PRO X1',
     category: 'home',
+    speedCategory: 'high',
     tag: '🔌 3-PIN CHARGER INCLUDED',
     tagBg: colors.status.infoTint,
     tagColor: colors.status.info,
@@ -117,24 +182,24 @@ const FLEET_DATA: VehicleItem[] = [
     pricePerMonth: 6999,
     platformFee: 2000,
     bookingFee: 200,
-    totalDueToday: 4120,
+    totalDueToday: 4125,
     image: images.vehicleX1,
     features: ['Fast Home Charger Included', 'Long Distance Battery', 'Dual Disc Brakes', 'Full Insurance'],
   },
 ];
 
-type PlanDuration = 'day' | 'week' | 'month';
+type SpeedFilter = 'all' | 'high' | 'low';
 
 export default function VehiclesListScreen({ navigation, route }: Props) {
   const { categoryId, categoryTitle, hubName, hubAddress } = route.params;
   const isSwap = categoryId === 'swap';
 
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'high-range' | 'top-speed'>('all');
-  const [selectedDuration, setSelectedDuration] = useState<Record<string, PlanDuration>>({});
+  const [selectedFilter, setSelectedFilter] = useState<SpeedFilter>('all');
+  const [selectedBike, setSelectedBike] = useState<VehicleItem | null>(null);
   const [activeBookingBike, setActiveBookingBike] = useState<VehicleItem | null>(null);
+
   const defaultCategoryBikes = FLEET_DATA.filter((b) => b.category === categoryId);
   const [bikesList, setBikesList] = useState<VehicleItem[]>(defaultCategoryBikes);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const catQuery = categoryId === 'swap' ? 'SWAP' : 'HOME';
@@ -157,35 +222,46 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
                 : images.vehicleS1;
 
             let platformFee = 2000;
-            let totalDue = 4120;
+            let totalDue = 4125;
             if (m.name.toUpperCase().includes('NEW') || m.id.includes('new')) {
               platformFee = 1500;
               totalDue = 3625;
             } else if (m.name.toUpperCase().includes('ODYSSEY') || m.id.includes('odyssey')) {
               platformFee = 2500;
-              totalDue = 4620;
+              totalDue = 4625;
+            } else if (
+              m.name.toUpperCase().includes('SPRINTO HS') ||
+              m.name.toUpperCase().includes('EVTRIC') ||
+              m.name.toUpperCase().includes('HALA')
+            ) {
+              platformFee = 1500;
+              totalDue = (weekPlan?.price || 1610) + 1500 + 200;
             }
+
+            const speed = m.topSpeedKmph || 45;
+            const speedCategory: 'high' | 'low' = speed >= 45 ? 'high' : 'low';
 
             return {
               id: m.modelId,
               name: m.name,
               category: m.category.toLowerCase() as 'swap' | 'home',
+              speedCategory,
               tag: m.category === 'SWAP' ? '⚡ UNLIMITED SWAPPING' : '🔌 3-PIN CHARGER INCLUDED',
               tagBg: m.category === 'SWAP' ? colors.brand.mint : colors.status.infoTint,
               tagColor: m.category === 'SWAP' ? colors.brand.primary : colors.status.info,
               rangeKm: m.rangeKm,
-              topSpeed: m.topSpeedKmph,
+              topSpeed: speed,
               batteryPercent: 100,
-              pricePerDay: dayPlan ? dayPlan.price : 275,
-              pricePerWeek: weekPlan ? weekPlan.price : 1925,
-              pricePerMonth: monthPlan ? monthPlan.price : 6999,
+              pricePerDay: dayPlan ? dayPlan.price : 235,
+              pricePerWeek: weekPlan ? weekPlan.price : 1645,
+              pricePerMonth: monthPlan ? monthPlan.price : 5999,
               platformFee,
               bookingFee: 200,
               totalDueToday: totalDue,
               image: m.imageUrl ? { uri: m.imageUrl } : fallbackImage,
               features:
                 m.category === 'SWAP'
-                  ? ['Unlimited Free Swaps', 'Delivery Cargo Box Included', 'Sanitized Helmet', 'Full Insurance']
+                  ? ['Unlimited Free Swaps', 'Delivery Carrier Box', 'Sanitized Helmet', 'Full Insurance']
                   : ['Fast Home Charger Included', 'Long Distance Battery', 'Dual Disc Brakes', 'Full Insurance'],
             };
           });
@@ -198,214 +274,278 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
   }, [categoryId]);
 
   const filteredBikes = bikesList.filter((b) => {
-    if (selectedFilter === 'high-range') return b.rangeKm >= 110;
-    if (selectedFilter === 'top-speed') return b.topSpeed >= 55;
+    if (selectedFilter === 'high') return b.speedCategory === 'high' || b.topSpeed >= 40;
+    if (selectedFilter === 'low') return b.speedCategory === 'low' || b.topSpeed < 40;
     return true;
   });
-
-  const getPrice = (bike: VehicleItem, duration: PlanDuration) => {
-    if (duration === 'week') return { amount: bike.pricePerWeek, label: '/week' };
-    if (duration === 'month') return { amount: bike.pricePerMonth, label: '/month' };
-    return { amount: bike.pricePerDay, label: '/day' };
-  };
-
-  const handleSelectDuration = (bikeId: string, duration: PlanDuration) => {
-    setSelectedDuration((prev) => ({ ...prev, [bikeId]: duration }));
-  };
 
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
 
+      {/* ---------------- HEADER ---------------- */}
       <View style={styles.header}>
         <Pressable
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
-          hitSlop={8}
+          hitSlop={12}
         >
-          <Ionicons name="arrow-back" size={22} color={colors.text.primary} />
+          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </Pressable>
-
         <View style={styles.headerTitleBox}>
-          <View style={[styles.catBadge, { backgroundColor: isSwap ? colors.brand.mint : colors.status.infoTint }]}>
-            <Ionicons
-              name={isSwap ? 'flash' : 'home'}
-              size={12}
-              color={isSwap ? colors.brand.primary : colors.status.info}
-            />
-            <Text style={[styles.catBadgeText, { color: isSwap ? colors.brand.primary : colors.status.info }]}>
-              {categoryTitle}
-            </Text>
-          </View>
-          <Text style={styles.hubTitle} numberOfLines={1}>
+          <Text style={styles.headerTitle}>{categoryTitle}</Text>
+          <Text style={styles.headerSubtitle} numberOfLines={1}>
             {hubName}
           </Text>
         </View>
-
-        <View style={styles.headerRightPlaceholder} />
       </View>
 
-      <View style={styles.hubBanner}>
-        <Ionicons name="location-sharp" size={16} color={colors.brand.primary} />
-        <Text style={styles.hubAddressText} numberOfLines={1}>
-          {hubAddress}
-        </Text>
-        <View style={styles.liveTag}>
-          <View style={styles.liveDot} />
-          <Text style={styles.liveText}>{filteredBikes.length} Models</Text>
-        </View>
-      </View>
-
-      <View style={styles.filterRow}>
+      {/* ---------------- FILTER PILLS (MATCHING SCREENSHOT) ---------------- */}
+      <View style={styles.filterBar}>
         <Pressable
-          style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
+          style={[styles.pill, selectedFilter === 'all' && styles.pillActive]}
           onPress={() => setSelectedFilter('all')}
         >
-          <Text style={[styles.filterText, selectedFilter === 'all' && styles.filterTextActive]}>
-            All Fleet ({bikesList.length})
+          <Text style={[styles.pillText, selectedFilter === 'all' && styles.pillTextActive]}>
+            All
           </Text>
         </Pressable>
 
         <Pressable
-          style={[styles.filterChip, selectedFilter === 'high-range' && styles.filterChipActive]}
-          onPress={() => setSelectedFilter('high-range')}
+          style={[styles.pill, selectedFilter === 'high' && styles.pillActive]}
+          onPress={() => setSelectedFilter('high')}
         >
-          <Text style={[styles.filterText, selectedFilter === 'high-range' && styles.filterTextActive]}>
-            ⚡ Long Range (110+ km)
+          <Text style={[styles.pillText, selectedFilter === 'high' && styles.pillTextActive]}>
+            High Speed
           </Text>
         </Pressable>
 
         <Pressable
-          style={[styles.filterChip, selectedFilter === 'top-speed' && styles.filterChipActive]}
-          onPress={() => setSelectedFilter('top-speed')}
+          style={[styles.pill, selectedFilter === 'low' && styles.pillActive]}
+          onPress={() => setSelectedFilter('low')}
         >
-          <Text style={[styles.filterText, selectedFilter === 'top-speed' && styles.filterTextActive]}>
-            🏎️ High Speed (55+ km/h)
+          <Text style={[styles.pillText, selectedFilter === 'low' && styles.pillTextActive]}>
+            Low Speed
           </Text>
         </Pressable>
       </View>
 
+      {/* ---------------- 2-COLUMN VEHICLES GRID ---------------- */}
       <ScrollView
-        contentContainerStyle={styles.scrollList}
+        contentContainerStyle={styles.gridContainer}
         showsVerticalScrollIndicator={false}
       >
-        {filteredBikes.map((bike) => {
-          const duration = selectedDuration[bike.id] || 'week';
-          const price = getPrice(bike, duration);
+        <View style={styles.gridRow}>
+          {filteredBikes.map((bike) => (
+            <Pressable
+              key={bike.id}
+              style={styles.card}
+              onPress={() => setSelectedBike(bike)}
+            >
+              {/* Scooter Photo */}
+              <View style={styles.imgContainer}>
+                <Image
+                  source={bike.image}
+                  style={styles.scooterImage}
+                  contentFit="contain"
+                />
+              </View>
 
-          return (
-            <NeoSurface key={bike.id} borderRadius={radius.xl} style={styles.bikeCard}>
-              <View style={styles.cardHeader}>
-                <View style={[styles.tagPill, { backgroundColor: bike.tagBg }]}>
-                  <Text style={[styles.tagPillText, { color: bike.tagColor }]}>
-                    {bike.tag}
-                  </Text>
+              {/* Bike Name */}
+              <Text style={styles.cardTitle} numberOfLines={1}>
+                {bike.name}
+              </Text>
+
+              {/* Range & Speed Specs */}
+              <View style={styles.specsRow}>
+                <View style={styles.specItem}>
+                  <Ionicons name="location" size={12} color="#00C9A7" />
+                  <View style={{ marginLeft: 3 }}>
+                    <Text style={styles.specLabel}>Range</Text>
+                    <Text style={styles.specValue}>{bike.rangeKm} Kms</Text>
+                  </View>
                 </View>
 
-                <View style={styles.batteryPill}>
-                  <Ionicons name="battery-charging" size={14} color={colors.brand.primary} />
-                  <Text style={styles.batteryText}>{bike.batteryPercent}% Charged</Text>
+                <View style={styles.specItem}>
+                  <Ionicons name="speedometer" size={12} color="#00C9A7" />
+                  <View style={{ marginLeft: 3 }}>
+                    <Text style={styles.specLabel}>Top Speed</Text>
+                    <Text style={styles.specValue}>{bike.topSpeed} Kmph</Text>
+                  </View>
                 </View>
               </View>
 
-              <View style={styles.heroSection}>
-                <Image source={bike.image} style={styles.scooterImg} contentFit="contain" />
+              {/* Weekly Price */}
+              <View style={styles.priceContainer}>
+                <Text style={styles.priceText}>
+                  <Text style={styles.priceAmount}>₹{bike.pricePerWeek}</Text>
+                  <Text style={styles.priceUnit}>/week</Text>
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
 
-                <View style={styles.specsColumn}>
-                  <Text style={styles.bikeName}>{bike.name}</Text>
+      {/* ---------------- VEHICLE DETAILS MODAL (OPENS ON BIKE CLICK) ---------------- */}
+      {selectedBike && (
+        <Modal
+          visible={Boolean(selectedBike)}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSelectedBike(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <Pressable
+              style={styles.modalBackdrop}
+              onPress={() => setSelectedBike(null)}
+            />
 
-                  <View style={styles.specBox}>
-                    <Ionicons name="speedometer-outline" size={13} color={colors.brand.primary} />
-                    <Text style={styles.specVal}>{bike.rangeKm} km</Text>
-                    <Text style={styles.specLbl}>Range</Text>
+            <View style={styles.detailSheet}>
+              {/* Top Handle */}
+              <View style={styles.sheetHandle} />
+
+              <View style={styles.sheetHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={[styles.detailCatBadge, { backgroundColor: selectedBike.tagBg }]}>
+                    <Text style={[styles.detailCatBadgeText, { color: selectedBike.tagColor }]}>
+                      {selectedBike.tag}
+                    </Text>
                   </View>
-
-                  <View style={styles.specBox}>
-                    <Ionicons name="hardware-chip-outline" size={13} color={colors.brand.primary} />
-                    <Text style={styles.specVal}>{bike.topSpeed} km/h</Text>
-                    <Text style={styles.specLbl}>Top Speed</Text>
-                  </View>
+                  <Text style={styles.detailTitle}>{selectedBike.name}</Text>
                 </View>
+                <Pressable
+                  style={styles.closeBtn}
+                  onPress={() => setSelectedBike(null)}
+                  hitSlop={10}
+                >
+                  <Ionicons name="close" size={24} color={colors.text.secondary} />
+                </Pressable>
               </View>
 
-              <View style={styles.feeBreakdownBox}>
-                <View style={styles.feeRow}>
-                  <View>
-                    <Text style={styles.feeLabel}>Weekly Rental</Text>
-                    <Text style={styles.feeSub}>7 DAYS</Text>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.detailScroll}
+              >
+                {/* Hero Scooter Shot */}
+                <View style={styles.detailHeroBox}>
+                  <Image
+                    source={selectedBike.image}
+                    style={styles.detailHeroImage}
+                    contentFit="contain"
+                  />
+                  <View style={styles.batteryBadge}>
+                    <Ionicons name="battery-charging" size={13} color="#00C9A7" />
+                    <Text style={styles.batteryBadgeText}>100% Health</Text>
                   </View>
-                  <Text style={styles.feeValue}>₹{bike.pricePerWeek}</Text>
                 </View>
 
-                <View style={styles.feeRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.feeLabel}>Platform Fee</Text>
-                    <View style={styles.nonRefundableBadge}>
-                      <Text style={styles.nonRefundableText}>NON-REFUNDABLE</Text>
+                {/* Specs Grid */}
+                <View style={styles.detailSpecsGrid}>
+                  <View style={styles.detailSpecCard}>
+                    <Ionicons name="location-outline" size={18} color={colors.brand.primary} />
+                    <Text style={styles.detailSpecVal}>{selectedBike.rangeKm} km</Text>
+                    <Text style={styles.detailSpecLbl}>True Range</Text>
+                  </View>
+
+                  <View style={styles.detailSpecCard}>
+                    <Ionicons name="speedometer-outline" size={18} color={colors.brand.primary} />
+                    <Text style={styles.detailSpecVal}>{selectedBike.topSpeed} km/h</Text>
+                    <Text style={styles.detailSpecLbl}>Top Speed</Text>
+                  </View>
+
+                  <View style={styles.detailSpecCard}>
+                    <Ionicons name="flash-outline" size={18} color={colors.brand.primary} />
+                    <Text style={styles.detailSpecVal}>2-Min Swap</Text>
+                    <Text style={styles.detailSpecLbl}>Unlimited</Text>
+                  </View>
+                </View>
+
+                {/* Fee Breakdown Card */}
+                <View style={styles.breakdownCard}>
+                  <Text style={styles.breakdownHeading}>Price & Fee Breakdown</Text>
+
+                  <View style={styles.breakdownRow}>
+                    <View>
+                      <Text style={styles.breakdownLabel}>Weekly Rental</Text>
+                      <Text style={styles.breakdownSub}>7 DAYS</Text>
                     </View>
+                    <Text style={styles.breakdownValue}>₹{selectedBike.pricePerWeek}</Text>
                   </View>
-                  <Text style={styles.feeValue}>₹{bike.platformFee}</Text>
-                </View>
 
-                <View style={styles.feeRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.feeLabel}>Booking Fee</Text>
-                    <View style={styles.nonRefundableBadge}>
-                      <Text style={styles.nonRefundableText}>NON-REFUNDABLE</Text>
+                  <View style={styles.breakdownRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.breakdownLabel}>Platform Fee</Text>
+                      <View style={styles.nonRefundTag}>
+                        <Text style={styles.nonRefundText}>NON-REFUNDABLE</Text>
+                      </View>
                     </View>
+                    <Text style={styles.breakdownValue}>₹{selectedBike.platformFee}</Text>
                   </View>
-                  <Text style={styles.feeValue}>₹{bike.bookingFee}</Text>
+
+                  <View style={styles.breakdownRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.breakdownLabel}>Booking Fee</Text>
+                      <View style={styles.nonRefundTag}>
+                        <Text style={styles.nonRefundText}>NON-REFUNDABLE</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.breakdownValue}>₹{selectedBike.bookingFee}</Text>
+                  </View>
+
+                  <View style={styles.breakdownTotalRow}>
+                    <View>
+                      <Text style={styles.breakdownTotalLabel}>TOTAL AMOUNT</Text>
+                      <Text style={styles.breakdownTotalSub}>Due Today</Text>
+                    </View>
+                    <Text style={styles.breakdownTotalValue}>₹{selectedBike.totalDueToday}/-</Text>
+                  </View>
                 </View>
 
-                <View style={styles.totalDueRow}>
-                  <View>
-                    <Text style={styles.totalDueLabel}>TOTAL AMOUNT</Text>
-                    <Text style={styles.totalDueSub}>Due Today</Text>
-                  </View>
-                  <Text style={styles.totalDueValue}>₹{bike.totalDueToday}/-</Text>
+                {/* Inclusions */}
+                <View style={styles.inclusionsBox}>
+                  <Text style={styles.inclusionsTitle}>Included with Rental</Text>
+                  {selectedBike.features.map((feat, idx) => (
+                    <View key={idx} style={styles.inclusionItem}>
+                      <Ionicons name="checkmark-circle" size={16} color={colors.brand.primary} />
+                      <Text style={styles.inclusionText}>{feat}</Text>
+                    </View>
+                  ))}
                 </View>
-              </View>
+              </ScrollView>
 
-              <View style={styles.featuresRow}>
-                {bike.features.map((feat, idx) => (
-                  <View key={idx} style={styles.featureItem}>
-                    <Ionicons name="checkmark-circle" size={12} color={colors.brand.primary} />
-                    <Text style={styles.featureItemText}>{feat}</Text>
-                  </View>
-                ))}
-              </View>
-
-              <View style={styles.cardFooter}>
+              {/* Bottom Sticky Booking CTA */}
+              <View style={styles.sheetFooter}>
                 <View>
-                  <Text style={styles.footerPricePrefix}>Starting Rental</Text>
-                  <View style={styles.footerPriceRow}>
-                    <Text style={styles.footerPriceSymbol}>₹</Text>
-                    <Text style={styles.footerPriceVal}>{bike.pricePerWeek}</Text>
-                    <Text style={styles.footerPriceLbl}>/week</Text>
-                  </View>
+                  <Text style={styles.sheetFooterTotalLbl}>Total Due Today</Text>
+                  <Text style={styles.sheetFooterTotalVal}>₹{selectedBike.totalDueToday}/-</Text>
                 </View>
 
                 <Pressable
-                  style={styles.bookBtn}
-                  onPress={() => setActiveBookingBike(bike)}
-                  hitSlop={4}
+                  style={styles.sheetBookBtn}
+                  onPress={() => {
+                    const bikeToBook = selectedBike;
+                    setSelectedBike(null);
+                    setActiveBookingBike(bikeToBook);
+                  }}
                 >
-                  <Text style={styles.bookBtnText}>Select & Book</Text>
-                  <Ionicons name="arrow-forward" size={14} color={colors.common.white} />
+                  <Text style={styles.sheetBookBtnText}>Proceed to Book</Text>
+                  <Ionicons name="arrow-forward" size={16} color={colors.common.white} />
                 </Pressable>
               </View>
-            </NeoSurface>
-          );
-        })}
-      </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
 
+      {/* ---------------- CONFIRMATION DIALOG ---------------- */}
       {activeBookingBike && (
         <ThemedModal
           visible={Boolean(activeBookingBike)}
-          title={`Book ${activeBookingBike.name}`}
-          message={`Selected Hub: ${hubName}\nWeekly Rental: ₹${activeBookingBike.pricePerWeek}\nPlatform Fee: ₹${activeBookingBike.platformFee}\nBooking Fee: ₹${activeBookingBike.bookingFee}\n\nTotal Due Today: ₹${activeBookingBike.totalDueToday}/-\n\nSanitized helmet, delivery cargo carrier & roadside assistance included.`}
+          title={`Confirm ${activeBookingBike.name}`}
+          message={`Hub: ${hubName}\n\nWeekly Rental: ₹${activeBookingBike.pricePerWeek}\nPlatform Fee: ₹${activeBookingBike.platformFee}\nBooking Fee: ₹${activeBookingBike.bookingFee}\n\nTotal Due Today: ₹${activeBookingBike.totalDueToday}/-\n\nHelmet, delivery cargo carrier & roadside assistance included.`}
           icon={isSwap ? 'flash' : 'home'}
-          confirmLabel="Proceed to Verification"
+          confirmLabel="Verify & Proceed"
           cancelLabel="Cancel"
           onConfirm={() => {
             setActiveBookingBike(null);
@@ -421,23 +561,21 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.surface.background,
+    backgroundColor: '#FAFCFC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 50,
+    paddingTop: 52,
     paddingHorizontal: screenPadding,
     paddingBottom: spacing.sm,
-    backgroundColor: colors.surface.card,
+    backgroundColor: colors.common.white,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.neutral[100],
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.neutral[100],
+    width: 38,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -445,357 +583,382 @@ const styles = StyleSheet.create({
   headerTitleBox: {
     flex: 1,
   },
-  catBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    alignSelf: 'flex-start',
-    marginBottom: 2,
-  },
-  catBadgeText: {
-    fontFamily: fontFamily.bold,
-    fontSize: 10,
-  },
-  hubTitle: {
-    fontFamily: fontFamily.bold,
-    fontSize: 15,
-    color: colors.text.primary,
-  },
-  headerRightPlaceholder: {
-    width: 40,
-  },
-
-  /* Hub Address Banner */
-  hubBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.brand.mintSoft,
-    marginHorizontal: screenPadding,
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.brand.mint,
-  },
-  hubAddressText: {
-    flex: 1,
-    fontFamily: fontFamily.medium,
-    fontSize: 11.5,
-    color: colors.text.secondary,
-  },
-  liveTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.brand.mint,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.status.success,
-  },
-  liveText: {
-    fontFamily: fontFamily.bold,
-    fontSize: 10,
-    color: colors.status.success,
-  },
-
-  /* Filter Chips */
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: screenPadding,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-    gap: spacing.xs,
-  },
-  filterChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-    backgroundColor: colors.neutral[100],
-  },
-  filterChipActive: {
-    backgroundColor: colors.brand.primary,
-  },
-  filterText: {
-    fontFamily: fontFamily.semibold,
-    fontSize: 11,
-    color: colors.text.secondary,
-  },
-  filterTextActive: {
-    color: colors.common.white,
-  },
-
-  /* Scroll List */
-  scrollList: {
-    paddingHorizontal: screenPadding,
-    paddingTop: spacing.sm,
-    paddingBottom: 40,
-    gap: spacing.md,
-  },
-
-  /* Bike Card */
-  bikeCard: {
-    padding: spacing.md,
-    ...shadows.card,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  tagPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  tagPillText: {
-    fontFamily: fontFamily.bold,
-    fontSize: 10.5,
-  },
-  batteryPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.brand.mint,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  batteryText: {
-    fontFamily: fontFamily.semibold,
-    fontSize: 10.5,
-    color: colors.brand.primary,
-  },
-
-  /* Hero & Specs */
-  heroSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginVertical: spacing.xs,
-  },
-  scooterImg: {
-    width: 120,
-    height: 110,
-  },
-  specsColumn: {
-    flex: 1,
-    gap: 4,
-  },
-  bikeName: {
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    color: colors.text.primary,
-    marginBottom: 4,
-  },
-  specBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.neutral[50],
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  specVal: {
-    fontFamily: fontFamily.bold,
-    fontSize: 11.5,
-    color: colors.text.primary,
-  },
-  specLbl: {
-    fontFamily: fontFamily.regular,
-    fontSize: 10.5,
-    color: colors.text.secondary,
-  },
-
-  /* Plan Selector Tabs */
-  planSelector: {
-    flexDirection: 'row',
-    backgroundColor: colors.neutral[100],
-    borderRadius: radius.md,
-    padding: 3,
-    marginVertical: spacing.sm,
-    gap: 4,
-  },
-  planTab: {
-    flex: 1,
-    paddingVertical: 6,
-    alignItems: 'center',
-    borderRadius: radius.sm,
-  },
-  planTabActive: {
-    backgroundColor: colors.common.white,
-    ...shadows.subtle,
-  },
-  planTabTitle: {
-    fontFamily: fontFamily.medium,
-    fontSize: 10.5,
-    color: colors.text.secondary,
-  },
-  planTabTitleActive: {
-    fontFamily: fontFamily.bold,
-    color: colors.brand.primary,
-  },
-  planTabPrice: {
-    fontFamily: fontFamily.bold,
-    fontSize: 12,
-    color: colors.text.primary,
-    marginTop: 1,
-  },
-  planTabPriceActive: {
-    color: colors.brand.primary,
-  },
-
-  /* Fee Breakdown matching website */
-  feeBreakdownBox: {
-    backgroundColor: colors.neutral[50],
-    borderRadius: radius.md,
-    padding: spacing.sm,
-    marginVertical: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  feeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  feeLabel: {
-    fontFamily: fontFamily.medium,
-    fontSize: 12,
-    color: colors.text.secondary,
-  },
-  feeSub: {
-    fontFamily: fontFamily.regular,
-    fontSize: 9.5,
-    color: colors.neutral[400],
-  },
-  feeValue: {
-    fontFamily: fontFamily.bold,
-    fontSize: 13,
-    color: colors.text.primary,
-  },
-  nonRefundableBadge: {
-    backgroundColor: colors.neutral[200],
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  nonRefundableText: {
-    fontFamily: fontFamily.bold,
-    fontSize: 8.5,
-    color: colors.text.secondary,
-    letterSpacing: 0.3,
-  },
-  totalDueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  totalDueLabel: {
-    fontFamily: fontFamily.bold,
-    fontSize: 11,
-    color: colors.brand.primary,
-    letterSpacing: 0.5,
-  },
-  totalDueSub: {
-    fontFamily: fontFamily.regular,
-    fontSize: 9,
-    color: colors.text.secondary,
-  },
-  totalDueValue: {
-    fontFamily: fontFamily.bold,
-    fontSize: 16,
-    color: colors.brand.primary,
-  },
-
-  /* Features */
-  featuresRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.neutral[50],
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-  },
-  featureItemText: {
-    fontFamily: fontFamily.medium,
-    fontSize: 10,
-    color: colors.text.secondary,
-  },
-
-  /* Card Footer */
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  footerPricePrefix: {
-    fontFamily: fontFamily.regular,
-    fontSize: 10,
-    color: colors.text.secondary,
-  },
-  footerPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  footerPriceSymbol: {
-    fontFamily: fontFamily.bold,
-    fontSize: 13,
-    color: colors.brand.primary,
-  },
-  footerPriceVal: {
+  headerTitle: {
     fontFamily: fontFamily.bold,
     fontSize: 18,
     color: colors.text.primary,
   },
-  footerPriceLbl: {
-    fontFamily: fontFamily.medium,
-    fontSize: 11,
+  headerSubtitle: {
+    fontFamily: fontFamily.regular,
+    fontSize: 12,
     color: colors.text.secondary,
+    marginTop: 1,
   },
-  bookBtn: {
+
+  /* Filter Pills */
+  filterBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.brand.primary,
-    paddingHorizontal: 16,
+    gap: 8,
+    paddingHorizontal: screenPadding,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.common.white,
+  },
+  pill: {
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: colors.common.white,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  pillActive: {
+    backgroundColor: '#2D3748',
+    borderColor: '#2D3748',
+  },
+  pillText: {
+    fontFamily: fontFamily.medium,
+    fontSize: 13,
+    color: '#4A5568',
+  },
+  pillTextActive: {
+    fontFamily: fontFamily.semibold,
+    color: colors.common.white,
+  },
+
+  /* 2-Column Grid */
+  gridContainer: {
+    paddingHorizontal: screenPadding,
+    paddingTop: spacing.xs,
+    paddingBottom: 40,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  card: {
+    width: CARD_WIDTH,
+    backgroundColor: colors.common.white,
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#EDF2F7',
+    ...shadows.subtle,
+  },
+  imgContainer: {
+    height: 110,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  scooterImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cardTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: 14,
+    color: '#1A202C',
+    marginBottom: 8,
+  },
+  specsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  specItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  specLabel: {
+    fontFamily: fontFamily.regular,
+    fontSize: 9,
+    color: '#A0AEC0',
+  },
+  specValue: {
+    fontFamily: fontFamily.semibold,
+    fontSize: 10.5,
+    color: '#2D3748',
+  },
+  priceContainer: {
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#F7FAFC',
+    alignItems: 'flex-start',
+  },
+  priceText: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  priceAmount: {
+    fontFamily: fontFamily.bold,
+    fontSize: 15,
+    color: '#1A202C',
+  },
+  priceUnit: {
+    fontFamily: fontFamily.medium,
+    fontSize: 11,
+    color: '#718096',
+  },
+
+  /* Detail Bottom Sheet */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  detailSheet: {
+    backgroundColor: colors.common.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '85%',
+    paddingBottom: 24,
+    ...shadows.card,
+  },
+  sheetHandle: {
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E0',
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: screenPadding,
+    paddingBottom: spacing.xs,
+  },
+  detailCatBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  detailCatBadgeText: {
+    fontFamily: fontFamily.bold,
+    fontSize: 9.5,
+    letterSpacing: 0.5,
+  },
+  detailTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: 20,
+    color: colors.text.primary,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.neutral[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailScroll: {
+    paddingHorizontal: screenPadding,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.lg,
+  },
+  detailHeroBox: {
+    height: 180,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    marginVertical: spacing.sm,
+    position: 'relative',
+  },
+  detailHeroImage: {
+    width: '80%',
+    height: '80%',
+  },
+  batteryBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.brand.mint,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+  },
+  batteryBadgeText: {
+    fontFamily: fontFamily.bold,
+    fontSize: 10,
+    color: colors.brand.primary,
+  },
+  detailSpecsGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginVertical: spacing.xs,
+  },
+  detailSpecCard: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
     paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EDF2F7',
+  },
+  detailSpecVal: {
+    fontFamily: fontFamily.bold,
+    fontSize: 13,
+    color: colors.text.primary,
+    marginTop: 4,
+  },
+  detailSpecLbl: {
+    fontFamily: fontFamily.regular,
+    fontSize: 9.5,
+    color: colors.text.secondary,
+  },
+
+  /* Fee Breakdown Card */
+  breakdownCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: spacing.md,
+    marginVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  breakdownHeading: {
+    fontFamily: fontFamily.bold,
+    fontSize: 13,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  breakdownLabel: {
+    fontFamily: fontFamily.medium,
+    fontSize: 12,
+    color: colors.text.secondary,
+  },
+  breakdownSub: {
+    fontFamily: fontFamily.regular,
+    fontSize: 9.5,
+    color: colors.neutral[400],
+  },
+  breakdownValue: {
+    fontFamily: fontFamily.bold,
+    fontSize: 13,
+    color: colors.text.primary,
+  },
+  nonRefundTag: {
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  nonRefundText: {
+    fontFamily: fontFamily.bold,
+    fontSize: 8.5,
+    color: '#4A5568',
+    letterSpacing: 0.3,
+  },
+  breakdownTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: '#CBD5E0',
+  },
+  breakdownTotalLabel: {
+    fontFamily: fontFamily.bold,
+    fontSize: 12,
+    color: colors.brand.primary,
+    letterSpacing: 0.5,
+  },
+  breakdownTotalSub: {
+    fontFamily: fontFamily.regular,
+    fontSize: 9.5,
+    color: colors.text.secondary,
+  },
+  breakdownTotalValue: {
+    fontFamily: fontFamily.bold,
+    fontSize: 18,
+    color: colors.brand.primary,
+  },
+
+  /* Inclusions */
+  inclusionsBox: {
+    backgroundColor: colors.common.white,
+    borderRadius: 14,
+    padding: spacing.md,
+    marginVertical: spacing.xs,
+    borderWidth: 1,
+    borderColor: '#EDF2F7',
+  },
+  inclusionsTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: 13,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
+  },
+  inclusionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 3,
+  },
+  inclusionText: {
+    fontFamily: fontFamily.medium,
+    fontSize: 11.5,
+    color: colors.text.secondary,
+  },
+
+  /* Sheet Footer */
+  sheetFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: screenPadding,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral[100],
+    backgroundColor: colors.common.white,
+  },
+  sheetFooterTotalLbl: {
+    fontFamily: fontFamily.regular,
+    fontSize: 10,
+    color: colors.text.secondary,
+  },
+  sheetFooterTotalVal: {
+    fontFamily: fontFamily.bold,
+    fontSize: 18,
+    color: colors.brand.primary,
+  },
+  sheetBookBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.brand.primary,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
     borderRadius: radius.pill,
     ...shadows.subtle,
   },
-  bookBtnText: {
+  sheetBookBtnText: {
     fontFamily: fontFamily.bold,
-    fontSize: 12.5,
+    fontSize: 13.5,
     color: colors.common.white,
   },
 });
