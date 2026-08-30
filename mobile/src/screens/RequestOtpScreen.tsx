@@ -156,7 +156,12 @@ export default function RequestOtpScreen({ navigation }: Props) {
             styles.card,
             {
               marginHorizontal: cardMargin,
-              paddingTop: capClearance + spacing.md,
+              // NOT capOverhang + padding. The curved cap is absolutely
+              // positioned ABOVE this card, so it occupies no space inside it;
+              // reserving room for it just opened a dead gap above "Welcome
+              // back". Below its own top edge the cap is solid white, so
+              // content only needs ordinary padding.
+              paddingTop: spacing.lg,
               borderBottomLeftRadius: Math.round(u(DESIGN.cardRadius)),
               borderBottomRightRadius: Math.round(u(DESIGN.cardRadius)),
             },

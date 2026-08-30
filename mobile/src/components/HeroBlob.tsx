@@ -91,19 +91,25 @@ export function HeroBlob({ width: w }: HeroBlobProps) {
           clipPath="url(#heroClip)"
         />
 
-        {/* 2. Figma's inner shadow, approximated as a clipped inside edge */}
+        {/*
+          2. Figma's inner shadow (dy 10, blur 8, #BBDBD8).
+
+          This was previously drawn as a 16-wide stroke clipped to the outline.
+          That is not an inner shadow — it rendered as a hard mint BORDER
+          around the whole shape. SVG has no inner-shadow primitive and
+          react-native-svg's filter support is unreliable, so the honest
+          options are "soft and subtle" or "absent". A thin, low-opacity edge
+          hints at the depth without drawing a ring.
+        */}
         <Path
           d={FIGMA_BLOB}
           stroke="#BBDBD8"
-          strokeWidth={16}
+          strokeWidth={3}
           fill="none"
-          opacity={0.9}
-          transform="translate(0, 10)"
+          opacity={0.35}
+          transform="translate(0, 6)"
           clipPath="url(#heroClip)"
         />
-
-        {/* 3. a light sheen down the top of the shape */}
-        <Path d={FIGMA_BLOB} fill="url(#blobSheen)" />
       </Svg>
     </View>
   );
