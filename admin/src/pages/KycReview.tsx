@@ -1,16 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  FileCheck2,
-  Clock,
   CheckCircle2,
-  XCircle,
-  ExternalLink,
-  ShieldCheck,
   Eye,
-  AlertTriangle,
-  User,
-  MapPin,
-  Calendar,
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 

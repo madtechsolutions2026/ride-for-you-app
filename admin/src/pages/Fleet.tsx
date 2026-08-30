@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bike, Plus, Battery, MapPin, Search, Filter, ShieldCheck, CheckCircle2, Wrench } from 'lucide-react';
+import { Bike, Plus, MapPin } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 export const Fleet: React.FC = () => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ShieldCheck, ShieldAlert, Clock, Ban, CheckCircle2, UserCheck, Phone, Mail, MapPin } from 'lucide-react';
+import { Search, ShieldAlert, Clock, CheckCircle2, MapPin } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 export const Riders: React.FC = () => {

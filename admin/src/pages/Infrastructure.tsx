@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Plus, Clock, Phone, Zap, CheckCircle2 } from 'lucide-react';
+import { MapPin, Plus, Clock, Phone, Zap } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 export const Infrastructure: React.FC = () => {
