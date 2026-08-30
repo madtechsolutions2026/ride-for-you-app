@@ -17,7 +17,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
-import { capOverhang, CurvedCardTop, Glass, HeroBlob, NeoSurface, PrimaryButton } from '../components';
+import { CurvedCardTop, Glass, HeroBlob, NeoSurface, PrimaryButton } from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RequestOtp'>;
 
@@ -55,7 +55,6 @@ export default function RequestOtpScreen({ navigation }: Props) {
   // than a percentage of screen height. The blob and the curved cap both live
   // inside this band.
   const heroHeight = Math.round(u(DESIGN.cardTop));
-  const capClearance = capOverhang(cardWidth);
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -221,7 +220,7 @@ export default function RequestOtpScreen({ navigation }: Props) {
 
           {/* Takes up the slack so the trust badges settle at the foot of the
               card instead of floating just under the CTA. */}
-          <View style={styles.spacer} />
+          <View style={[styles.spacer, { maxHeight: Math.round(u(70)) }]} />
 
           {/* trust badges */}
           <View style={styles.trustRow}>
@@ -370,7 +369,16 @@ const styles = StyleSheet.create({
 
   // Grows to absorb leftover height, but never collapses below a sensible gap
   // when the keyboard is up and space is tight.
-  spacer: { flex: 1, minHeight: spacing.xl },
+  /*
+   * Absorbs the height freed by dropping the Google button and OR divider,
+   * so the trust badges sit near the foot of the card.
+   *
+   * It is CAPPED (maxHeight, applied inline from the design scale). Left
+   * uncapped it pooled every spare pixel into one gap under the CTA, which
+   * read as a hole in the middle of the card. Capped, the surplus lands as
+   * padding below the badges instead, where it reads as card margin.
+   */
+  spacer: { flex: 1, minHeight: spacing.md },
 
   trustRow: {
     flexDirection: 'row',

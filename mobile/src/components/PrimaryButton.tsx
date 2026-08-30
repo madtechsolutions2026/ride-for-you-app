@@ -56,13 +56,7 @@ export function PrimaryButton({ label, onPress, loading, disabled, style }: Prim
         {loading ? (
           <ActivityIndicator color={colors.text.inverse} />
         ) : (
-          // The underline is a View, not textDecorationLine. `textDecorationColor`
-          // is iOS-only — on Android the underline ignored it and drew solid
-          // white instead of the soft 45% the mockup shows.
-          <View style={styles.labelWrap}>
-            <Text style={styles.label}>{label}</Text>
-            <View style={styles.labelUnderline} />
-          </View>
+          <Text style={styles.label}>{label}</Text>
         )}
       </LinearGradient>
 
@@ -96,16 +90,9 @@ const styles = StyleSheet.create({
     paddingLeft: 24,
     paddingRight: 52, // room for the label to clear the overhanging circle
   },
-  labelWrap: { alignItems: 'center' },
   label: {
     ...textStyles.button,
     color: colors.text.inverse,
-  },
-  labelUnderline: {
-    alignSelf: 'stretch',
-    height: 1,
-    marginTop: 2,
-    backgroundColor: colors.overlay.onAccent,
   },
   arrowCircle: {
     position: 'absolute',

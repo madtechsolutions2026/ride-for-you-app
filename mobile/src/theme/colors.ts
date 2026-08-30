@@ -25,10 +25,19 @@ export const colors = {
      */
     mintSoft: '#F3FAF6', // barely-there wash - row backgrounds
     mintStrong: '#DCF0E6', // deeper mint - selected chips, active states
-    // "Continue with OTP" is a left-to-right gradient of these:
-    gradientFrom: '#62CE90',
-    gradientTo: '#B4EBD8',
-    gradientEnd: '#B4EBD8', // the pale right-hand end, where the arrow overhangs
+    /*
+     * "Continue with OTP" — a left-to-right gradient of these three.
+     *
+     * Figma builds this button in layers: a gradient rect over a white rect,
+     * so the exported gradient ends pale (#B4EBD8) and relies on what's
+     * beneath it. Reproducing that single gradient directly made the button's
+     * right-hand third look washed out, as if a white veil sat on it. These
+     * are the design's greens carried across the whole width instead, so the
+     * button reads as solid green end to end.
+     */
+    gradientFrom: '#62CE90', // Figma paint0 start
+    gradientTo: '#43CA92', // Figma paint1 start
+    gradientEnd: '#38D0A7', // Figma paint1 end — a green, not a pale mint
     // The frosted hero blob fades between these top→bottom:
     glassTop: '#EFF7F5',
     glassBottom: '#DCEDE8',

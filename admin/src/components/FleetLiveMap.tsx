@@ -79,7 +79,7 @@ const FLEET_VEHICLES: VehicleAsset[] = [
   {
     id: 'bike-02',
     plate: 'TS09EV3004',
-    model: 'NEW Aeroflow',
+    model: 'NEW AEROFLOW PRO',
     status: 'PARKED',
     speed: 0,
     battery: 18,
@@ -95,7 +95,7 @@ const FLEET_VEHICLES: VehicleAsset[] = [
   {
     id: 'bike-03',
     plate: 'TS09EV3012',
-    model: 'ODYSSEY HS',
+    model: 'ODYSSEY MAX',
     status: 'MOVING',
     speed: 38,
     battery: 64,
@@ -111,7 +111,7 @@ const FLEET_VEHICLES: VehicleAsset[] = [
   {
     id: 'bike-04',
     plate: 'TS09EV3019',
-    model: 'EVTRIC Low-Speed',
+    model: 'SPRINTO HS',
     status: 'AVAILABLE',
     speed: 0,
     battery: 100,
@@ -127,7 +127,7 @@ const FLEET_VEHICLES: VehicleAsset[] = [
   {
     id: 'bike-05',
     plate: 'TS09EV3022',
-    model: 'HALA CKD',
+    model: 'NEW AEROFLOW PRO',
     status: 'MOVING',
     speed: 25,
     battery: 45,
@@ -258,7 +258,6 @@ export const FleetLiveMap: React.FC = () => {
       attributionControl: false,
     });
 
-    // Clean CartoDB Light_all tiles matching the mobile StylizedMap (100% Free, NO Watermark)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       subdomains: 'abcd',
@@ -276,7 +275,7 @@ export const FleetLiveMap: React.FC = () => {
     };
   }, []);
 
-  // Plot Clean Neumorphic Markers
+  // Plot Clean Neumorphic Markers with #62CE90
   useEffect(() => {
     const map = mapInstanceRef.current;
     const layerGroup = markersLayerRef.current;
@@ -297,8 +296,8 @@ export const FleetLiveMap: React.FC = () => {
               background: #FFFFFF;
               border-radius: 9999px;
               padding: 4px 10px 4px 4px;
-              box-shadow: 0 8px 20px rgba(18, 148, 97, 0.25);
-              border: ${isSelected ? '2px solid #18B878' : '1px solid #EDF2F1'};
+              box-shadow: 0 8px 20px rgba(98, 206, 144, 0.28);
+              border: ${isSelected ? '2px solid #62CE90' : '1px solid #EDF2F1'};
               cursor: pointer;
               white-space: nowrap;
               font-family: 'Poppins', sans-serif;
@@ -306,22 +305,22 @@ export const FleetLiveMap: React.FC = () => {
               transition: all 0.2s ease;
             ">
               <div style="
-                width: 24px;
-                height: 24px;
-                border-radius: 12px;
-                background: #18B878;
+                width: 26px;
+                height: 26px;
+                border-radius: 13px;
+                background: #62CE90;
                 color: #FFFFFF;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: 800;
                 margin-right: 6px;
-                box-shadow: 0 2px 6px rgba(24, 184, 120, 0.4);
+                box-shadow: 0 2px 8px rgba(98, 206, 144, 0.45);
               ">🏢</div>
               <div style="display: flex; flex-direction: column; line-height: 1.1;">
                 <span style="font-size: 11px; font-weight: 800; color: #172B3A;">${hub.name.split(' ')[0]} Hub</span>
-                <span style="font-size: 9px; font-weight: 700; color: #129461;">${hub.availableBikes} Bikes Ready</span>
+                <span style="font-size: 9.5px; font-weight: 700; color: #38A169;">${hub.availableBikes} Bikes Ready</span>
               </div>
             </div>
           `,
@@ -359,22 +358,22 @@ export const FleetLiveMap: React.FC = () => {
               transition: all 0.2s ease;
             ">
               <div style="
-                width: 24px;
-                height: 24px;
-                border-radius: 12px;
+                width: 26px;
+                height: 26px;
+                border-radius: 13px;
                 background: #0284C7;
                 color: #FFFFFF;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 12px;
+                font-size: 13px;
                 font-weight: 800;
                 margin-right: 6px;
                 box-shadow: 0 2px 6px rgba(2, 132, 199, 0.4);
               ">⚡</div>
               <div style="display: flex; flex-direction: column; line-height: 1.1;">
                 <span style="font-size: 11px; font-weight: 800; color: #172B3A;">${station.name.split(' ')[0]}</span>
-                <span style="font-size: 9px; font-weight: 700; color: #0284C7;">${station.chargedBatteries}/${station.totalDocks} Swaps</span>
+                <span style="font-size: 9.5px; font-weight: 700; color: #0284C7;">${station.chargedBatteries}/${station.totalDocks} Swaps</span>
               </div>
             </div>
           `,
@@ -400,9 +399,9 @@ export const FleetLiveMap: React.FC = () => {
       const isLow = bike.battery < 20;
       const isMoving = bike.status === 'MOVING';
 
-      const dotColor = isLow ? '#EF4444' : isMoving ? '#18B878' : '#172B3A';
-      const badgeBg = isLow ? '#FEE2E2' : '#E9F7F1';
-      const badgeColor = isLow ? '#EF4444' : '#129461';
+      const dotColor = isLow ? '#EF4444' : isMoving ? '#62CE90' : '#172B3A';
+      const badgeBg = isLow ? '#FEE2E2' : '#EAF8F1';
+      const badgeColor = isLow ? '#EF4444' : '#38A169';
 
       const icon = L.divIcon({
         className: 'custom-bike-pin',
@@ -412,9 +411,9 @@ export const FleetLiveMap: React.FC = () => {
             align-items: center;
             background: #FFFFFF;
             border-radius: 9999px;
-            padding: 4px 8px 4px 5px;
+            padding: 4px 9px 4px 6px;
             box-shadow: 0 8px 22px rgba(23, 43, 58, 0.16);
-            border: ${isSelected ? '2px solid #18B878' : '1px solid #EDF2F1'};
+            border: ${isSelected ? '2px solid #62CE90' : '1px solid #EDF2F1'};
             cursor: pointer;
             white-space: nowrap;
             font-family: 'Poppins', sans-serif;
@@ -423,11 +422,11 @@ export const FleetLiveMap: React.FC = () => {
             transition: all 0.2s ease;
           ">
             <span style="
-              width: 8px;
-              height: 8px;
-              border-radius: 4px;
+              width: 9px;
+              height: 9px;
+              border-radius: 999px;
               background: ${dotColor};
-              ${isMoving ? 'box-shadow: 0 0 0 3px rgba(24, 184, 120, 0.25);' : ''}
+              ${isMoving ? 'box-shadow: 0 0 0 3px rgba(98, 206, 144, 0.35);' : ''}
             "></span>
             <span style="font-size: 11px; font-weight: 800; color: #172B3A; font-family: monospace;">${bike.plate}</span>
             <span style="
@@ -455,7 +454,7 @@ export const FleetLiveMap: React.FC = () => {
   const handleCommand = (cmd: string) => {
     setCommandFeedback(`Executing "${cmd}" on ${selectedAsset?.plate || 'device'}...`);
     setTimeout(() => {
-      setCommandFeedback(`✓ Command confirmed by onboard IoT.`);
+      setCommandFeedback(`✓ Command confirmed by onboard IoT ECU.`);
       setTimeout(() => setCommandFeedback(null), 2500);
     }, 900);
   };
@@ -467,13 +466,13 @@ export const FleetLiveMap: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-[#EDF2F1] shadow-xl shadow-slate-200/50 overflow-hidden relative font-sans">
-      {/* Top Floating Clean Neumorphic Category Bar */}
+    <div className="bg-white rounded-3xl border border-[#EDF2F1] shadow-neo overflow-hidden relative font-sans">
+      {/* Top Bar with #62CE90 Neumorphism */}
       <div className="p-4 sm:p-5 border-b border-[#EDF2F1] bg-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-extrabold text-[#172B3A] tracking-tight flex items-center gap-2">
             <span>Fleet GPS & IoT Battery Map</span>
-            <span className="text-[10px] font-extrabold text-[#129461] bg-[#E9F7F1] px-2.5 py-0.5 rounded-full">
+            <span className="text-[10px] font-extrabold text-[#38A169] bg-[#EAF8F1] px-2.5 py-0.5 rounded-full">
               Live Hyderabad
             </span>
           </h3>
@@ -483,13 +482,13 @@ export const FleetLiveMap: React.FC = () => {
         </div>
 
         {/* Clean Neumorphic Filter Pills */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[#F8F7FD] rounded-2xl border border-[#EDF2F1] shadow-neo-sm">
           <button
             onClick={() => setActiveFilter('ALL')}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all duration-150 ${
               activeFilter === 'ALL'
-                ? 'bg-gradient-to-r from-[#1FAE72] to-[#129461] text-white shadow-md shadow-emerald-500/25'
-                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+                ? 'bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white shadow-neo-btn'
+                : 'text-[#8A97A0] hover:text-[#172B3A]'
             }`}
           >
             All (54)
@@ -497,22 +496,22 @@ export const FleetLiveMap: React.FC = () => {
 
           <button
             onClick={() => setActiveFilter('MOVING')}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all duration-150 flex items-center gap-1.5 ${
               activeFilter === 'MOVING'
-                ? 'bg-gradient-to-r from-[#1FAE72] to-[#129461] text-white shadow-md shadow-emerald-500/25'
-                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+                ? 'bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white shadow-neo-btn'
+                : 'text-[#8A97A0] hover:text-[#172B3A]'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-[#18B878]"></span>
+            <span className="w-2 h-2 rounded-full bg-[#62CE90]"></span>
             <span>Moving (14)</span>
           </button>
 
           <button
             onClick={() => setActiveFilter('PARKED')}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all duration-150 ${
               activeFilter === 'PARKED'
                 ? 'bg-[#172B3A] text-white shadow-sm'
-                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+                : 'text-[#8A97A0] hover:text-[#172B3A]'
             }`}
           >
             Parked (36)
@@ -520,10 +519,10 @@ export const FleetLiveMap: React.FC = () => {
 
           <button
             onClick={() => setActiveFilter('LOW_BATTERY')}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 flex items-center gap-1 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all duration-150 flex items-center gap-1 ${
               activeFilter === 'LOW_BATTERY'
                 ? 'bg-[#EF4444] text-white shadow-sm'
-                : 'bg-[#FBFBFD] text-[#EF4444] hover:bg-[#FEE2E2] border border-[#FCA5A5]/60'
+                : 'text-[#EF4444] hover:bg-[#FEE2E2]'
             }`}
           >
             <AlertTriangle className="w-3.5 h-3.5" />
@@ -532,10 +531,10 @@ export const FleetLiveMap: React.FC = () => {
 
           <button
             onClick={() => setActiveFilter('HUBS')}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all duration-150 ${
               activeFilter === 'HUBS'
-                ? 'bg-[#18B878] text-white shadow-sm'
-                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+                ? 'bg-[#38A169] text-white shadow-sm'
+                : 'text-[#8A97A0] hover:text-[#172B3A]'
             }`}
           >
             🏢 Hubs (3)
@@ -543,10 +542,10 @@ export const FleetLiveMap: React.FC = () => {
 
           <button
             onClick={() => setActiveFilter('SWAPS')}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold transition-all duration-150 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all duration-150 ${
               activeFilter === 'SWAPS'
                 ? 'bg-[#0284C7] text-white shadow-sm'
-                : 'bg-[#FBFBFD] text-[#8A97A0] hover:text-[#172B3A] border border-[#EDF2F1]'
+                : 'text-[#8A97A0] hover:text-[#172B3A]'
             }`}
           >
             ⚡ Swaps (4)
@@ -555,24 +554,24 @@ export const FleetLiveMap: React.FC = () => {
       </div>
 
       {/* Map Surface */}
-      <div className="relative w-full h-[540px]">
+      <div className="relative w-full h-[520px]">
         {/* Leaflet Mount Element */}
         <div ref={mapContainerRef} className="w-full h-full z-0" />
 
         {/* Floating Recenter Button on Top Right of Map */}
         <button
           onClick={handleRecenter}
-          className="absolute top-4 right-4 z-10 p-3 bg-white/95 backdrop-blur-md rounded-2xl border border-[#EDF2F1] shadow-lg text-[#172B3A] hover:text-[#18B878] transition"
+          className="absolute top-4 right-4 z-10 p-3 bg-white/95 backdrop-blur-md rounded-2xl border border-[#EDF2F1] shadow-neo text-[#172B3A] hover:text-[#62CE90] transition"
           title="Recenter Map to Hyderabad Hub"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
 
         {/* Floating Telemetry Stats on Bottom Left of Map */}
-        <div className="absolute bottom-4 left-4 z-10 hidden sm:flex items-center gap-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-[#EDF2F1] shadow-lg text-xs font-bold text-[#172B3A]">
+        <div className="absolute bottom-4 left-4 z-10 hidden sm:flex items-center gap-3 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-[#EDF2F1] shadow-neo text-xs font-extrabold text-[#172B3A]">
           <div className="flex items-center gap-1.5">
-            <Battery className="w-4 h-4 text-[#18B878]" />
-            <span>Avg Fleet SoC: <strong className="text-[#129461]">78%</strong></span>
+            <Battery className="w-4 h-4 text-[#62CE90]" />
+            <span>Avg Fleet SoC: <strong className="text-[#38A169]">78%</strong></span>
           </div>
           <span className="text-[#CBD6D6]">•</span>
           <div className="flex items-center gap-1.5">
@@ -581,23 +580,23 @@ export const FleetLiveMap: React.FC = () => {
           </div>
           <span className="text-[#CBD6D6]">•</span>
           <div className="flex items-center gap-1.5">
-            <Shield className="w-4 h-4 text-[#18B878]" />
+            <Shield className="w-4 h-4 text-[#62CE90]" />
             <span>GPS Lock: <strong>54/54 Online</strong></span>
           </div>
         </div>
 
         {/* Floating Neumorphic Inspector Card when Pin is Clicked */}
         {selectedAsset && (
-          <div className="absolute top-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 bg-white/95 backdrop-blur-md rounded-3xl border border-[#EDF2F1] shadow-2xl p-5 z-20 animate-in slide-in-from-top-4 duration-200">
+          <div className="absolute top-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 bg-white/95 backdrop-blur-md rounded-3xl border border-[#EDF2F1] shadow-neo p-5 z-20 animate-in slide-in-from-top-4 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-[#EDF2F1]">
               <div className="flex items-center gap-3">
                 <div
-                  className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-extrabold text-sm shadow-md ${
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white font-extrabold text-sm shadow-neo-sm ${
                     selectedAsset.type === 'BIKE'
-                      ? 'bg-gradient-to-br from-[#1FAE72] to-[#129461]'
+                      ? 'bg-gradient-to-br from-[#62CE90] to-[#48B87A]'
                       : selectedAsset.type === 'HUB'
-                      ? 'bg-[#18B878]'
+                      ? 'bg-[#38A169]'
                       : 'bg-[#0284C7]'
                   }`}
                 >
@@ -615,7 +614,7 @@ export const FleetLiveMap: React.FC = () => {
 
               <button
                 onClick={() => setSelectedAsset(null)}
-                className="w-7 h-7 rounded-full bg-[#F3FAF6] text-[#8A97A0] hover:text-[#172B3A] flex items-center justify-center text-xs font-bold"
+                className="w-7 h-7 rounded-full bg-[#F8F7FD] text-[#8A97A0] hover:text-[#172B3A] flex items-center justify-center text-xs font-bold shadow-neo-sm"
               >
                 ✕
               </button>
@@ -623,25 +622,25 @@ export const FleetLiveMap: React.FC = () => {
 
             {/* Vehicle Details */}
             {selectedAsset.type === 'BIKE' && (
-              <div className="mt-3.5 space-y-3.5 text-xs font-semibold text-[#172B3A]">
+              <div className="mt-3.5 space-y-3 text-xs font-semibold text-[#172B3A]">
                 <div className="grid grid-cols-2 gap-2.5">
-                  <div className="p-3 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1]">
+                  <div className="p-3 bg-[#F8F7FD] rounded-2xl border border-[#EDF2F1] shadow-neo-sm">
                     <span className="text-[10px] text-[#8A97A0] uppercase font-bold">IoT State</span>
                     <p className="text-xs font-extrabold mt-0.5 flex items-center gap-1.5">
                       <span
                         className={`w-2 h-2 rounded-full ${
-                          selectedAsset.status === 'MOVING' ? 'bg-[#18B878] animate-ping' : 'bg-[#172B3A]'
+                          selectedAsset.status === 'MOVING' ? 'bg-[#62CE90] animate-ping' : 'bg-[#172B3A]'
                         }`}
                       />
                       <span>{selectedAsset.status} {selectedAsset.speed > 0 ? `(${selectedAsset.speed} km/h)` : ''}</span>
                     </p>
                   </div>
 
-                  <div className="p-3 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1]">
+                  <div className="p-3 bg-[#F8F7FD] rounded-2xl border border-[#EDF2F1] shadow-neo-sm">
                     <span className="text-[10px] text-[#8A97A0] uppercase font-bold">Battery SoC</span>
                     <p
                       className={`text-xs font-extrabold mt-0.5 ${
-                        selectedAsset.battery < 20 ? 'text-[#EF4444]' : 'text-[#129461]'
+                        selectedAsset.battery < 20 ? 'text-[#EF4444]' : 'text-[#38A169]'
                       }`}
                     >
                       {selectedAsset.battery}% ({selectedAsset.rangeKm} km Range)
@@ -649,7 +648,7 @@ export const FleetLiveMap: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-3 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1] space-y-1.5 text-[11px]">
+                <div className="p-3 bg-[#F8F7FD] rounded-2xl border border-[#EDF2F1] space-y-1.5 text-[11px] shadow-neo-sm">
                   <div className="flex justify-between text-[#8A97A0]">
                     <span>Rider:</span>
                     <strong className="text-[#172B3A]">{selectedAsset.rider}</strong>
@@ -668,7 +667,7 @@ export const FleetLiveMap: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <button
                     onClick={() => handleCommand('Remote Immobilize')}
-                    className="py-2.5 px-3 rounded-2xl bg-[#FEE2E2] text-[#EF4444] font-bold text-xs hover:bg-[#FCA5A5]/30 transition flex items-center justify-center gap-1.5"
+                    className="py-2.5 px-3 rounded-2xl bg-[#FEE2E2] text-[#EF4444] font-bold text-xs hover:bg-[#FCA5A5]/30 transition flex items-center justify-center gap-1.5 shadow-neo-sm"
                   >
                     <Lock className="w-3.5 h-3.5" />
                     <span>Immobilize</span>
@@ -676,7 +675,7 @@ export const FleetLiveMap: React.FC = () => {
 
                   <button
                     onClick={() => handleCommand('Sound Alert Horn')}
-                    className="py-2.5 px-3 rounded-2xl bg-[#E9F7F1] text-[#129461] font-bold text-xs hover:bg-[#DCF0E6] transition flex items-center justify-center gap-1.5"
+                    className="py-2.5 px-3 rounded-2xl bg-[#EAF8F1] text-[#38A169] font-bold text-xs hover:bg-[#C8F0DC] transition flex items-center justify-center gap-1.5 shadow-neo-sm"
                   >
                     <Volume2 className="w-3.5 h-3.5" />
                     <span>Sound Horn</span>
@@ -688,9 +687,9 @@ export const FleetLiveMap: React.FC = () => {
             {/* Hub Details */}
             {selectedAsset.type === 'HUB' && (
               <div className="mt-3.5 space-y-3 text-xs font-semibold text-[#172B3A]">
-                <div className="p-3 bg-[#E9F7F1] rounded-2xl border border-[#DCF0E6] text-center">
-                  <span className="text-[10px] text-[#129461] uppercase font-bold">Available Fleet</span>
-                  <h4 className="text-lg font-extrabold text-[#129461]">
+                <div className="p-3 bg-[#EAF8F1] rounded-2xl border border-[#C8F0DC] text-center shadow-neo-sm">
+                  <span className="text-[10px] text-[#38A169] uppercase font-bold">Available Fleet</span>
+                  <h4 className="text-lg font-extrabold text-[#38A169]">
                     {selectedAsset.availableBikes} / {selectedAsset.totalBikes} Bikes Ready
                   </h4>
                 </div>
@@ -704,7 +703,7 @@ export const FleetLiveMap: React.FC = () => {
             {/* Swap Details */}
             {selectedAsset.type === 'SWAP' && (
               <div className="mt-3.5 space-y-3 text-xs font-semibold text-[#172B3A]">
-                <div className="p-3 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-center">
+                <div className="p-3 bg-[#E0F2FE] rounded-2xl border border-[#BAE6FD] text-center shadow-neo-sm">
                   <span className="text-[10px] text-[#0284C7] uppercase font-bold">Fast Swaps</span>
                   <h4 className="text-lg font-extrabold text-[#0284C7]">
                     {selectedAsset.chargedBatteries} / {selectedAsset.totalDocks} Batteries Ready

@@ -13,8 +13,7 @@ export async function getAdminStats(_req: Request, res: Response) {
     const [
       totalRiders,
       verifiedRiders,
-      pendingKycVerifications,
-      pendingKycUsers,
+      pendingKyc,
       totalBikes,
       availableBikes,
       rentedBikes,
@@ -26,7 +25,6 @@ export async function getAdminStats(_req: Request, res: Response) {
       prisma.user.count({ where: { role: 'RIDER' } }),
       prisma.user.count({ where: { role: 'RIDER', kycStatus: 'APPROVED' } }),
       prisma.kycVerification.count({ where: { status: 'SUBMITTED' } }),
-      prisma.user.count({ where: { kycStatus: 'SUBMITTED' } }),
       prisma.bike.count(),
       prisma.bike.count({ where: { status: 'AVAILABLE' } }),
       prisma.bike.count({ where: { status: 'RENTED' } }),
@@ -35,8 +33,6 @@ export async function getAdminStats(_req: Request, res: Response) {
       prisma.swapStation.count({ where: { status: 'ACTIVE' } }),
       prisma.bikeModel.count({ where: { status: 'ACTIVE' } }),
     ]);
-
-    const pendingKyc = Math.max(pendingKycVerifications, pendingKycUsers);
 
     // Financial estimations based on active fleet & verification pipeline
     const estimatedWeeklyRevenue = rentedBikes * 1925;
@@ -324,10 +320,9 @@ export async function createSwapStation(req: Request, res: Response) {
 // 10. GET /admin/kyc/submissions - Full KYC list with presigned document URLs
 export async function getKycSubmissions(req: Request, res: Response) {
   try {
-    const statusFilter = String(req.query.status || '').trim().toUpperCase();
+    const status = String(req.query.status || '').trim();
+    const where = status ? { status } : {};
 
-    // 1. Fetch all kycVerification records
-    const where: any = statusFilter ? { status: statusFilter } : {};
     const submissions = await prisma.kycVerification.findMany({
       where,
       include: {
@@ -346,72 +341,27 @@ export async function getKycSubmissions(req: Request, res: Response) {
       orderBy: { submittedAt: 'desc' },
     });
 
-    // 2. Also check if any users have kycStatus === 'SUBMITTED' without a KycVerification record
-    const usersWithSubmittedKyc = await prisma.user.findMany({
-      where: {
-        kycStatus: 'SUBMITTED',
-        kycVerifications: { none: {} },
-      },
-    });
-
-    // Auto-create verification records for any unlinked submitted riders
-    for (const u of usersWithSubmittedKyc) {
-      const created = await prisma.kycVerification.create({
-        data: {
-          userId: u.id,
-          status: 'SUBMITTED',
-          fullName: u.fullName,
-          address: u.city || 'Hyderabad',
-          aadhaarNumber: '5544 3322 1100',
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              phone: true,
-              fullName: true,
-              email: true,
-              city: true,
-              avatarUrl: true,
-              kycStatus: true,
-            },
-          },
-        },
-      });
-      submissions.push(created);
-    }
-
     const serialized = await Promise.all(
       submissions.map(async (v) => {
-        let aadhaarFrontUrl = null;
-        let aadhaarBackUrl = null;
-        let panCardUrl = null;
-        let selfieUrl = null;
-        let addressProofUrl = null;
-
-        try {
-          [aadhaarFrontUrl, aadhaarBackUrl, panCardUrl, selfieUrl, addressProofUrl] =
-            await Promise.all([
-              presignGet(v.aadhaarFrontKey),
-              presignGet(v.aadhaarBackKey),
-              presignGet(v.panCardKey),
-              presignGet(v.selfieKey),
-              presignGet(v.addressProofKey),
-            ]);
-        } catch (e) {
-          // If presign fails for local test keys, proceed gracefully
-        }
+        const [aadhaarFrontUrl, aadhaarBackUrl, panCardUrl, selfieUrl, addressProofUrl] =
+          await Promise.all([
+            presignGet(v.aadhaarFrontKey),
+            presignGet(v.aadhaarBackKey),
+            presignGet(v.panCardKey),
+            presignGet(v.selfieKey),
+            presignGet(v.addressProofKey),
+          ]);
 
         return {
           id: v.id,
           userId: v.userId,
           status: v.status,
-          fullName: v.fullName || v.user?.fullName || 'Rider Applicant',
-          phone: v.user?.phone || '+91 7095682464',
-          email: v.user?.email || 'mad@gmail.com',
-          city: v.user?.city || 'Hyderabad',
-          address: v.address || 'Hyderabad',
-          aadhaarNumber: v.aadhaarNumber || '5544 3322 1100',
+          fullName: v.fullName || v.user.fullName,
+          phone: v.user.phone,
+          email: v.user.email,
+          city: v.user.city,
+          address: v.address,
+          aadhaarNumber: v.aadhaarNumber,
           panNumber: v.panNumber,
           aadhaarFrontUrl,
           aadhaarBackUrl,

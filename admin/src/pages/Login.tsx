@@ -63,30 +63,29 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#FBFBFD] flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      {/* Background Soft Mobile Theme Blurs */}
-      <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-[#EFF7F5] to-transparent pointer-events-none" />
-      <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#18B878]/10 blur-[90px] pointer-events-none" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#5FD9A4]/15 blur-[90px] pointer-events-none" />
+    <div className="min-h-screen w-full bg-[#F8F7FD] flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      {/* Background Soft Blurs */}
+      <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#62CE90]/15 blur-[90px] pointer-events-none" />
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#62CE90]/10 blur-[90px] pointer-events-none" />
 
-      {/* Floating Card Matching Mobile Neumorphism */}
-      <div className="w-full max-w-md bg-white border border-[#EDF2F1] rounded-3xl p-8 sm:p-10 shadow-xl shadow-slate-200/50 relative z-10">
+      {/* Floating Neumorphic Card */}
+      <div className="w-full max-w-md bg-white border border-[#EDF2F1] rounded-3xl p-8 sm:p-10 shadow-neo relative z-10">
         {/* Brand Icon & Heading */}
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1FAE72] to-[#129461] flex items-center justify-center shadow-lg shadow-emerald-700/25 mb-4 ring-4 ring-[#E9F7F1]">
-            <Bike className="w-9 h-9 text-white" />
+          <div className="w-18 h-18 rounded-3xl bg-white p-2 border border-[#EAF8F1] shadow-neo mb-4 flex items-center justify-center">
+            <img src="/assets/icon.png" alt="Ride For You" className="w-14 h-14 rounded-2xl object-contain" />
           </div>
 
           <h1 className="text-2xl font-extrabold text-[#172B3A] tracking-tight">
-            RIDE FOR <span className="text-[#18B878]">YOU</span>
+            RIDE FOR <span className="text-[#62CE90]">YOU</span>
           </h1>
-          <p className="text-xs font-bold text-[#8A97A0] tracking-wider uppercase mt-1">
+          <p className="text-xs font-extrabold text-[#8A97A0] tracking-wider uppercase mt-1">
             Enterprise Fleet Admin Portal
           </p>
 
-          <div className="mt-3 flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#F3FAF6] border border-[#DCF0E6] text-[11px] text-[#129461] font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#18B878]" />
-            <span>2FA OTP Verified Gateway</span>
+          <div className="mt-3 flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#EAF8F1] border border-[#C8F0DC] text-[11px] text-[#38A169] font-bold shadow-neo-sm">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#62CE90]" />
+            <span>2FA OTP Secure Gateway</span>
           </div>
         </div>
 
@@ -100,7 +99,7 @@ export const Login: React.FC = () => {
         {step === 'phone' ? (
           <form onSubmit={handleRequestOtp} className="space-y-5">
             <div>
-              <label className="block text-xs font-bold text-[#172B3A] mb-2">
+              <label className="block text-xs font-extrabold text-[#172B3A] mb-2">
                 Administrator Phone Number
               </label>
               <div className="relative">
@@ -111,18 +110,18 @@ export const Login: React.FC = () => {
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+91 9876543210"
                   required
-                  className="w-full bg-[#FBFBFD] border border-[#EDF2F1] text-[#172B3A] rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:border-[#18B878] focus:ring-2 focus:ring-[#18B878]/15 font-semibold transition placeholder:text-[#8A97A0]"
+                  className="w-full bg-[#F8F7FD] border border-[#EDF2F1] text-[#172B3A] rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:border-[#62CE90] focus:ring-2 focus:ring-[#62CE90]/20 font-bold transition shadow-neo-inset placeholder:text-[#8A97A0]"
                 />
               </div>
               <p className="text-[11px] text-[#8A97A0] mt-2">
-                Registered Super Admin: <span className="text-[#18B878] font-bold">+917095682464</span>
+                Super Admin Access: <span className="text-[#62CE90] font-extrabold">+917095682464</span>
               </p>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-[#1FAE72] via-[#5FD9A4] to-[#9EE7C4] text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.99] transition shadow-lg shadow-emerald-500/25 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white font-extrabold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.99] transition shadow-neo-btn disabled:opacity-50"
             >
               {loading ? (
                 <span>Generating OTP challenge...</span>
@@ -138,13 +137,13 @@ export const Login: React.FC = () => {
           <form onSubmit={handleVerifyOtp} className="space-y-5">
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="text-xs font-bold text-[#172B3A]">
+                <label className="text-xs font-extrabold text-[#172B3A]">
                   Enter 6-Digit OTP Code
                 </label>
                 <button
                   type="button"
                   onClick={() => setStep('phone')}
-                  className="text-[11px] text-[#18B878] font-bold hover:underline"
+                  className="text-[11px] text-[#62CE90] font-bold hover:underline"
                 >
                   Change phone
                 </button>
@@ -160,18 +159,18 @@ export const Login: React.FC = () => {
                   maxLength={6}
                   required
                   autoFocus
-                  className="w-full bg-[#FBFBFD] border border-[#EDF2F1] text-[#172B3A] rounded-2xl pl-11 pr-4 py-3.5 text-base tracking-widest text-center focus:outline-none focus:border-[#18B878] focus:ring-2 focus:ring-[#18B878]/15 font-extrabold transition"
+                  className="w-full bg-[#F8F7FD] border border-[#EDF2F1] text-[#172B3A] rounded-2xl pl-11 pr-4 py-3.5 text-base tracking-widest text-center focus:outline-none focus:border-[#62CE90] focus:ring-2 focus:ring-[#62CE90]/20 font-extrabold transition shadow-neo-inset"
                 />
               </div>
               <p className="text-[11px] text-[#8A97A0] mt-2 text-center">
-                OTP sent to <strong className="text-[#172B3A]">{phone}</strong> (dev master: <span className="text-[#18B878] font-bold">123456</span>)
+                OTP sent to <strong className="text-[#172B3A]">{phone}</strong> (dev master: <span className="text-[#62CE90] font-bold">123456</span>)
               </p>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-[#1FAE72] via-[#5FD9A4] to-[#9EE7C4] text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.99] transition shadow-lg shadow-emerald-500/25 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white font-extrabold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.99] transition shadow-neo-btn disabled:opacity-50"
             >
               {loading ? (
                 <span>Authenticating role...</span>
@@ -191,7 +190,7 @@ export const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={handleRequestOtp}
-                className="w-full text-center text-xs text-[#18B878] hover:underline font-bold"
+                className="w-full text-center text-xs text-[#62CE90] hover:underline font-bold"
               >
                 Resend OTP
               </button>
@@ -200,8 +199,8 @@ export const Login: React.FC = () => {
         )}
 
         <div className="mt-8 pt-6 border-t border-[#EDF2F1] text-center">
-          <p className="text-[11px] text-[#8A97A0] font-medium">
-            Ride For You Enterprise Fleet Management System • v2.4.0
+          <p className="text-[11px] text-[#8A97A0] font-semibold">
+            Ride For You Enterprise Fleet Management System • v2.5.0
           </p>
         </div>
       </div>

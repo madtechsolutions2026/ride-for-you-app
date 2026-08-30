@@ -80,19 +80,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-[#EDF2F1] flex flex-col flex-shrink-0 min-h-screen shadow-sm font-sans">
-      {/* Brand Header */}
+    <aside className="w-64 bg-white border-r border-[#EDF2F1] flex flex-col flex-shrink-0 min-h-screen shadow-neo-sm font-sans z-20">
+      {/* Brand Header with App Icon Asset */}
       <div className="h-20 px-6 flex items-center gap-3 border-b border-[#EDF2F1] bg-white">
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#1FAE72] to-[#129461] flex items-center justify-center shadow-md shadow-emerald-600/25 ring-2 ring-[#E9F7F1]">
-          <Bike className="w-5 h-5 text-white" />
+        <div className="w-11 h-11 rounded-2xl bg-white p-1 border border-[#EAF8F1] shadow-neo-sm flex items-center justify-center">
+          <img src="/assets/icon.png" alt="Ride For You" className="w-9 h-9 rounded-xl object-contain" />
         </div>
         <div>
           <h1 className="text-[#172B3A] font-extrabold text-base leading-tight tracking-tight">
-            RIDE FOR <span className="text-[#18B878]">YOU</span>
+            RIDE FOR <span className="text-[#62CE90]">YOU</span>
           </h1>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="w-2 h-2 rounded-full bg-[#18B878] animate-pulse"></span>
-            <span className="text-[10px] font-bold tracking-wider text-[#18B878] uppercase">Admin Portal</span>
+            <span className="w-2 h-2 rounded-full bg-[#62CE90] animate-pulse"></span>
+            <span className="text-[10px] font-extrabold tracking-wider text-[#38A169] uppercase">
+              Operations Hub
+            </span>
           </div>
         </div>
       </div>
@@ -104,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
             <p className="px-3 text-[10px] font-extrabold tracking-widest text-[#8A97A0] uppercase mb-2">
               {group.title}
             </p>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -112,10 +114,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id as ActiveTab)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-extrabold transition-all duration-200 ${
                       isActive
-                        ? 'bg-gradient-to-r from-[#1FAE72] via-[#5FD9A4] to-[#9EE7C4] text-white shadow-md shadow-emerald-500/20'
-                        : 'text-[#8A97A0] hover:text-[#172B3A] hover:bg-[#F3FAF6]'
+                        ? 'bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white shadow-neo-btn'
+                        : 'text-[#8A97A0] hover:text-[#172B3A] hover:bg-[#F8F7FD]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -125,7 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
                     {item.badge !== undefined && (
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold shadow-sm ${
-                          item.badgeColor || 'bg-[#E9F7F1] text-[#129461]'
+                          item.badgeColor || 'bg-[#EAF8F1] text-[#38A169]'
                         }`}
                       >
                         {item.badge}
@@ -139,10 +141,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
         ))}
       </div>
 
-      {/* Clean Neumorphic User Profile & Logout */}
-      <div className="p-4 border-t border-[#EDF2F1] bg-[#FBFBFD]">
+      {/* Neumorphic User Profile & Logout */}
+      <div className="p-4 border-t border-[#EDF2F1] bg-[#F8F7FD]">
         <div className="flex items-center gap-3 mb-3 px-2">
-          <div className="w-9 h-9 rounded-2xl bg-[#E9F7F1] border border-[#DCF0E6] flex items-center justify-center text-[#18B878] font-extrabold text-xs shadow-sm">
+          <div className="w-10 h-10 rounded-2xl bg-white border border-[#EAF8F1] flex items-center justify-center text-[#62CE90] font-extrabold text-xs shadow-neo-sm">
             AD
           </div>
           <div className="flex-1 min-w-0">
@@ -152,7 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
         </div>
         <button
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold text-[#EF4444] bg-white hover:bg-[#FEE2E2] rounded-2xl transition border border-[#EDF2F1] shadow-sm"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-extrabold text-[#EF4444] bg-white hover:bg-[#FEE2E2] rounded-2xl transition border border-[#EDF2F1] shadow-neo-sm"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Sign Out</span>
