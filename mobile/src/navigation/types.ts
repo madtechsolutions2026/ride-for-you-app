@@ -3,4 +3,11 @@ export type RootStackParamList = {
   VerifyOtp: { challengeId: string; phone: string };
   Home: undefined;
   Profile: undefined;
+  VehiclesList: {
+    categoryId: 'swap' | 'home';
+    categoryTitle: string;
+    hubId: string;
+    hubName: string;
+    hubAddress: string;
+  };
 };

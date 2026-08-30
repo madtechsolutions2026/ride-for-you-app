@@ -19,3 +19,4 @@ export { ThemedModal } from './ThemedModal';
 export { SideDrawer } from './SideDrawer';
 export { NotificationSheet } from './NotificationSheet';
 export { NearbyHubsSheet, NEARBY_HUBS, type StationHub } from './NearbyHubsSheet';
+export { CategoryHubsSheet, type CategoryHub } from './CategoryHubsSheet';

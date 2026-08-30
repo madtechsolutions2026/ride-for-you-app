@@ -19,15 +19,17 @@ import { clearTokens } from '../api/tokenStore';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
 import {
+  CategoryHubsSheet,
   Glass,
-  NeoSurface,
   NearbyHubsSheet,
+  NeoSurface,
   NotificationSheet,
   QuickAction,
   QuickActionDivider,
   SideDrawer,
   StylizedMap,
   ThemedModal,
+  type CategoryHub,
   type MapStation,
 } from '../components';
 
@@ -62,13 +64,13 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
   const { width } = useWindowDimensions();
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  // Modal / Sheet States
+  // Modal & Sheet States
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [notifVisible, setNotifVisible] = useState(false);
   const [hubsSheetVisible, setHubsSheetVisible] = useState(false);
+  const [categoryHubsVisible, setCategoryHubsVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<'swap' | 'home'>('swap');
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
-  const [bookingModalVisible, setBookingModalVisible] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<'swap' | 'home'>('swap');
 
   const fetchProfile = () => {
     apiClient
@@ -93,9 +95,20 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
     onLogout();
   };
 
-  const handleBookVehicle = (plan: 'swap' | 'home') => {
-    setSelectedPlan(plan);
-    setBookingModalVisible(true);
+  const handleOpenCategory = (category: 'swap' | 'home') => {
+    setSelectedCategory(category);
+    setCategoryHubsVisible(true);
+  };
+
+  const handleSelectHub = (hub: CategoryHub) => {
+    setCategoryHubsVisible(false);
+    navigation.navigate('VehiclesList', {
+      categoryId: selectedCategory,
+      categoryTitle: selectedCategory === 'swap' ? 'Battery Swap Hubs' : 'Home Charging Hubs',
+      hubId: hub.id,
+      hubName: hub.name,
+      hubAddress: hub.address,
+    });
   };
 
   const cardInner = width - screenPadding * 2 - spacing.sm * 2;
@@ -144,7 +157,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
         {/* ---------------- ENLARGED MAP + QUICK ACTIONS ---------------- */}
         <NeoSurface borderRadius={radius.lg} style={styles.mapCard}>
           <StylizedMap width={cardInner} height={250} stations={STATIONS} />
-          
+
           <View style={styles.actionsRow}>
             <QuickAction
               icon="bicycle-outline"
@@ -156,7 +169,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
               icon="battery-charging-outline"
               label={'Battery\nSwap'}
               badge="New"
-              onPress={() => handleBookVehicle('swap')}
+              onPress={() => handleOpenCategory('swap')}
             />
             <QuickActionDivider />
             <QuickAction
@@ -174,106 +187,96 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
           </View>
         </NeoSurface>
 
-        {/* ---------------- TWO DEDICATED EV MODEL OPTIONS ---------------- */}
+        {/* ---------------- TWO RENTAL CATEGORIES ---------------- */}
         <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Choose Your EV Model</Text>
-            <Text style={styles.sectionSub}>Pick the rental plan that fits your commute</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Choose Rental Category</Text>
+          <Text style={styles.sectionSub}>Select a category to view nearby hubs & available bikes</Text>
         </View>
 
-        <View style={styles.modelsContainer}>
-          {/* Option 1: Battery Swap Model */}
-          <NeoSurface borderRadius={radius.xl} style={styles.modelCard}>
-            <View style={styles.modelCardTop}>
-              <View style={styles.modelTagSwap}>
-                <Ionicons name="flash" size={13} color="#059669" />
-                <Text style={styles.modelTagSwapText}>Unlimited Battery Swaps</Text>
+        <View style={styles.categoriesContainer}>
+          {/* Category 1: Battery Swap */}
+          <Pressable onPress={() => handleOpenCategory('swap')}>
+            <NeoSurface borderRadius={radius.xl} style={styles.catCard}>
+              <View style={styles.catCardHeader}>
+                <View style={styles.catBadgeSwap}>
+                  <Ionicons name="flash" size={13} color="#059669" />
+                  <Text style={styles.catBadgeSwapText}>Unlimited Swaps</Text>
+                </View>
+                <View style={styles.availFleetBadge}>
+                  <Text style={styles.availFleetText}>29+ Bikes Nearby</Text>
+                </View>
               </View>
-              <View style={styles.modelPriceBadge}>
-                <Text style={styles.priceSymbol}>₹</Text>
-                <Text style={styles.priceAmount}>249</Text>
-                <Text style={styles.pricePeriod}>/day</Text>
-              </View>
-            </View>
 
-            <View style={styles.modelBody}>
-              <Image source={images.vehicleS1} style={styles.modelImage} contentFit="contain" />
+              <View style={styles.catCardBody}>
+                <Image source={images.vehicleS1} style={styles.catScooterImg} contentFit="contain" />
 
-              <View style={styles.modelDetails}>
-                <Text style={styles.modelTitle}>RFY Swapper S1</Text>
-                <Text style={styles.modelDescription}>
-                  Swap depleted batteries in 2 mins at any metro hub with zero charging wait.
-                </Text>
+                <View style={styles.catInfo}>
+                  <Text style={styles.catTitle}>Battery Swap Hubs</Text>
+                  <Text style={styles.catDesc}>
+                    Swap drained batteries in 2 minutes at 50+ metro hubs across the city with zero charging wait.
+                  </Text>
 
-                <View style={styles.specChipsRow}>
-                  <View style={styles.specChip}>
-                    <Ionicons name="speedometer-outline" size={12} color={colors.brand.primary} />
-                    <Text style={styles.specChipText}>110 km Range</Text>
+                  <View style={styles.catChipsRow}>
+                    <View style={styles.catChip}>
+                      <Ionicons name="sync" size={11} color={colors.brand.primary} />
+                      <Text style={styles.catChipText}>2-Min Swap</Text>
+                    </View>
+                    <View style={styles.catChip}>
+                      <Ionicons name="speedometer-outline" size={11} color={colors.brand.primary} />
+                      <Text style={styles.catChipText}>110 km Range</Text>
+                    </View>
                   </View>
-                  <View style={styles.specChip}>
-                    <Ionicons name="hardware-chip-outline" size={12} color={colors.brand.primary} />
-                    <Text style={styles.specChipText}>50 km/h Top</Text>
+
+                  <View style={styles.catBtnSwap}>
+                    <Text style={styles.catBtnText}>Explore Swap Hubs</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
                   </View>
                 </View>
-
-                <Pressable
-                  style={styles.bookBtnSwap}
-                  onPress={() => handleBookVehicle('swap')}
-                  hitSlop={4}
-                >
-                  <Text style={styles.bookBtnText}>Book Swapper S1</Text>
-                  <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
-                </Pressable>
               </View>
-            </View>
-          </NeoSurface>
+            </NeoSurface>
+          </Pressable>
 
-          {/* Option 2: Home Charging Model */}
-          <NeoSurface borderRadius={radius.xl} style={styles.modelCard}>
-            <View style={styles.modelCardTop}>
-              <View style={styles.modelTagHome}>
-                <Ionicons name="home" size={13} color="#0284C7" />
-                <Text style={styles.modelTagHomeText}>Home Fast Charger Included</Text>
+          {/* Category 2: Home Charging */}
+          <Pressable onPress={() => handleOpenCategory('home')}>
+            <NeoSurface borderRadius={radius.xl} style={styles.catCard}>
+              <View style={styles.catCardHeader}>
+                <View style={styles.catBadgeHome}>
+                  <Ionicons name="home" size={13} color="#0284C7" />
+                  <Text style={styles.catBadgeHomeText}>Home Charger Included</Text>
+                </View>
+                <View style={styles.availFleetBadge}>
+                  <Text style={styles.availFleetText}>25+ Bikes Nearby</Text>
+                </View>
               </View>
-              <View style={styles.modelPriceBadge}>
-                <Text style={styles.priceSymbol}>₹</Text>
-                <Text style={styles.priceAmount}>299</Text>
-                <Text style={styles.pricePeriod}>/day</Text>
-              </View>
-            </View>
 
-            <View style={styles.modelBody}>
-              <Image source={images.vehicleX1} style={styles.modelImage} contentFit="contain" />
+              <View style={styles.catCardBody}>
+                <Image source={images.vehicleX1} style={styles.catScooterImg} contentFit="contain" />
 
-              <View style={styles.modelDetails}>
-                <Text style={styles.modelTitle}>RFY Home Pro X1</Text>
-                <Text style={styles.modelDescription}>
-                  Includes portable 3-pin charger. Plug into any normal wall socket overnight.
-                </Text>
+                <View style={styles.catInfo}>
+                  <Text style={styles.catTitle}>Home Charging Hubs</Text>
+                  <Text style={styles.catDesc}>
+                    Includes portable 3-pin fast charger. Plug into any normal wall socket overnight at home or office.
+                  </Text>
 
-                <View style={styles.specChipsRow}>
-                  <View style={styles.specChip}>
-                    <Ionicons name="speedometer-outline" size={12} color={colors.brand.primary} />
-                    <Text style={styles.specChipText}>130 km Range</Text>
+                  <View style={styles.catChipsRow}>
+                    <View style={styles.catChip}>
+                      <Ionicons name="flash-outline" size={11} color={colors.brand.primary} />
+                      <Text style={styles.catChipText}>Fast Charger</Text>
+                    </View>
+                    <View style={styles.catChip}>
+                      <Ionicons name="speedometer-outline" size={11} color={colors.brand.primary} />
+                      <Text style={styles.catChipText}>130 km Range</Text>
+                    </View>
                   </View>
-                  <View style={styles.specChip}>
-                    <Ionicons name="hardware-chip-outline" size={12} color={colors.brand.primary} />
-                    <Text style={styles.specChipText}>55 km/h Top</Text>
+
+                  <View style={styles.catBtnHome}>
+                    <Text style={styles.catBtnText}>Explore Home Hubs</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
                   </View>
                 </View>
-
-                <Pressable
-                  style={styles.bookBtnHome}
-                  onPress={() => handleBookVehicle('home')}
-                  hitSlop={4}
-                >
-                  <Text style={styles.bookBtnText}>Book Home Pro X1</Text>
-                  <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
-                </Pressable>
               </View>
-            </View>
-          </NeoSurface>
+            </NeoSurface>
+          </Pressable>
         </View>
 
         {/* ---------------- SAFETY PROMISE BANNER ---------------- */}
@@ -284,7 +287,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
           <View style={{ flex: 1 }}>
             <Text style={styles.bannerTitle}>Ride Safe & Insured</Text>
             <Text style={styles.bannerText}>
-              Sanitized helmets, 24/7 roadside assistance & full coverage on every ride.
+              Sanitized helmets, 24/7 roadside assistance & full insurance on every rental.
             </Text>
           </View>
         </View>
@@ -347,6 +350,14 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
         onClose={() => setHubsSheetVisible(false)}
       />
 
+      {/* ---------------- CATEGORY HUBS SHEET ---------------- */}
+      <CategoryHubsSheet
+        visible={categoryHubsVisible}
+        categoryId={selectedCategory}
+        onClose={() => setCategoryHubsVisible(false)}
+        onSelectHub={handleSelectHub}
+      />
+
       {/* ---------------- THEMED LOGOUT MODAL ---------------- */}
       <ThemedModal
         visible={logoutModalVisible}
@@ -358,25 +369,6 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
         isDestructive
         onConfirm={handleConfirmLogout}
         onCancel={() => setLogoutModalVisible(false)}
-      />
-
-      {/* ---------------- BOOKING INTENT MODAL ---------------- */}
-      <ThemedModal
-        visible={bookingModalVisible}
-        title={selectedPlan === 'swap' ? 'RFY Swapper S1' : 'RFY Home Pro X1'}
-        message={
-          selectedPlan === 'swap'
-            ? 'Unlimited battery swaps included. Collect at any nearby station in under 2 minutes!'
-            : 'Portable charger included for hassle-free home/office charging with 130 km range.'
-        }
-        icon={selectedPlan === 'swap' ? 'flash' : 'home'}
-        confirmLabel="Proceed to KYC Review"
-        cancelLabel="Back"
-        onConfirm={() => {
-          setBookingModalVisible(false);
-          navigation.navigate('Profile');
-        }}
-        onCancel={() => setBookingModalVisible(false)}
       />
     </View>
   );
@@ -443,7 +435,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
   },
 
-  /* Dedicated Models Section */
+  /* Categories Section */
   sectionHeader: {
     marginHorizontal: screenPadding,
     marginTop: spacing.lg,
@@ -456,21 +448,21 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: 2,
   },
-  modelsContainer: {
+  categoriesContainer: {
     paddingHorizontal: screenPadding,
     gap: spacing.md,
   },
-  modelCard: {
+  catCard: {
     padding: spacing.md,
     ...shadows.card,
   },
-  modelCardTop: {
+  catCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  modelTagSwap: {
+  catBadgeSwap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -479,12 +471,12 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radius.pill,
   },
-  modelTagSwapText: {
+  catBadgeSwapText: {
     fontFamily: fontFamily.semibold,
     fontSize: 11,
     color: '#059669',
   },
-  modelTagHome: {
+  catBadgeHome: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -493,60 +485,55 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radius.pill,
   },
-  modelTagHomeText: {
+  catBadgeHomeText: {
     fontFamily: fontFamily.semibold,
     fontSize: 11,
     color: '#0284C7',
   },
-  modelPriceBadge: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+  availFleetBadge: {
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: '#EDF2F7',
   },
-  priceSymbol: {
-    fontFamily: fontFamily.bold,
-    fontSize: 13,
+  availFleetText: {
+    fontFamily: fontFamily.semibold,
+    fontSize: 10.5,
     color: colors.brand.primary,
   },
-  priceAmount: {
-    fontFamily: fontFamily.bold,
-    fontSize: 18,
-    color: colors.text.primary,
-  },
-  pricePeriod: {
-    fontFamily: fontFamily.medium,
-    fontSize: 11,
-    color: colors.text.secondary,
-  },
-  modelBody: {
+  catCardBody: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginTop: spacing.xs,
   },
-  modelImage: {
+  catScooterImg: {
     width: 100,
     height: 100,
   },
-  modelDetails: {
+  catInfo: {
     flex: 1,
   },
-  modelTitle: {
+  catTitle: {
     fontFamily: fontFamily.bold,
     fontSize: 16,
     color: colors.text.primary,
   },
-  modelDescription: {
+  catDesc: {
     fontFamily: fontFamily.regular,
-    fontSize: 11.5,
+    fontSize: 11,
     lineHeight: 15,
     color: colors.text.secondary,
     marginTop: 2,
   },
-  specChipsRow: {
+  catChipsRow: {
     flexDirection: 'row',
     gap: 6,
     marginVertical: 8,
   },
-  specChip: {
+  catChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
@@ -555,12 +542,12 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radius.pill,
   },
-  specChipText: {
+  catChipText: {
     fontFamily: fontFamily.semibold,
-    fontSize: 10.5,
+    fontSize: 10,
     color: colors.text.primary,
   },
-  bookBtnSwap: {
+  catBtnSwap: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -571,7 +558,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     marginTop: 2,
   },
-  bookBtnHome: {
+  catBtnHome: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -582,9 +569,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     marginTop: 2,
   },
-  bookBtnText: {
+  catBtnText: {
     fontFamily: fontFamily.bold,
-    fontSize: 12.5,
+    fontSize: 12,
     color: '#FFFFFF',
   },
 

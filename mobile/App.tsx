@@ -22,6 +22,7 @@ import RequestOtpScreen from './src/screens/RequestOtpScreen';
 import VerifyOtpScreen from './src/screens/VerifyOtpScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import VehiclesListScreen from './src/screens/VehiclesListScreen';
 
 // Keep the native splash screen on screen while we load fonts + check the
 // login token. We hide it manually once everything is ready (see below).
@@ -90,6 +91,7 @@ export default function App() {
               <Stack.Screen name="Profile">
                 {(props) => <ProfileScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
               </Stack.Screen>
+              <Stack.Screen name="VehiclesList" component={VehiclesListScreen} />
             </>
           ) : (
             <>
