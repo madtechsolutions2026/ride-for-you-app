@@ -140,6 +140,59 @@ async function serializeModel(
 /* GET /rental/hub                                                             */
 /* -------------------------------------------------------------------------- */
 
+export async function listHubs(req: AuthRequest, res: Response) {
+  try {
+    const lat = parseFloat(String(req.query.lat));
+    const lng = parseFloat(String(req.query.lng));
+    const hasOrigin = Number.isFinite(lat) && Number.isFinite(lng);
+
+    const hubs = await prisma.hub.findMany({
+      where: { status: 'ACTIVE' },
+      include: {
+        bikes: {
+          where: { status: 'AVAILABLE' },
+          select: { model: { select: { category: true } } },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    let list = hubs.map((h) => {
+      const availableByCategory: Record<Category, number> = { SWAP: 0, HOME: 0 };
+      for (const b of h.bikes) {
+        const c = b.model?.category as Category;
+        if (c in availableByCategory) availableByCategory[c] += 1;
+      }
+
+      return {
+        id: h.id,
+        name: h.name,
+        address: h.address,
+        lat: h.lat,
+        lng: h.lng,
+        city: h.city,
+        isOpen: computeIsOpen(h.openTime, h.closeTime),
+        operatingHours: operatingHours(h.openTime, h.closeTime),
+        contactPhone: h.contactPhone,
+        availableByCategory,
+        totalAvailable: availableByCategory.SWAP + availableByCategory.HOME,
+        ...(hasOrigin
+          ? { distanceMeters: Math.round(haversineMeters(lat, lng, h.lat, h.lng)) }
+          : {}),
+      };
+    });
+
+    if (hasOrigin) {
+      list = list.sort((a: any, b: any) => a.distanceMeters - b.distanceMeters);
+    }
+
+    return res.json({ count: list.length, hubs: list });
+  } catch (error: any) {
+    console.error('Error in listHubs:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
 export async function getHub(_req: AuthRequest, res: Response) {
   try {
     const cacheKey = 'rental:hub';

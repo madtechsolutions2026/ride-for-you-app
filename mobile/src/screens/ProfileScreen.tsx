@@ -170,7 +170,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
 
       {/* Top Background Soft Gradient */}
       <LinearGradient
-        colors={['#E6F5F0', '#F8FAFC']}
+        colors={[colors.brand.mint, colors.neutral[50]]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.35 }}
         style={StyleSheet.absoluteFill}
@@ -232,7 +232,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
             {/* Step 1 */}
             <View style={styles.stepCol}>
               <View style={styles.stepCircleCompleted}>
-                <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                <Ionicons name="checkmark" size={13} color={colors.common.white} />
               </View>
               <Text style={styles.stepNum}>1</Text>
               <Text style={styles.stepLabel}>Identity</Text>
@@ -243,7 +243,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
             {/* Step 2 */}
             <View style={styles.stepCol}>
               <View style={styles.stepCircleCompleted}>
-                <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                <Ionicons name="checkmark" size={13} color={colors.common.white} />
               </View>
               <Text style={styles.stepNum}>2</Text>
               <Text style={styles.stepLabel}>Address</Text>
@@ -254,7 +254,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
             {/* Step 3 */}
             <View style={styles.stepCol}>
               <View style={styles.stepCircleCompleted}>
-                <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                <Ionicons name="checkmark" size={13} color={colors.common.white} />
               </View>
               <Text style={styles.stepNum}>3</Text>
               <Text style={styles.stepLabel}>Selfie</Text>
@@ -290,7 +290,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
                 </View>
               )}
               <View style={styles.avatarEditBadge}>
-                <Ionicons name="pencil" size={12} color="#FFFFFF" />
+                <Ionicons name="pencil" size={12} color={colors.common.white} />
               </View>
             </Pressable>
 
@@ -348,7 +348,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               <Ionicons
                 name={kycStatus === 'Verified' ? 'checkmark-circle' : 'time-outline'}
                 size={14}
-                color={kycStatus === 'Verified' ? colors.status.success : '#D97706'}
+                color={kycStatus === 'Verified' ? colors.status.success : colors.status.warning}
               />
               <Text style={[styles.verifiedText, kycStatus === 'Pending' && styles.pendingPillText]}>
                 {kycStatus === 'Verified' ? 'Verified' : 'Pending'}
@@ -373,7 +373,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               <Ionicons
                 name={kycStatus === 'Verified' ? 'checkmark-circle' : 'time-outline'}
                 size={14}
-                color={kycStatus === 'Verified' ? colors.status.success : '#D97706'}
+                color={kycStatus === 'Verified' ? colors.status.success : colors.status.warning}
               />
               <Text style={[styles.verifiedText, kycStatus === 'Pending' && styles.pendingPillText]}>
                 {kycStatus === 'Verified' ? 'Verified' : 'Pending'}
@@ -398,7 +398,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               <Ionicons
                 name={kycStatus === 'Verified' ? 'checkmark-circle' : 'time-outline'}
                 size={14}
-                color={kycStatus === 'Verified' ? colors.status.success : '#D97706'}
+                color={kycStatus === 'Verified' ? colors.status.success : colors.status.warning}
               />
               <Text style={[styles.verifiedText, kycStatus === 'Pending' && styles.pendingPillText]}>
                 {kycStatus === 'Verified' ? 'Verified' : 'Pending'}
@@ -427,7 +427,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               <Ionicons
                 name={kycStatus === 'Verified' ? 'checkmark-circle' : 'time-outline'}
                 size={14}
-                color={kycStatus === 'Verified' ? colors.status.success : '#D97706'}
+                color={kycStatus === 'Verified' ? colors.status.success : colors.status.warning}
               />
               <Text style={[styles.verifiedText, kycStatus === 'Pending' && styles.pendingPillText]}>
                 {kycStatus === 'Verified' ? 'Verified' : 'Pending'}
@@ -439,7 +439,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
 
         {/* ---------------- DATA SAFE BANNER ---------------- */}
         <LinearGradient
-          colors={['#E6F5EE', '#F3FAF6']}
+          colors={[colors.brand.mint, colors.brand.mintSoft]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.safetyCard}
@@ -581,7 +581,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.neutral[50],
   },
   appBar: {
     flexDirection: 'row',
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.brand.mint,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radius.pill,
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.common.white,
     borderWidth: 2,
     borderColor: colors.brand.primary,
     alignItems: 'center',
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: fontFamily.bold,
     color: colors.text.secondary,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral[100],
     width: 16,
     height: 16,
     borderRadius: 8,
@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.brand.mint,
     borderWidth: 2,
     borderColor: colors.brand.primary,
     alignItems: 'center',
@@ -763,11 +763,11 @@ const styles = StyleSheet.create({
     color: colors.brand.primary,
   },
   placeholderText: {
-    color: '#94A3B8',
+    color: colors.neutral[400],
     fontStyle: 'italic',
   },
   placeholderSubText: {
-    color: '#94A3B8',
+    color: colors.neutral[400],
     fontStyle: 'italic',
   },
   avatarEditBadge: {
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: colors.common.white,
   },
   profileDetails: {
     flex: 1,
@@ -838,13 +838,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.brand.mint,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: radius.pill,
   },
   pendingBadge: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.status.warningTint,
   },
   badgeDot: {
     width: 6,
@@ -853,7 +853,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.status.success,
   },
   badgeDotPending: {
-    backgroundColor: '#D97706',
+    backgroundColor: colors.status.warning,
   },
   allGoodText: {
     fontFamily: fontFamily.semibold,
@@ -861,7 +861,7 @@ const styles = StyleSheet.create({
     color: colors.status.success,
   },
   pendingText: {
-    color: '#D97706',
+    color: colors.status.warning,
   },
   docItemCard: {
     flexDirection: 'row',
@@ -873,7 +873,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: radius.md,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.brand.mintSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -895,7 +895,7 @@ const styles = StyleSheet.create({
   docType: {
     fontFamily: fontFamily.regular,
     fontSize: 10,
-    color: '#94A3B8',
+    color: colors.neutral[400],
     marginTop: 1,
   },
   docStatusRow: {
@@ -907,13 +907,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: colors.brand.mintSoft,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: radius.pill,
   },
   pendingPill: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.status.warningTint,
   },
   verifiedText: {
     fontFamily: fontFamily.semibold,
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
     color: colors.status.success,
   },
   pendingPillText: {
-    color: '#D97706',
+    color: colors.status.warning,
   },
 
   /* Safety Card */
@@ -933,13 +933,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
+    borderColor: colors.brand.mint,
   },
   safetyIconWrapper: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.brand.mint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -1035,7 +1035,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabBadgeText: {
-    color: '#FFFFFF',
+    color: colors.common.white,
     fontSize: 8.5,
     fontFamily: fontFamily.bold,
   },
@@ -1043,7 +1043,7 @@ const styles = StyleSheet.create({
   /* Modal */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.overlay.scrim,
     justifyContent: 'flex-end',
   },
   modalCard: {
@@ -1072,7 +1072,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   modalInput: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral[100],
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
@@ -1090,7 +1090,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: radius.pill,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.neutral[200],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1110,6 +1110,6 @@ const styles = StyleSheet.create({
   modalSaveText: {
     fontFamily: fontFamily.bold,
     fontSize: 14,
-    color: '#FFFFFF',
+    color: colors.common.white,
   },
 });

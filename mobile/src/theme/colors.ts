@@ -17,9 +17,18 @@ export const colors = {
     dark: '#129461', // pressed states, darker accents
     light: '#4BD49B', // lighter green highlights
     mint: '#E9F7F1', // pale green — icon circles, badges
+    /*
+     * Screens had grown FIVE near-identical mints (#DCFCE7, #D1FAE5, #ECFDF5,
+     * #F0FDF4, #DEF7EC) plus several one-offs. They are now three deliberate
+     * steps. If a new screen needs a mint, it uses one of these - not a
+     * sixth invented one.
+     */
+    mintSoft: '#F3FAF6', // barely-there wash - row backgrounds
+    mintStrong: '#DCF0E6', // deeper mint - selected chips, active states
     // "Continue with OTP" is a left-to-right gradient of these:
     gradientFrom: '#1FAE72',
     gradientTo: '#5FD9A4',
+    gradientEnd: '#9EE7C4', // the pale right-hand end, where the arrow overhangs
     // The frosted hero blob fades between these top→bottom:
     glassTop: '#EFF7F5',
     glassBottom: '#DCEDE8',
@@ -34,10 +43,20 @@ export const colors = {
   },
 
   /* ---- Surfaces (backgrounds of things) ---- */
+  /*
+   * These three were sampled directly out of the login mockup rather than
+   * eyeballed. The old values were mint-tinted (green == blue, red lower);
+   * the mockup's ground is actually BLUE-tinted (blue highest). #FBFBFD alone
+   * is 48% of every pixel in the mockup, so this is the colour the whole app
+   * sits on — getting its temperature wrong made screens feel subtly off even
+   * when every element on them was correct.
+   *
+   * To go back to the mint ground, restore: #F7FAFA / #EFF6F7 / #FDFEFE.
+   */
   surface: {
-    background: '#F7FAFA', // almost white with a cool mint tint
-    backgroundTintTop: '#EFF6F7', // very pale blue-mint, top of the page wash
-    backgroundTintBottom: '#FDFEFE', // near-white, bottom of the page wash
+    background: '#FBFBFD', // measured: dominant page colour, 48% of the mockup
+    backgroundTintTop: '#F5F6FB', // measured: cooler wash at the top of the page
+    backgroundTintBottom: '#FDFDFF', // measured: near-white at the bottom
     card: '#FFFFFF', // white cards / panels that float on the background
     field: '#FFFFFF', // input backgrounds
   },
@@ -45,12 +64,75 @@ export const colors = {
   /* ---- Lines & borders ---- */
   border: '#EDF2F1', // hairline dividers only — inputs/cards use shadow, not borders
 
+  /*
+   * ---- Neutral ramp ----
+   *
+   * Added because screens kept reaching for Tailwind's slate values
+   * (#F8FAFC, #F1F5F9, #E2E8F0, #94A3B8) - not because anyone wanted Tailwind,
+   * but because this file had no neutral scale to reach for. It does now.
+   * These are tuned slightly cool-green rather than Tailwind's blue-grey so
+   * they sit correctly against the brand.
+   */
+  neutral: {
+    50: '#F7F9F9', // lightest wash - list backgrounds, disabled fills
+    100: '#F0F4F4', // subtle panel behind a card
+    200: '#E3EAEA', // dividers on a tinted surface
+    300: '#CBD6D6', // disabled borders
+    400: '#94A3A8', // muted icons, placeholder glyphs
+    500: '#6C7D83', // secondary text on a tinted surface
+  },
+
   /* ---- Status colours (KYC "Pending", errors, etc.) ---- */
+  /*
+   * Each status now carries a matching `*Tint` for the chip/pill background,
+   * so a badge is one token pair instead of two unrelated literals.
+   */
   status: {
     success: '#16A34A',
-    warning: '#F59E0B', // the amber "Pending" pill on the KYC screen
+    successTint: '#DCF3E4',
+    warning: '#D97706', // the amber "Pending" pill - matches what screens already use
+    warningTint: '#FEF3C7',
     error: '#EF4444', // form errors
-    info: '#3B82F6',
+    errorTint: '#FEE2E2',
+    info: '#0284C7', // category chips, informational badges
+    infoTint: '#E0F2FE',
+  },
+
+  /*
+   * ---- Accents ----
+   * Non-brand hues that exist to tell categories apart. Deliberately kept:
+   * a category chip has to be distinguishable from the brand green, or the
+   * whole screen reads as one colour.
+   */
+  accent: {
+    purple: '#7E22CE',
+    purpleTint: '#F3E8FF',
+    teal: '#0F766E',
+  },
+
+  /* ---- Disabled / inactive states ---- */
+  state: {
+    disabledFrom: '#C7D6CE', // the greyed-out primary button gradient
+    disabledMid: '#BFD0C7',
+    disabledTo: '#B6C9BF',
+  },
+
+  /*
+   * ---- Translucent overlays ----
+   *
+   * Anything semi-transparent lives here. The scrim in particular was drifting:
+   * sheets and modals were each using their own opacity (0.45, 0.5, 0.55, and
+   * one pure black), so backdrops visibly differed depending on which sheet
+   * opened. One token now, used by all of them.
+   */
+  overlay: {
+    scrim: 'rgba(15, 23, 42, 0.5)', // behind every modal, sheet and drawer
+    onAccent: 'rgba(255, 255, 255, 0.45)', // hairlines on top of the green CTA
+    blobShade: 'rgba(60, 90, 75, 0.10)', // soft shading inside the hero blob
+    blobSheen: 'rgba(255, 255, 255, 0.55)', // the light rim on the hero blob
+    mapControl: 'rgba(255, 255, 255, 0.92)', // floating controls over the map
+    heroFadeFrom: 'rgba(211, 232, 224, 0.55)', // hero gradient wash, top
+    heroFadeTo: 'rgba(239, 242, 240, 0)', // hero gradient wash, transparent end
   },
 
   /* ---- Raw values you occasionally need directly ---- */

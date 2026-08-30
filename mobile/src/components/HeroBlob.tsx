@@ -76,8 +76,8 @@ export function HeroBlob({ width: w, height: h, overhang = 0 }: HeroBlobProps) {
         </Defs>
 
         {/* ---- soft shadow UNDER the curve (drawn first, so it sits on the card) ---- */}
-        <Path d={seam} transform="translate(0, 7)" stroke="rgba(60,90,75,0.10)" strokeWidth={16} fill="none" strokeLinecap="round" />
-        <Path d={seam} transform="translate(0, 4)" stroke="rgba(60,90,75,0.10)" strokeWidth={9} fill="none" strokeLinecap="round" />
+        <Path d={seam} transform="translate(0, 7)" stroke={colors.overlay.blobShade} strokeWidth={16} fill="none" strokeLinecap="round" />
+        <Path d={seam} transform="translate(0, 4)" stroke={colors.overlay.blobShade} strokeWidth={9} fill="none" strokeLinecap="round" />
 
         {/* 1. teal glass base */}
         <Path d={blob} fill="url(#glassFill)" />
@@ -106,7 +106,7 @@ export function HeroBlob({ width: w, height: h, overhang = 0 }: HeroBlobProps) {
         <Path d={blob} fill="url(#bottomFade)" />
 
         {/* 6. a bright hairline along the top of the curve (neumorphic highlight) */}
-        <Path d={seam} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} fill="none" />
+        <Path d={seam} stroke={colors.overlay.blobSheen} strokeWidth={1.5} fill="none" />
       </Svg>
     </View>
   );

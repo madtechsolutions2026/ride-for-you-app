@@ -28,11 +28,20 @@ export const fontFamily = {
  *   <Text style={[textStyles.h1, { color: colors.text.primary }]}>Welcome back</Text>
  */
 export const textStyles = {
-  /* "RIDE / FOR / YOU" giant hero text */
+  /*
+   * "RIDE / FOR / YOU" giant hero text.
+   *
+   * Measured off the login mockup rather than eyeballed:
+   *   cap height of RIDE / FOR  = 25.2dp / 26.1dp
+   *   line pitch (top to top)   = 34.2dp, consistent across both gaps
+   * Poppins' cap height is 0.70em, so a 25.5dp cap means ~36px, not 40px —
+   * and the lines sit 34dp apart, not 42dp. The old values made the wordmark
+   * both too large and too loosely stacked, which is what read as "wrong".
+   */
   display: {
     fontFamily: fontFamily.black,
-    fontSize: 40,
-    lineHeight: 42,
+    fontSize: 36,
+    lineHeight: 34,
     letterSpacing: -1,
   },
   /* Screen titles: "Welcome back", "Let's verify your identity" */

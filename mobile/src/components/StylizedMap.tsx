@@ -324,11 +324,11 @@ const styles = StyleSheet.create({
   wrap: {
     borderRadius: radius.lg,
     overflow: 'hidden',
-    backgroundColor: '#EEF2EF',
+    backgroundColor: colors.border,
   },
   webView: {
     flex: 1,
-    backgroundColor: '#EEF2EF',
+    backgroundColor: colors.border,
   },
   loadingContainer: {
     flex: 1,
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: colors.overlay.mapControl,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radius.sm,

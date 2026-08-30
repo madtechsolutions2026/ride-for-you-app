@@ -45,8 +45,8 @@ export function PrimaryButton({ label, onPress, loading, disabled, style }: Prim
         // so the button fades out where the white circle overhangs.
         colors={
           isDisabled
-            ? ['#C7D6CE', '#BFD0C7', '#B6C9BF']
-            : [colors.brand.gradientFrom, colors.brand.gradientTo, '#9EE7C4']
+            ? [colors.state.disabledFrom, colors.state.disabledMid, colors.state.disabledTo]
+            : [colors.brand.gradientFrom, colors.brand.gradientTo, colors.brand.gradientEnd]
         }
         locations={[0, 0.62, 1]}
         start={{ x: 0, y: 0 }}
@@ -56,7 +56,13 @@ export function PrimaryButton({ label, onPress, loading, disabled, style }: Prim
         {loading ? (
           <ActivityIndicator color={colors.text.inverse} />
         ) : (
-          <Text style={styles.label}>{label}</Text>
+          // The underline is a View, not textDecorationLine. `textDecorationColor`
+          // is iOS-only — on Android the underline ignored it and drew solid
+          // white instead of the soft 45% the mockup shows.
+          <View style={styles.labelWrap}>
+            <Text style={styles.label}>{label}</Text>
+            <View style={styles.labelUnderline} />
+          </View>
         )}
       </LinearGradient>
 
@@ -70,9 +76,17 @@ export function PrimaryButton({ label, onPress, loading, disabled, style }: Prim
 
 const styles = StyleSheet.create({
   wrapper: {
-    height: 54,
+    // Measured off the mockup at 55.8dp — two independent column scans agreed,
+    // which is also what validated the 360dp scale for every other number.
+    height: 56,
     borderRadius: radius.pill,
     justifyContent: 'center',
+    // Android derives an elevation shadow from the view's own background, and
+    // this wrapper had none (the gradient sits on a child), so the green glow
+    // never rendered. boxShadow doesn't require it, but filling with the
+    // gradient's start colour also removes any white seam if the child rounds
+    // a pixel short of the wrapper's radius.
+    backgroundColor: colors.brand.gradientFrom,
   },
   gradient: {
     flex: 1,
@@ -82,16 +96,21 @@ const styles = StyleSheet.create({
     paddingLeft: 24,
     paddingRight: 52, // room for the label to clear the overhanging circle
   },
+  labelWrap: { alignItems: 'center' },
   label: {
     ...textStyles.button,
     color: colors.text.inverse,
-    textDecorationLine: 'underline',
-    textDecorationColor: 'rgba(255, 255, 255, 0.45)',
+  },
+  labelUnderline: {
+    alignSelf: 'stretch',
+    height: 1,
+    marginTop: 2,
+    backgroundColor: colors.overlay.onAccent,
   },
   arrowCircle: {
     position: 'absolute',
     right: -6, // sticks out past the button
-    top: 2,
+    top: 3, // (56 - 50) / 2 — keeps the circle centred now the button is 56 tall
     width: 50,
     height: 50,
     borderRadius: 25,

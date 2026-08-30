@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Keyboard,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,14 +17,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
-import {
-  CurvedCardTop,
-  Glass,
-  GoogleMark,
-  HeroBlob,
-  NeoSurface,
-  PrimaryButton,
-} from '../components';
+import { CurvedCardTop, Glass, HeroBlob, NeoSurface, PrimaryButton } from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RequestOtp'>;
 
@@ -33,6 +26,10 @@ const CARD_MARGIN = 18;
 
 export default function RequestOtpScreen({ navigation }: Props) {
   const { width, height } = useWindowDimensions();
+  // Real status-bar height. This used to be a hardcoded `paddingTop: 46`,
+  // which only happened to look right on one device — Android status bars run
+  // 24-48dp depending on hardware, and SDK 54 draws edge-to-edge by default.
+  const insets = useSafeAreaInsets();
   const heroHeight = Math.round(height * 0.44);
   const cardWidth = width - CARD_MARGIN * 2;
 
@@ -86,7 +83,10 @@ export default function RequestOtpScreen({ navigation }: Props) {
             <HeroBlob width={width} height={heroHeight} overhang={78} />
           </View>
 
-          <View style={styles.heroContent} pointerEvents="box-none">
+          <View
+            style={[styles.heroContent, { paddingTop: insets.top + spacing.lg }]}
+            pointerEvents="box-none"
+          >
             <View style={styles.topRow}>
               <Glass borderRadius={radius.md} style={styles.logoMark}>
                 <Ionicons name="flash" size={22} color={colors.brand.primary} />
@@ -111,7 +111,7 @@ export default function RequestOtpScreen({ navigation }: Props) {
               <View style={styles.youRow}>
                 <Text style={[styles.brand, styles.brandGreen]}>Y</Text>
                 <View style={styles.boltO}>
-                  <Ionicons name="flash" size={15} color={colors.text.inverse} />
+                  <Ionicons name="flash" size={13} color={colors.text.inverse} />
                 </View>
                 <Text style={[styles.brand, styles.brandGreen]}>U</Text>
               </View>
@@ -128,8 +128,6 @@ export default function RequestOtpScreen({ navigation }: Props) {
         <NeoSurface variant="card" borderRadius={radius.card} style={styles.card}>
           {/* soft asymmetric lip that echoes the hero curve above */}
           <CurvedCardTop width={cardWidth} />
-
-          <View style={styles.grabber} />
 
           <View style={styles.cardHeader}>
             <View style={{ flex: 1, paddingRight: spacing.sm }}>
@@ -176,20 +174,13 @@ export default function RequestOtpScreen({ navigation }: Props) {
             style={{ marginTop: spacing.lg }}
           />
 
-          {/* OR divider */}
-          <View style={styles.orRow}>
-            <View style={styles.orLine} />
-            <Text style={styles.orText}>OR</Text>
-            <View style={styles.orLine} />
-          </View>
+          {/* V1 is phone + OTP only — there is no separate account to create,
+              so the OR divider, Google sign-in and "Create an account" link
+              that the mockup shows are deliberately not built. */}
 
-          {/* Google */}
-          <Pressable onPress={() => {}}>
-            <NeoSurface borderRadius={radius.pill} style={styles.googleBtn}>
-              <GoogleMark />
-              <Text style={styles.googleText}>Continue with Google</Text>
-            </NeoSurface>
-          </Pressable>
+          {/* Takes up the slack so the trust badges settle at the foot of the
+              card instead of floating just under the CTA. */}
+          <View style={styles.spacer} />
 
           {/* trust badges */}
           <View style={styles.trustRow}>
@@ -200,9 +191,6 @@ export default function RequestOtpScreen({ navigation }: Props) {
             <TrustItem icon="headset-outline" title="24/7 Support" sub={"We're here\nfor you"} />
           </View>
 
-          <Text style={styles.footer}>
-            New here? <Text style={styles.footerLink}>Create an account</Text>
-          </Text>
         </NeoSurface>
       </ScrollView>
     </View>
@@ -223,12 +211,16 @@ function TrustItem({ icon, title, sub }: { icon: any; title: string; sub: string
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface.background },
-  scroll: { paddingBottom: spacing.xxl },
+  // flexGrow lets the card below stretch into whatever height is left over.
+  // Without it the ScrollView only ever sizes to its content, which is why
+  // dropping the Google button left a gap at the bottom of the screen.
+  scroll: { flexGrow: 1, paddingBottom: spacing.lg },
 
   /* hero */
   hero: { width: '100%', zIndex: 2 }, // paints above the card so the blob curve overlaps it
   heroBlobWrap: { position: 'absolute', top: 0, left: 0, right: 0 },
-  heroContent: { flex: 1, paddingHorizontal: screenPadding, paddingTop: 46 },
+  // paddingTop is applied inline from the safe-area inset, not fixed here.
+  heroContent: { flex: 1, paddingHorizontal: screenPadding },
   wordmarkBlock: { maxWidth: '56%' }, // keep text clear of the blob
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   logoMark: { width: 54, height: 42, alignItems: 'center', justifyContent: 'center' },
@@ -254,14 +246,18 @@ const styles = StyleSheet.create({
   brand: { ...textStyles.display, color: colors.text.primary },
   brandGreen: { color: colors.brand.primary },
   youRow: { flexDirection: 'row', alignItems: 'center' },
+  // The "O" of YOU. Measured in the mockup at ~22dp wide — it stands in for a
+  // letter whose cap height is 25dp, so it must sit just inside that, not
+  // above it. At 34dp it was half again too big and pushed Y and U apart,
+  // which is the main reason the wordmark read as wrong.
   boltO: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: colors.brand.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 4,
+    marginHorizontal: 2,
     transform: [{ translateY: 1 }],
   },
   subtitle: { fontFamily: fontFamily.semibold, fontSize: 15, color: colors.text.secondary, marginTop: spacing.xs },
@@ -277,27 +273,30 @@ const styles = StyleSheet.create({
   /* card */
   card: {
     zIndex: 1,
+    // Fill the height the hero doesn't use, so the card always reaches the
+    // bottom of the screen regardless of how much content it holds.
+    flex: 1,
     marginHorizontal: CARD_MARGIN,
     // the cap draws CARD_CAP_HEIGHT above this box, so the card's *visual*
     // top is that much higher than its layout box
     marginTop: -20,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.lg,
     borderTopLeftRadius: 0, // the curved cap supplies the top edge
     borderTopRightRadius: 0,
     borderBottomLeftRadius: 34,
     borderBottomRightRadius: 34,
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.border,
+  // The card used to draw a small grey "grabber" pill here. The mockup has no
+  // such element — the card is not a draggable sheet — so it was removed.
+  // Its old top spacing is folded into cardHeader's marginTop below.
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: spacing.sm,
     marginBottom: spacing.lg,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.lg },
   welcomeTitle: { fontFamily: fontFamily.bold, fontSize: 23, color: colors.text.primary },
   welcomeSub: { ...textStyles.bodySmall, color: colors.text.secondary, marginTop: 4 },
   shieldBadge: {
@@ -333,35 +332,13 @@ const styles = StyleSheet.create({
 
   error: { ...textStyles.bodySmall, color: colors.status.error, marginTop: spacing.sm, textAlign: 'center' },
 
-  /* OR divider */
-  orRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  orLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  orText: {
-    fontFamily: fontFamily.medium,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: colors.text.secondary,
-  },
-
-  /* Google */
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: 56,
-  },
-  googleText: { fontFamily: fontFamily.semibold, fontSize: 14.5, color: colors.text.primary },
+  // Grows to absorb leftover height, but never collapses below a sensible gap
+  // when the keyboard is up and space is tight.
+  spacer: { flex: 1, minHeight: spacing.xl },
 
   trustRow: {
     flexDirection: 'row',
-    marginTop: spacing.md,
+    marginTop: 0,
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -387,7 +364,4 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   trustDivider: { width: 1, backgroundColor: colors.border, marginVertical: 2 },
-
-  footer: { ...textStyles.bodySmall, color: colors.text.secondary, textAlign: 'center', marginTop: spacing.md },
-  footerLink: { color: colors.text.link, fontFamily: fontFamily.semibold },
 });

@@ -48,8 +48,14 @@ export function CurvedCardTop({ width: w, color = colors.surface.card }: CurvedC
     `M 0 ${C}`,
     `L 0 ${leftY + r}`,
     `Q 0 ${leftY}, ${r} ${leftY - 6}`, // rounded top-left, already rising
-    `C ${w * 0.22} ${6}, ${w * 0.34} ${2}, ${w * 0.52} ${8}`, // crest, just left of centre
-    `C ${w * 0.72} ${14}, ${w * 0.86} ${rightY - 12}, ${w - r} ${rightY - 4}`,
+    // Crest sits at roughly 20% across, NOT near the middle.
+    // Measured from the mockup: the white card's top edge first appears as a
+    // narrow band around x = 76dp of 360dp and spreads outward from there, so
+    // the high point is well into the left third. The old control points put
+    // it near w*0.34 and the edge then fell away too symmetrically.
+    `C ${w * 0.08} ${5}, ${w * 0.14} ${1}, ${w * 0.28} ${5}`,
+    // …then a long, shallow descent to the right, where the hero blob overlaps.
+    `C ${w * 0.5} ${13}, ${w * 0.78} ${rightY - 10}, ${w - r} ${rightY - 4}`,
     `Q ${w} ${rightY}, ${w} ${rightY + r}`, // rounded top-right
     `L ${w} ${C}`,
     'Z',

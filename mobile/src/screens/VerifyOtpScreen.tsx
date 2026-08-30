@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 56,
     borderRadius: radius.md,
-    backgroundColor: '#FBFDFC',
+    backgroundColor: colors.brand.mintSoft,
     borderWidth: 1.5,
     borderColor: colors.border,
     alignItems: 'center',

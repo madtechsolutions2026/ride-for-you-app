@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +17,7 @@ import { RootStackParamList } from '../navigation/types';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
 import { Glass, NeoSurface, ThemedModal } from '../components';
+import { apiClient } from '../api/client';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'VehiclesList'>;
 
@@ -43,8 +45,8 @@ const FLEET_DATA: VehicleItem[] = [
     name: 'RFY Swapper S1 Pro',
     category: 'swap',
     tag: '⚡ Most Popular',
-    tagBg: '#DEF7EC',
-    tagColor: '#059669',
+    tagBg: colors.brand.mint,
+    tagColor: colors.brand.primary,
     rangeKm: 110,
     topSpeed: 55,
     batteryPercent: 100,
@@ -59,8 +61,8 @@ const FLEET_DATA: VehicleItem[] = [
     name: 'RFY Swapper S1 Eco',
     category: 'swap',
     tag: '🌱 Maximum Efficiency',
-    tagBg: '#DCFCE7',
-    tagColor: '#16A34A',
+    tagBg: colors.brand.mint,
+    tagColor: colors.status.success,
     rangeKm: 95,
     topSpeed: 45,
     batteryPercent: 95,
@@ -77,8 +79,8 @@ const FLEET_DATA: VehicleItem[] = [
     name: 'RFY Home Pro X1 Max',
     category: 'home',
     tag: '🔌 3-Pin Charger Included',
-    tagBg: '#E0F2FE',
-    tagColor: '#0284C7',
+    tagBg: colors.status.infoTint,
+    tagColor: colors.status.info,
     rangeKm: 130,
     topSpeed: 60,
     batteryPercent: 100,
@@ -93,8 +95,8 @@ const FLEET_DATA: VehicleItem[] = [
     name: 'RFY Home City X1',
     category: 'home',
     tag: '🏠 Daily Commuter',
-    tagBg: '#F3E8FF',
-    tagColor: '#7E22CE',
+    tagBg: colors.accent.purpleTint,
+    tagColor: colors.accent.purple,
     rangeKm: 105,
     topSpeed: 50,
     batteryPercent: 98,
@@ -115,11 +117,67 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'high-range' | 'top-speed'>('all');
   const [selectedDuration, setSelectedDuration] = useState<Record<string, PlanDuration>>({});
   const [activeBookingBike, setActiveBookingBike] = useState<VehicleItem | null>(null);
+  const defaultCategoryBikes = FLEET_DATA.filter((b) => b.category === categoryId);
+  const [bikesList, setBikesList] = useState<VehicleItem[]>(defaultCategoryBikes);
+  const [loading, setLoading] = useState(false);
 
-  // Filter bikes matching category
-  const categoryBikes = FLEET_DATA.filter((b) => b.category === categoryId);
+  useEffect(() => {
+    const catQuery = categoryId === 'swap' ? 'SWAP' : 'HOME';
+    apiClient
+      .get(`/rental/bikes?category=${catQuery}`)
+      .then((res) => {
+        if (res.data?.bikes && Array.isArray(res.data.bikes) && res.data.bikes.length > 0) {
+          const mapped: VehicleItem[] = res.data.bikes.map((m: any, idx: number) => {
+            const dayPlan = m.plans?.find((p: any) => p.duration === 'DAY');
+            const weekPlan = m.plans?.find((p: any) => p.duration === 'WEEK');
+            const monthPlan = m.plans?.find((p: any) => p.duration === 'MONTH');
 
-  const filteredBikes = categoryBikes.filter((b) => {
+            const fallbackImage =
+              m.category === 'SWAP'
+                ? idx % 2 === 0
+                  ? images.vehicleS1
+                  : images.vehicleZ1
+                : idx % 2 === 0
+                ? images.vehicleX1
+                : images.vehicleS1;
+
+            return {
+              id: m.modelId,
+              name: m.name,
+              category: m.category.toLowerCase() as 'swap' | 'home',
+              tag:
+                m.category === 'SWAP'
+                  ? idx === 0
+                    ? '⚡ Most Popular'
+                    : '🌱 2-Min Swap'
+                  : idx === 0
+                  ? '🔌 3-Pin Charger Included'
+                  : '🏠 Daily Commuter',
+              tagBg: m.category === 'SWAP' ? colors.brand.mint : colors.status.infoTint,
+              tagColor: m.category === 'SWAP' ? colors.brand.primary : colors.status.info,
+              rangeKm: m.rangeKm,
+              topSpeed: m.topSpeedKmph,
+              batteryPercent: 100,
+              pricePerDay: dayPlan ? dayPlan.price : (weekPlan ? Math.round(weekPlan.price / 7) : 249),
+              pricePerWeek: weekPlan ? weekPlan.price : 1499,
+              pricePerMonth: monthPlan ? monthPlan.price : 5499,
+              image: m.imageUrl ? { uri: m.imageUrl } : fallbackImage,
+              features:
+                m.category === 'SWAP'
+                  ? ['Unlimited Free Swaps', 'Smart Digital Dash', 'Sanitized Helmet', 'Full Insurance']
+                  : ['Fast Home Charger Included', 'Long Distance Battery', 'Dual Disc Brakes', 'Full Insurance'],
+            };
+          });
+          setBikesList(mapped);
+        }
+      })
+      .catch(() => {
+        setBikesList(defaultCategoryBikes);
+      });
+  }, [categoryId]);
+
+  // Filter bikes matching active chip
+  const filteredBikes = bikesList.filter((b) => {
     if (selectedFilter === 'high-range') return b.rangeKm >= 110;
     if (selectedFilter === 'top-speed') return b.topSpeed >= 55;
     return true;
@@ -150,13 +208,13 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
         </Pressable>
 
         <View style={styles.headerTitleBox}>
-          <View style={[styles.catBadge, { backgroundColor: isSwap ? '#DEF7EC' : '#E0F2FE' }]}>
+          <View style={[styles.catBadge, { backgroundColor: isSwap ? colors.brand.mint : colors.status.infoTint }]}>
             <Ionicons
               name={isSwap ? 'flash' : 'home'}
               size={12}
-              color={isSwap ? '#059669' : '#0284C7'}
+              color={isSwap ? colors.brand.primary : colors.status.info}
             />
-            <Text style={[styles.catBadgeText, { color: isSwap ? '#059669' : '#0284C7' }]}>
+            <Text style={[styles.catBadgeText, { color: isSwap ? colors.brand.primary : colors.status.info }]}>
               {categoryTitle}
             </Text>
           </View>
@@ -187,7 +245,7 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
           onPress={() => setSelectedFilter('all')}
         >
           <Text style={[styles.filterText, selectedFilter === 'all' && styles.filterTextActive]}>
-            All Bikes ({categoryBikes.length})
+            All Bikes ({bikesList.length})
           </Text>
         </Pressable>
 
@@ -230,7 +288,7 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
                 </View>
 
                 <View style={styles.batteryPill}>
-                  <Ionicons name="battery-charging" size={14} color="#059669" />
+                  <Ionicons name="battery-charging" size={14} color={colors.brand.primary} />
                   <Text style={styles.batteryText}>{bike.batteryPercent}% Charged</Text>
                 </View>
               </View>
@@ -322,7 +380,7 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
                   hitSlop={4}
                 >
                   <Text style={styles.bookBtnText}>Select & Book</Text>
-                  <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                  <Ionicons name="arrow-forward" size={14} color={colors.common.white} />
                 </Pressable>
               </View>
             </NeoSurface>
@@ -373,7 +431,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: radius.md,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral[100],
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -409,14 +467,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.brand.mintSoft,
     marginHorizontal: screenPadding,
     marginTop: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
+    borderColor: colors.brand.mint,
   },
   hubAddressText: {
     flex: 1,
@@ -428,7 +486,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.brand.mint,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: radius.pill,
@@ -457,7 +515,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: radius.pill,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral[100],
   },
   filterChipActive: {
     backgroundColor: colors.brand.primary,
@@ -468,7 +526,7 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   filterTextActive: {
-    color: '#FFFFFF',
+    color: colors.common.white,
   },
 
   /* Scroll List */
@@ -503,7 +561,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#DEF7EC',
+    backgroundColor: colors.brand.mint,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: radius.pill,
@@ -511,7 +569,7 @@ const styles = StyleSheet.create({
   batteryText: {
     fontFamily: fontFamily.semibold,
     fontSize: 10.5,
-    color: '#059669',
+    color: colors.brand.primary,
   },
 
   /* Hero & Specs */
@@ -539,12 +597,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.neutral[50],
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: '#EDF2F7',
+    borderColor: colors.border,
   },
   specVal: {
     fontFamily: fontFamily.bold,
@@ -560,7 +618,7 @@ const styles = StyleSheet.create({
   /* Plan Selector Tabs */
   planSelector: {
     flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral[100],
     borderRadius: radius.md,
     padding: 3,
     marginVertical: spacing.sm,
@@ -573,7 +631,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   planTabActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.common.white,
     ...shadows.subtle,
   },
   planTabTitle: {
@@ -606,7 +664,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.neutral[50],
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: radius.pill,
@@ -624,7 +682,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: spacing.xs,
     borderTopWidth: 1,
-    borderTopColor: '#EDF2F7',
+    borderTopColor: colors.border,
   },
   footerPricePrefix: {
     fontFamily: fontFamily.regular,
@@ -663,6 +721,6 @@ const styles = StyleSheet.create({
   bookBtnText: {
     fontFamily: fontFamily.bold,
     fontSize: 12.5,
-    color: '#FFFFFF',
+    color: colors.common.white,
   },
 });

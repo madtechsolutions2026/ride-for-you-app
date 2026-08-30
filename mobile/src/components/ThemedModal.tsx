@@ -46,7 +46,7 @@ export function ThemedModal({
       <View style={styles.overlay}>
         <View style={styles.card}>
           {/* Header Icon */}
-          <View style={[styles.iconWrapper, { backgroundColor: isDestructive ? '#FEE2E2' : '#DCFCE7' }]}>
+          <View style={[styles.iconWrapper, { backgroundColor: isDestructive ? colors.status.errorTint : colors.brand.mint }]}>
             <Ionicons
               name={icon}
               size={28}
@@ -93,7 +93,7 @@ export function ThemedModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: colors.overlay.scrim,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 13,
     borderRadius: radius.pill,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral[100],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -159,6 +159,6 @@ const styles = StyleSheet.create({
   confirmText: {
     fontFamily: fontFamily.bold,
     fontSize: 14,
-    color: '#FFFFFF',
+    color: colors.common.white,
   },
 });

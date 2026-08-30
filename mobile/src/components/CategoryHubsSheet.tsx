@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fontFamily, radius, shadows, spacing } from '../theme';
+import { apiClient } from '../api/client';
 
 export type CategoryHub = {
   id: string;
@@ -23,67 +24,67 @@ export type CategoryHub = {
 
 const SWAP_HUBS: CategoryHub[] = [
   {
-    id: 'hub-swap-1',
-    name: 'Hitech City Metro Swap Hub',
-    address: 'Pillar 1240, Near Metro Gate A, Hitech City',
+    id: 'hub_hitech',
+    name: 'Ride For You – Hitech Metro Hub',
+    address: 'Near Hitech City Metro Station, Madhapur, Hyderabad',
     distance: '0.6 km away',
     availableVehicles: 14,
     badge: '⚡ 2-Min Swap',
-    badgeColor: '#059669',
-    badgeBg: '#DEF7EC',
+    badgeColor: colors.brand.primary,
+    badgeBg: colors.brand.mint,
   },
   {
-    id: 'hub-swap-2',
-    name: 'Madhapur Cyber Towers Hub',
-    address: 'Opp. Cyber Gateway & Inorbit Mall Rd',
+    id: 'hub_kondapur',
+    name: 'Ride For You – Kondapur Hub',
+    address: 'RTO Office Road, Near Botanical Garden, Kondapur',
     distance: '1.2 km away',
     availableVehicles: 9,
     badge: '⚡ 2-Min Swap',
-    badgeColor: '#059669',
-    badgeBg: '#DEF7EC',
+    badgeColor: colors.brand.primary,
+    badgeBg: colors.brand.mint,
   },
   {
-    id: 'hub-swap-3',
-    name: 'Gachibowli Financial Hub',
-    address: 'Near Bio-Diversity Junction, Gachibowli',
+    id: 'hub_gachibowli',
+    name: 'Ride For You – Gachibowli Hub',
+    address: 'Financial District, Near Wipro Circle, Gachibowli',
     distance: '2.4 km away',
     availableVehicles: 6,
     badge: '⚡ 2-Min Swap',
-    badgeColor: '#059669',
-    badgeBg: '#DEF7EC',
+    badgeColor: colors.brand.primary,
+    badgeBg: colors.brand.mint,
   },
 ];
 
 const HOME_HUBS: CategoryHub[] = [
   {
-    id: 'hub-home-1',
-    name: 'Kondapur EV Distribution Centre',
+    id: 'hub_kondapur',
+    name: 'Ride For You – Kondapur Hub',
     address: 'RTO Office Road, Near Botanical Garden, Kondapur',
     distance: '1.1 km away',
     availableVehicles: 12,
     badge: '🔌 Charger Included',
-    badgeColor: '#0284C7',
-    badgeBg: '#E0F2FE',
+    badgeColor: colors.status.info,
+    badgeBg: colors.status.infoTint,
   },
   {
-    id: 'hub-home-2',
-    name: 'Kukatpally Depot & Service Hub',
-    address: 'Near Forum Sujana Mall, KPHB Phase 1',
-    distance: '2.8 km away',
+    id: 'hub_hitech',
+    name: 'Ride For You – Hitech Metro Hub',
+    address: 'Near Hitech City Metro Station, Madhapur, Hyderabad',
+    distance: '1.8 km away',
     availableVehicles: 8,
     badge: '🔌 Charger Included',
-    badgeColor: '#0284C7',
-    badgeBg: '#E0F2FE',
+    badgeColor: colors.status.info,
+    badgeBg: colors.status.infoTint,
   },
   {
-    id: 'hub-home-3',
-    name: 'Jubilee Hills Pickup Point',
-    address: 'Road No. 36, Near Metro Station, Jubilee Hills',
-    distance: '3.5 km away',
+    id: 'hub_gachibowli',
+    name: 'Ride For You – Gachibowli Hub',
+    address: 'Financial District, Near Wipro Circle, Gachibowli',
+    distance: '3.2 km away',
     availableVehicles: 5,
     badge: '🔌 Charger Included',
-    badgeColor: '#0284C7',
-    badgeBg: '#E0F2FE',
+    badgeColor: colors.status.info,
+    badgeBg: colors.status.infoTint,
   },
 ];
 
@@ -101,7 +102,38 @@ export function CategoryHubsSheet({
   onSelectHub,
 }: Props) {
   const isSwap = categoryId === 'swap';
-  const hubs = isSwap ? SWAP_HUBS : HOME_HUBS;
+  const defaultHubs = isSwap ? SWAP_HUBS : HOME_HUBS;
+  const [liveHubs, setLiveHubs] = useState<CategoryHub[]>(defaultHubs);
+
+  useEffect(() => {
+    if (!visible) return;
+    apiClient
+      .get('/rental/hubs')
+      .then((res) => {
+        if (res.data?.hubs && Array.isArray(res.data.hubs) && res.data.hubs.length > 0) {
+          const mapped: CategoryHub[] = res.data.hubs.map((h: any, idx: number) => ({
+            id: h.id,
+            name: h.name,
+            address: h.address,
+            distance: h.distanceMeters
+              ? `${(h.distanceMeters / 1000).toFixed(1)} km away`
+              : `${(0.7 + idx * 0.8).toFixed(1)} km away`,
+            availableVehicles: isSwap
+              ? (h.availableByCategory?.SWAP ?? 6)
+              : (h.availableByCategory?.HOME ?? 5),
+            badge: isSwap ? '⚡ 2-Min Swap' : '🔌 Charger Included',
+            badgeColor: isSwap ? colors.brand.primary : colors.status.info,
+            badgeBg: isSwap ? colors.brand.mint : colors.status.infoTint,
+          }));
+          setLiveHubs(mapped);
+        }
+      })
+      .catch(() => {
+        setLiveHubs(defaultHubs);
+      });
+  }, [visible, categoryId]);
+
+  const hubs = liveHubs;
   const categoryTitle = isSwap ? 'Battery Swap Hubs' : 'Home Charging Hubs';
   const categorySub = isSwap
     ? 'Choose a nearby hub with 2-minute instant battery swapping'
@@ -127,18 +159,18 @@ export function CategoryHubsSheet({
                 <View
                   style={[
                     styles.catBadge,
-                    { backgroundColor: isSwap ? '#DEF7EC' : '#E0F2FE' },
+                    { backgroundColor: isSwap ? colors.brand.mint : colors.status.infoTint },
                   ]}
                 >
                   <Ionicons
                     name={isSwap ? 'flash' : 'home'}
                     size={12}
-                    color={isSwap ? '#059669' : '#0284C7'}
+                    color={isSwap ? colors.brand.primary : colors.status.info}
                   />
                   <Text
                     style={[
                       styles.catBadgeText,
-                      { color: isSwap ? '#059669' : '#0284C7' },
+                      { color: isSwap ? colors.brand.primary : colors.status.info },
                     ]}
                   >
                     {categoryTitle}
@@ -172,13 +204,13 @@ export function CategoryHubsSheet({
                   <View
                     style={[
                       styles.hubIconBox,
-                      { backgroundColor: isSwap ? '#DCFCE7' : '#E0F2FE' },
+                      { backgroundColor: isSwap ? colors.brand.mint : colors.status.infoTint },
                     ]}
                   >
                     <Ionicons
                       name={isSwap ? 'flash' : 'home'}
                       size={20}
-                      color={isSwap ? colors.brand.primary : '#0284C7'}
+                      color={isSwap ? colors.brand.primary : colors.status.info}
                     />
                   </View>
 
@@ -219,7 +251,7 @@ export function CategoryHubsSheet({
 
                   <View style={styles.viewBikesBtn}>
                     <Text style={styles.viewBikesText}>View Bikes</Text>
-                    <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
+                    <Ionicons name="arrow-forward" size={13} color={colors.common.white} />
                   </View>
                 </View>
               </Pressable>
@@ -234,7 +266,7 @@ export function CategoryHubsSheet({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: colors.overlay.scrim,
     justifyContent: 'flex-end',
   },
   backdrop: {
@@ -254,7 +286,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.neutral[200],
     alignSelf: 'center',
     marginBottom: spacing.sm,
   },
@@ -299,12 +331,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   hubCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.neutral[50],
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.neutral[200],
     ...shadows.subtle,
   },
   hubTopRow: {
@@ -336,12 +368,12 @@ const styles = StyleSheet.create({
   },
   availBadge: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.common.white,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.neutral[200],
   },
   availCount: {
     fontFamily: fontFamily.bold,
@@ -359,7 +391,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: spacing.xs,
     borderTopWidth: 1,
-    borderTopColor: '#EDF2F7',
+    borderTopColor: colors.border,
   },
   tagsRow: {
     flexDirection: 'row',
@@ -370,7 +402,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.brand.mintSoft,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: radius.pill,
@@ -401,6 +433,6 @@ const styles = StyleSheet.create({
   viewBikesText: {
     fontFamily: fontFamily.bold,
     fontSize: 11.5,
-    color: '#FFFFFF',
+    color: colors.common.white,
   },
 });

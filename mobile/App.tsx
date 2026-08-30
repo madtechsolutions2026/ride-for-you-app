@@ -2,6 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+// Screens need the real status-bar height instead of a hardcoded guess.
+// Android's status bar varies 24-48dp by device, and SDK 54 draws edge-to-edge
+// by default, so anything with a fixed top inset sits wrong on real hardware.
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -79,41 +83,45 @@ export default function App() {
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right',
-            animationDuration: 180,
-            gestureEnabled: true,
-            fullScreenGestureEnabled: true,
-            freezeOnBlur: true,
-          }}
-        >
-          {isAuthenticated ? (
-            <>
-              <Stack.Screen name="Home">
-                {(props) => <HomeScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
-              </Stack.Screen>
-              <Stack.Screen name="Profile">
-                {(props) => <ProfileScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
-              </Stack.Screen>
-              <Stack.Screen name="VehiclesList" component={VehiclesListScreen} />
-            </>
-          ) : (
-            <>
-              <Stack.Screen name="RequestOtp" component={RequestOtpScreen} />
-              <Stack.Screen name="VerifyOtp">
-                {(props) => (
-                  <VerifyOtpScreen {...props} onLoginSuccess={() => setIsAuthenticated(true)} />
-                )}
-              </Stack.Screen>
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </View>
+    <SafeAreaProvider>
+      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              animation: 'slide_from_right',
+              animationDuration: 180,
+              gestureEnabled: true,
+              fullScreenGestureEnabled: true,
+              freezeOnBlur: true,
+            }}
+          >
+            {isAuthenticated ? (
+              <>
+                <Stack.Screen name="Home">
+                  {(props) => <HomeScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
+                </Stack.Screen>
+                <Stack.Screen name="Profile">
+                  {(props) => (
+                    <ProfileScreen {...props} onLogout={() => setIsAuthenticated(false)} />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="VehiclesList" component={VehiclesListScreen} />
+              </>
+            ) : (
+              <>
+                <Stack.Screen name="RequestOtp" component={RequestOtpScreen} />
+                <Stack.Screen name="VerifyOtp">
+                  {(props) => (
+                    <VerifyOtpScreen {...props} onLoginSuccess={() => setIsAuthenticated(true)} />
+                  )}
+                </Stack.Screen>
+              </>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+      </View>
+    </SafeAreaProvider>
   );
 }

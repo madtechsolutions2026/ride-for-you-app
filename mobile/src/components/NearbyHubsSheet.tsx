@@ -123,7 +123,7 @@ export function NearbyHubsSheet({ visible, onClose, onSelectHub }: Props) {
 
                     {hub.hasFastSwap && (
                       <View style={styles.swapTag}>
-                        <Ionicons name="sync" size={12} color="#059669" />
+                        <Ionicons name="sync" size={12} color={colors.brand.primary} />
                         <Text style={styles.swapText}>2-Min Swap</Text>
                       </View>
                     )}
@@ -135,7 +135,7 @@ export function NearbyHubsSheet({ visible, onClose, onSelectHub }: Props) {
                     hitSlop={4}
                   >
                     <Text style={styles.navigateText}>Navigate</Text>
-                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                    <Ionicons name="arrow-forward" size={14} color={colors.common.white} />
                   </Pressable>
                 </View>
               </View>
@@ -150,7 +150,7 @@ export function NearbyHubsSheet({ visible, onClose, onSelectHub }: Props) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: colors.overlay.scrim,
     justifyContent: 'flex-end',
   },
   backdrop: {
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.neutral[200],
     alignSelf: 'center',
     marginBottom: spacing.md,
   },
@@ -198,12 +198,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   hubCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.neutral[50],
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.neutral[200],
     ...shadows.subtle,
   },
   hubTopRow: {
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: radius.md,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.brand.mint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   },
   availBadge: {
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral[100],
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: radius.md,
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: spacing.xs,
     borderTopWidth: 1,
-    borderTopColor: '#EDF2F7',
+    borderTopColor: colors.border,
   },
   tagsRow: {
     flexDirection: 'row',
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.brand.mintSoft,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radius.pill,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#DEF7EC',
+    backgroundColor: colors.brand.mint,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: radius.pill,
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   swapText: {
     fontFamily: fontFamily.medium,
     fontSize: 10.5,
-    color: '#059669',
+    color: colors.brand.primary,
   },
   navigateBtn: {
     flexDirection: 'row',
@@ -304,6 +304,6 @@ const styles = StyleSheet.create({
   navigateText: {
     fontFamily: fontFamily.bold,
     fontSize: 12,
-    color: '#FFFFFF',
+    color: colors.common.white,
   },
 });

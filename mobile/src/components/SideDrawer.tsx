@@ -71,7 +71,7 @@ export function SideDrawer({
                 <Ionicons
                   name={isVerified ? 'checkmark-circle' : 'time'}
                   size={12}
-                  color={isVerified ? colors.status.success : '#D97706'}
+                  color={isVerified ? colors.status.success : colors.status.warning}
                 />
                 <Text style={[styles.kycBadgeText, isVerified ? styles.kycTextVerified : styles.kycTextPending]}>
                   {isVerified ? 'KYC Verified' : 'KYC Pending'}
@@ -176,7 +176,7 @@ export function SideDrawer({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: colors.overlay.scrim,
     flexDirection: 'row',
   },
   backdropPress: {
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.brand.mint,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -242,10 +242,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   kycBadgeVerified: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.brand.mint,
   },
   kycBadgePending: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.status.warningTint,
   },
   kycBadgeText: {
     fontFamily: fontFamily.semibold,
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     color: colors.status.success,
   },
   kycTextPending: {
-    color: '#D97706',
+    color: colors.status.warning,
   },
   closeBtn: {
     padding: 6,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.brand.mintSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 12,
     borderRadius: radius.pill,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.status.errorTint,
     marginBottom: spacing.xs,
   },
   logoutText: {

@@ -12,17 +12,41 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const HUB = {
-  id: 'hub_kondapur',
-  name: 'Ride For You – Kondapur Hub',
-  address: 'RTO Office Road, Near Botanical Garden, Kondapur, Hyderabad',
-  lat: 17.462,
-  lng: 78.356,
-  city: 'Hyderabad',
-  openTime: '09:00',
-  closeTime: '20:00',
-  contactPhone: '+914000000000',
-};
+const HUBS = [
+  {
+    id: 'hub_kondapur',
+    name: 'Ride For You – Kondapur Hub',
+    address: 'RTO Office Road, Near Botanical Garden, Kondapur, Hyderabad',
+    lat: 17.462,
+    lng: 78.356,
+    city: 'Hyderabad',
+    openTime: '09:00',
+    closeTime: '21:00',
+    contactPhone: '+914012345678',
+  },
+  {
+    id: 'hub_hitech',
+    name: 'Ride For You – Hitech Metro Hub',
+    address: 'Near Hitech City Metro Station, Madhapur, Hyderabad',
+    lat: 17.448,
+    lng: 78.378,
+    city: 'Hyderabad',
+    openTime: '08:00',
+    closeTime: '22:00',
+    contactPhone: '+914012345679',
+  },
+  {
+    id: 'hub_gachibowli',
+    name: 'Ride For You – Gachibowli Hub',
+    address: 'Financial District, Near Wipro Circle, Gachibowli, Hyderabad',
+    lat: 17.432,
+    lng: 78.345,
+    city: 'Hyderabad',
+    openTime: '08:30',
+    closeTime: '21:30',
+    contactPhone: '+914012345680',
+  },
+];
 
 const SWAP_STATIONS = [
   {
@@ -119,15 +143,15 @@ function plateFor(modelIndex, runningSeq) {
 }
 
 async function main() {
-  // Mock fleet only — nothing references Bike yet. Clear it so re-seeding with a
-  // new plate format doesn't leave stale rows behind.
   await prisma.bike.deleteMany({});
 
-  await prisma.hub.upsert({
-    where: { id: HUB.id },
-    update: HUB,
-    create: HUB,
-  });
+  for (const h of HUBS) {
+    await prisma.hub.upsert({
+      where: { id: h.id },
+      update: h,
+      create: h,
+    });
+  }
 
   for (const s of SWAP_STATIONS) {
     await prisma.swapStation.upsert({ where: { id: s.id }, update: s, create: s });
@@ -155,12 +179,14 @@ async function main() {
     for (let i = 1; i <= units; i += 1) {
       plateSeq += 1;
       const reg = plateFor(mIdx, plateSeq);
+      const assignedHub = HUBS[(i - 1) % HUBS.length];
+
       await prisma.bike.upsert({
         where: { registrationNumber: reg },
-        update: { modelId: model.id, hubId: HUB.id },
+        update: { modelId: model.id, hubId: assignedHub.id },
         create: {
           modelId: model.id,
-          hubId: HUB.id,
+          hubId: assignedHub.id,
           registrationNumber: reg,
           colour: COLOURS[(plateSeq - 1) % COLOURS.length],
           batteryPercent: 90 + (i % 11),
@@ -177,7 +203,7 @@ async function main() {
     prisma.rentalPlan.count(),
   ]);
   console.log(
-    `Seeded rental discovery: ${hubs} hub, ${stations} swap stations, ` +
+    `Seeded rental discovery: ${hubs} hubs, ${stations} swap stations, ` +
       `${models} models, ${plans} plans, ${bikes} bikes.`
   );
 }

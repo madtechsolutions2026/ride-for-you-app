@@ -121,7 +121,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
         {/* ---------------- HERO HEADER ---------------- */}
         <View style={styles.hero}>
           <LinearGradient
-            colors={['rgba(211,232,224,0.55)', 'rgba(239,242,240,0)']}
+            colors={[colors.overlay.heroFadeFrom, colors.overlay.heroFadeTo]}
             start={{ x: 1, y: 0 }}
             end={{ x: 0.3, y: 0.7 }}
             style={StyleSheet.absoluteFill}
@@ -199,7 +199,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
             <NeoSurface borderRadius={radius.xl} style={styles.catCard}>
               <View style={styles.catCardHeader}>
                 <View style={styles.catBadgeSwap}>
-                  <Ionicons name="flash" size={13} color="#059669" />
+                  <Ionicons name="flash" size={13} color={colors.brand.primary} />
                   <Text style={styles.catBadgeSwapText}>Unlimited Swaps</Text>
                 </View>
                 <View style={styles.availFleetBadge}>
@@ -229,7 +229,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
 
                   <View style={styles.catBtnSwap}>
                     <Text style={styles.catBtnText}>Explore Swap Hubs</Text>
-                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                    <Ionicons name="arrow-forward" size={14} color={colors.common.white} />
                   </View>
                 </View>
               </View>
@@ -241,7 +241,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
             <NeoSurface borderRadius={radius.xl} style={styles.catCard}>
               <View style={styles.catCardHeader}>
                 <View style={styles.catBadgeHome}>
-                  <Ionicons name="home" size={13} color="#0284C7" />
+                  <Ionicons name="home" size={13} color={colors.status.info} />
                   <Text style={styles.catBadgeHomeText}>Home Charger Included</Text>
                 </View>
                 <View style={styles.availFleetBadge}>
@@ -271,7 +271,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
 
                   <View style={styles.catBtnHome}>
                     <Text style={styles.catBtnText}>Explore Home Hubs</Text>
-                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                    <Ionicons name="arrow-forward" size={14} color={colors.common.white} />
                   </View>
                 </View>
               </View>
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#DEF7EC',
+    backgroundColor: colors.brand.mint,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radius.pill,
@@ -474,13 +474,13 @@ const styles = StyleSheet.create({
   catBadgeSwapText: {
     fontFamily: fontFamily.semibold,
     fontSize: 11,
-    color: '#059669',
+    color: colors.brand.primary,
   },
   catBadgeHome: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: colors.status.infoTint,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radius.pill,
@@ -488,15 +488,15 @@ const styles = StyleSheet.create({
   catBadgeHomeText: {
     fontFamily: fontFamily.semibold,
     fontSize: 11,
-    color: '#0284C7',
+    color: colors.status.info,
   },
   availFleetBadge: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.neutral[50],
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: '#EDF2F7',
+    borderColor: colors.border,
   },
   availFleetText: {
     fontFamily: fontFamily.semibold,
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.neutral[100],
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: radius.pill,
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#0F766E',
+    backgroundColor: colors.accent.teal,
     paddingVertical: 9,
     paddingHorizontal: 12,
     borderRadius: radius.pill,
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   catBtnText: {
     fontFamily: fontFamily.bold,
     fontSize: 12,
-    color: '#FFFFFF',
+    color: colors.common.white,
   },
 
   /* Safety Banner */
@@ -580,20 +580,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.brand.mintSoft,
     borderRadius: radius.lg,
     marginHorizontal: screenPadding,
     marginTop: spacing.lg,
     marginBottom: spacing.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
+    borderColor: colors.brand.mint,
   },
   bannerIconHalo: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.brand.mint,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabBadgeText: {
-    color: '#FFFFFF',
+    color: colors.common.white,
     fontSize: 8.5,
     fontFamily: fontFamily.bold,
   },

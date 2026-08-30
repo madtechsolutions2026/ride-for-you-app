@@ -106,10 +106,10 @@ export function NotificationSheet({ visible, onClose }: Props) {
                     {
                       backgroundColor:
                         item.type === 'offer'
-                          ? '#FEF3C7'
+                          ? colors.status.warningTint
                           : item.type === 'kyc'
-                          ? '#DCFCE7'
-                          : '#E0F2FE',
+                          ? colors.brand.mint
+                          : colors.status.infoTint,
                     },
                   ]}
                 >
@@ -124,10 +124,10 @@ export function NotificationSheet({ visible, onClose }: Props) {
                     size={20}
                     color={
                       item.type === 'offer'
-                        ? '#D97706'
+                        ? colors.status.warning
                         : item.type === 'kyc'
                         ? colors.brand.primary
-                        : '#0284C7'
+                        : colors.status.info
                     }
                   />
                 </View>
@@ -152,7 +152,7 @@ export function NotificationSheet({ visible, onClose }: Props) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: colors.overlay.scrim,
     justifyContent: 'flex-end',
   },
   backdrop: {
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.neutral[200],
     alignSelf: 'center',
     marginBottom: spacing.md,
   },
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   unreadCountText: {
     fontFamily: fontFamily.bold,
     fontSize: 11,
-    color: '#FFFFFF',
+    color: colors.common.white,
   },
   headerActions: {
     flexDirection: 'row',
@@ -221,16 +221,16 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     flexDirection: 'row',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.neutral[50],
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.neutral[200],
   },
   itemCardUnread: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D1FAE5',
+    backgroundColor: colors.common.white,
+    borderColor: colors.brand.mint,
     ...shadows.subtle,
   },
   iconBox: {
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   itemTime: {
     fontFamily: fontFamily.medium,
     fontSize: 10.5,
-    color: '#94A3B8',
+    color: colors.neutral[400],
     marginTop: 6,
   },
 });
