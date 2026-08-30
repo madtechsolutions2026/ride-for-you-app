@@ -26,6 +26,25 @@ app.use('/kyc', kycRoutes);
 app.use('/rental', rentalRoutes);
 app.use('/admin', adminRoutes);
 
+import path from 'path';
+import fs from 'fs';
+
+// Serve Admin Dashboard Web App
+const adminDistPath = path.join(__dirname, '../../admin/dist');
+const publicPath = path.join(__dirname, '../public');
+
+if (fs.existsSync(adminDistPath)) {
+  app.use('/admin', express.static(adminDistPath));
+  app.get('/admin/*', (_req, res) => {
+    res.sendFile(path.join(adminDistPath, 'index.html'));
+  });
+} else if (fs.existsSync(publicPath)) {
+  app.use('/admin', express.static(publicPath));
+  app.get('/admin/*', (_req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+  });
+}
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'ride-for-you-backend' });

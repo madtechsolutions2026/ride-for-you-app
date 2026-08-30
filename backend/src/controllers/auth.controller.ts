@@ -89,14 +89,25 @@ export async function verifyOtp(req: Request, res: Response) {
     });
 
     if (!user) {
+      const adminPhones = (process.env.ADMIN_PHONES || '+917095682464,+919999999999').split(',').map(p => p.trim());
+      const role = adminPhones.includes(challenge.phone) ? 'ADMIN' : 'RIDER';
+
       user = await prisma.user.create({
         data: {
           id: generateId('usr'),
           phone: challenge.phone,
-          role: 'RIDER',
+          role,
           accountStatus: 'ACTIVE'
         }
       });
+    } else {
+      const adminPhones = (process.env.ADMIN_PHONES || '+917095682464,+919999999999').split(',').map(p => p.trim());
+      if (adminPhones.includes(challenge.phone) && user.role !== 'ADMIN') {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { role: 'ADMIN' },
+        });
+      }
     }
 
     // Generate tokens
