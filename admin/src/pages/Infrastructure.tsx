@@ -334,3 +334,4 @@ export const Infrastructure: React.FC = () => {
     </div>
   );
 };
+

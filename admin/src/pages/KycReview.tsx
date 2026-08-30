@@ -308,3 +308,4 @@ export const KycReview: React.FC = () => {
     </div>
   );
 };
+

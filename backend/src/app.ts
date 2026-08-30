@@ -46,17 +46,22 @@ const resolvedStaticPath = fs.existsSync(publicPath)
   : null;
 
 if (resolvedStaticPath) {
-  // Serve static assets under /admin
-  app.use('/admin', express.static(resolvedStaticPath));
+  // Static assets
+  app.use('/admin', express.static(resolvedStaticPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    }
+  }));
   app.use(express.static(resolvedStaticPath));
 
   // SPA fallback for /admin and subroutes
-  app.get('/admin/*', (_req, res) => {
+  app.get(['/admin', '/admin/*'], (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(resolvedStaticPath, 'index.html'));
   });
-  app.get('/admin', (_req, res) => {
-    res.sendFile(path.join(resolvedStaticPath, 'index.html'));
-  });
+
   app.get('/', (_req, res) => {
     res.redirect('/admin/');
   });
