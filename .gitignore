@@ -13,3 +13,9 @@ web-build/
 # Expo native (regenerate with: npx expo prebuild)
 mobile/android/
 mobile/ios/
+
+# SQLite artefacts — the app uses Postgres. A committed .db file gets baked
+# into the deploy image and silently reverts live data on every restart.
+*.db
+*.db-journal
+backend/prisma/dev.db

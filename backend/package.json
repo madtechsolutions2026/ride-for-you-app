@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "build": "tsc",
-    "start": "node dist/app.js",
+    "start": "prisma db push --accept-data-loss && node dist/app.js",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1121.0",
@@ -18,7 +19,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.3.0"
+    "multer": "^2.3.0",
+    "prisma": "^5.20.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
