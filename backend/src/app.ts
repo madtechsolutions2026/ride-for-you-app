@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
-import { execSync } from 'child_process';
 import { prisma } from './utils/prisma';
 
 dotenv.config();
@@ -31,15 +30,16 @@ app.get('/health', (req, res) => {
 // Start Express server
 const server = app.listen(PORT, async () => {
   try {
-    try {
-      execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
-    } catch (e) {
-      console.warn('Prisma auto-sync notice:', e);
-    }
+    /*
+     * Schema changes are applied by `prisma migrate deploy` in the deploy
+     * command, NOT here. This used to run `prisma db push --accept-data-loss`
+     * on every boot, which lets Prisma drop columns and tables to match the
+     * schema — silently, on a live database, every restart.
+     */
     await prisma.$connect();
     console.log(`\n========================================`);
     console.log(`Ride For You Auth Backend is running on port ${PORT}`);
-    console.log(`Database connected successfully (SQLite dev.db)`);
+    console.log(`Database connected successfully (PostgreSQL)`);
     console.log(`========================================\n`);
   } catch (error) {
     console.error('Failed to connect to the database:', error);
