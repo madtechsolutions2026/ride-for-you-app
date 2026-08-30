@@ -19,16 +19,12 @@ const upload = multer({
   limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB
 });
 
-// Accept any file field name (e.g. "file", "adhar", "document", etc.)
+// Run multer but translate its errors into JSON instead of throwing.
 function uploadSingle(req: Request, res: Response, next: NextFunction) {
-  upload.any()(req, res, (err: any) => {
+  upload.single('file')(req, res, (err: any) => {
     if (err) {
       const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
       return res.status(status).json({ error: err.message || 'Upload failed' });
-    }
-    const files = (req as any).files as Express.Multer.File[];
-    if (files && files.length > 0) {
-      (req as any).file = files[0];
     }
     next();
   });
