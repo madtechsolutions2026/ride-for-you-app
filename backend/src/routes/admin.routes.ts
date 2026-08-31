@@ -25,6 +25,7 @@ import {
 } from '../controllers/kyc.controller';
 import {
   listBookings,
+  getBookingDetail,
   confirmBooking,
   cancelBooking,
   handoverBike,
@@ -94,6 +95,7 @@ router.post('/kyc/review', reviewKycByUserId);
 
 /* -------- Bookings & rentals -------- */
 router.get('/bookings', listBookings);
+router.get('/bookings/:id', getBookingDetail);
 router.post('/bookings/:id/confirm', confirmBooking);
 router.post('/bookings/:id/cancel', cancelBooking);
 router.post('/bookings/:id/handover', handoverBike);

@@ -198,8 +198,66 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
   const [selectedBike, setSelectedBike] = useState<VehicleItem | null>(null);
   const [activeBookingBike, setActiveBookingBike] = useState<VehicleItem | null>(null);
 
+  // KYC gate — a rider can only book once KYC is APPROVED.
+  const [kycStatus, setKycStatus] = useState<string | null>(null);
+  const [kycBlock, setKycBlock] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const kycApproved = kycStatus === 'APPROVED';
+
   const defaultCategoryBikes = FLEET_DATA.filter((b) => b.category === categoryId);
   const [bikesList, setBikesList] = useState<VehicleItem[]>(defaultCategoryBikes);
+
+  useEffect(() => {
+    apiClient
+      .get('/user/profile')
+      .then((res) => setKycStatus(res.data?.user?.kycStatus ?? null))
+      .catch(() => {});
+  }, []);
+
+  const handleBookingConfirm = async () => {
+    if (creating || !activeBookingBike) return;
+
+    if (!kycApproved) {
+      setActiveBookingBike(null);
+      setKycBlock(
+        kycStatus === 'SUBMITTED'
+          ? 'Your KYC is under review. You can book once it is approved — usually within a few hours.'
+          : kycStatus === 'REJECTED'
+          ? 'Your KYC was rejected. Please re-submit your documents from your profile to book a bike.'
+          : 'Complete your KYC verification to book a bike. It only takes a couple of minutes.'
+      );
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const res = await apiClient.post('/rental/bookings', {
+        modelId: activeBookingBike.id,
+        hubId: route.params.hubId,
+        duration: 'WEEK',
+      });
+      setActiveBookingBike(null);
+      navigation.navigate('BookingPayment', { bookingId: res.data.booking.id });
+    } catch (e: any) {
+      const data = e?.response?.data;
+      setActiveBookingBike(null);
+      if (data?.code === 'KYC_REQUIRED') {
+        setKycStatus(data.kycStatus ?? kycStatus);
+        setKycBlock(data.error || 'Complete your KYC verification to book a bike.');
+      } else if (data?.code === 'BOOKING_EXISTS' && data.booking) {
+        const b = data.booking;
+        if (b.status === 'PENDING') {
+          navigation.navigate('BookingPayment', { bookingId: b.id });
+        } else {
+          navigation.navigate('MyBookings');
+        }
+      } else {
+        setKycBlock(data?.error || 'Could not create the booking. Please try again.');
+      }
+    } finally {
+      setCreating(false);
+    }
+  };
 
   useEffect(() => {
     const catQuery = categoryId === 'swap' ? 'SWAP' : 'HOME';
@@ -543,15 +601,34 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
         <ThemedModal
           visible={Boolean(activeBookingBike)}
           title={`Confirm ${activeBookingBike.name}`}
-          message={`Hub: ${hubName}\n\nWeekly Rental: ₹${activeBookingBike.pricePerWeek}\nPlatform Fee: ₹${activeBookingBike.platformFee}\nBooking Fee: ₹${activeBookingBike.bookingFee}\n\nTotal Due Today: ₹${activeBookingBike.totalDueToday}/-\n\nHelmet, delivery cargo carrier & roadside assistance included.`}
-          icon={isSwap ? 'flash' : 'home'}
-          confirmLabel="Verify & Proceed"
+          message={
+            kycApproved
+              ? `Hub: ${hubName}\n\nWeekly Rental: ₹${activeBookingBike.pricePerWeek}\nPlatform Fee: ₹${activeBookingBike.platformFee}\nBooking Fee: ₹${activeBookingBike.bookingFee}\n\nTotal Due Today: ₹${activeBookingBike.totalDueToday}/-\n\nYou'll pay on the next screen. Helmet, cargo carrier & roadside assistance included.`
+              : `Hub: ${hubName}\n\nYou need an approved KYC before you can book. We'll take you to your profile to finish it.`
+          }
+          icon={kycApproved ? (isSwap ? 'flash' : 'home') : 'shield-checkmark-outline'}
+          confirmLabel={creating ? 'Please wait…' : kycApproved ? 'Confirm & Pay' : 'Go to KYC'}
           cancelLabel="Cancel"
+          onConfirm={handleBookingConfirm}
+          onCancel={() => !creating && setActiveBookingBike(null)}
+        />
+      )}
+
+      {/* ---------------- KYC / BOOKING BLOCK ---------------- */}
+      {kycBlock && (
+        <ThemedModal
+          visible={Boolean(kycBlock)}
+          title={kycApproved ? 'Booking not possible' : 'KYC verification needed'}
+          message={kycBlock}
+          icon="shield-checkmark-outline"
+          confirmLabel={kycApproved ? 'OK' : 'Complete KYC'}
+          cancelLabel={kycApproved ? undefined : 'Later'}
           onConfirm={() => {
-            setActiveBookingBike(null);
-            navigation.navigate('Profile');
+            const goProfile = !kycApproved;
+            setKycBlock(null);
+            if (goProfile) navigation.navigate('Profile');
           }}
-          onCancel={() => setActiveBookingBike(null)}
+          onCancel={() => setKycBlock(null)}
         />
       )}
     </View>

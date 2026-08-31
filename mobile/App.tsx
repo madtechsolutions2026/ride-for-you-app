@@ -27,6 +27,9 @@ import VerifyOtpScreen from './src/screens/VerifyOtpScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import VehiclesListScreen from './src/screens/VehiclesListScreen';
+import BookingPaymentScreen from './src/screens/BookingPaymentScreen';
+import BookingConfirmedScreen from './src/screens/BookingConfirmedScreen';
+import MyBookingsScreen from './src/screens/MyBookingsScreen';
 
 // Keep the native splash screen on screen while we load fonts + check the
 // login token. We hide it manually once everything is ready (see below).
@@ -108,6 +111,13 @@ export default function App() {
                   )}
                 </Stack.Screen>
                 <Stack.Screen name="VehiclesList" component={VehiclesListScreen} />
+                <Stack.Screen name="BookingPayment" component={BookingPaymentScreen} />
+                <Stack.Screen
+                  name="BookingConfirmed"
+                  component={BookingConfirmedScreen}
+                  options={{ gestureEnabled: false }}
+                />
+                <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
               </>
             ) : (
               <>

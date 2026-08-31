@@ -364,3 +364,398 @@ export async function getBikeModel(req: AuthRequest, res: Response) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Rider bookings + payment                                                    */
+/*                                                                            */
+/*  POST /rental/bookings            create a PENDING booking (KYC-gated)      */
+/*  GET  /rental/bookings            my bookings, newest first                 */
+/*  GET  /rental/bookings/:id        one booking, full detail + payments       */
+/*  POST /rental/bookings/:id/pay    dummy payment -> booking CONFIRMED        */
+/*  POST /rental/bookings/:id/cancel rider cancels their own PENDING booking   */
+/*                                                                            */
+/* A rider may only book once KYC is APPROVED. This is enforced here on the    */
+/* server, not just hidden in the app. Payment is a stub for V1 (no real       */
+/* gateway) but writes real Payment rows so the admin ledger + weekly billing  */
+/* keep working.                                                               */
+/* -------------------------------------------------------------------------- */
+
+const PLATFORM_FEE = 1500; // one-time, non-refundable (matches the app + admin)
+
+const bookingRef = () =>
+  `RFY-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+
+// The app sends a friendly method name; we store the canonical provider string.
+const PROVIDER_BY_METHOD: Record<string, string> = {
+  PHONEPE: 'PHONEPE',
+  RAZORPAY: 'RAZORPAY',
+  UPI: 'UPI_MANUAL',
+  CARD: 'RAZORPAY',
+};
+
+const OPEN_BOOKING_STATES = ['PENDING', 'CONFIRMED', 'READY'];
+
+const BOOKING_INCLUDE = {
+  model: true,
+  plan: true,
+  hub: true,
+  payments: { orderBy: { createdAt: 'asc' as const } },
+  rental: { include: { bike: { select: { registrationNumber: true } } } },
+};
+
+/** Shape one booking for the app (rider-facing — no staff-only fields). */
+function serializeBooking(b: any) {
+  return {
+    id: b.id,
+    reference: b.reference,
+    status: b.status,
+    createdAt: b.createdAt,
+    startsAt: b.startsAt ?? null,
+    cancelledAt: b.cancelledAt ?? null,
+    model: b.model
+      ? {
+          modelId: b.model.id,
+          name: b.model.name,
+          category: b.model.category,
+          imageUrl: publicUrl(b.model.imageKey),
+        }
+      : null,
+    plan: b.plan
+      ? {
+          duration: b.plan.duration,
+          price: b.plan.price,
+          deposit: b.plan.deposit,
+          kmLimit: b.plan.kmLimit ?? null,
+        }
+      : null,
+    hub: b.hub
+      ? {
+          id: b.hub.id,
+          name: b.hub.name,
+          address: b.hub.address,
+          lat: b.hub.lat,
+          lng: b.hub.lng,
+          contactPhone: b.hub.contactPhone ?? null,
+          operatingHours: operatingHours(b.hub.openTime, b.hub.closeTime),
+        }
+      : null,
+    charges: {
+      rent: b.rentAmount,
+      deposit: b.depositAmount,
+      platformFee: b.platformFee,
+      total: b.totalAmount,
+    },
+    nominee:
+      b.nomineeName || b.nomineePhone
+        ? {
+            name: b.nomineeName ?? null,
+            relation: b.nomineeRelation ?? null,
+            phone: b.nomineePhone ?? null,
+          }
+        : null,
+    consent: b.consentAcceptedAt
+      ? { acceptedAt: b.consentAcceptedAt, language: b.consentLanguage ?? null }
+      : null,
+    payments: (b.payments ?? []).map((p: any) => ({
+      id: p.id,
+      purpose: p.purpose,
+      amount: p.amount,
+      provider: p.provider,
+      status: p.status,
+      createdAt: p.createdAt,
+    })),
+    amountPaid: (b.payments ?? [])
+      .filter((p: any) => p.status === 'SUCCESS' && p.amount > 0)
+      .reduce((s: number, p: any) => s + p.amount, 0),
+    rental: b.rental
+      ? {
+          id: b.rental.id,
+          status: b.rental.status,
+          expectedReturnAt: b.rental.expectedReturnAt ?? null,
+          bikeRegistration: b.rental.bike?.registrationNumber ?? null,
+        }
+      : null,
+  };
+}
+
+// POST /rental/bookings
+// Body: { modelId, duration?, nomineeName?, nomineeRelation?, nomineePhone?,
+//         consentAccepted?, consentLanguage? }
+export async function createBooking(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { kycStatus: true, accountStatus: true, fullName: true },
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.accountStatus !== 'ACTIVE') {
+      return res.status(403).json({
+        error: 'Your account is not active. Please contact support.',
+        code: 'ACCOUNT_INACTIVE',
+      });
+    }
+
+    // --- KYC gate: the whole point of this slice ---
+    if (user.kycStatus !== 'APPROVED') {
+      const msg =
+        user.kycStatus === 'SUBMITTED'
+          ? 'Your KYC is under review. You can book a bike once it is approved.'
+          : user.kycStatus === 'REJECTED'
+          ? 'Your KYC was rejected. Please re-submit your documents to book.'
+          : 'Complete your KYC verification to book a bike.';
+      return res
+        .status(403)
+        .json({ error: msg, code: 'KYC_REQUIRED', kycStatus: user.kycStatus });
+    }
+
+    const {
+      modelId,
+      hubId,
+      nomineeName,
+      nomineeRelation,
+      nomineePhone,
+      consentAccepted,
+      consentLanguage,
+    } = req.body ?? {};
+    const duration = String(req.body?.duration || 'WEEK').toUpperCase();
+    if (!modelId) return res.status(400).json({ error: 'modelId is required' });
+
+    const model = await prisma.bikeModel.findUnique({
+      where: { id: modelId },
+      include: { plans: true, bikes: { select: { status: true } } },
+    });
+    if (!model || model.status !== 'ACTIVE') {
+      return res.status(404).json({ error: 'That bike is not available' });
+    }
+
+    const plan =
+      model.plans.find((p) => p.duration === duration && p.status === 'ACTIVE') ||
+      model.plans.find((p) => p.status === 'ACTIVE');
+    if (!plan) return res.status(409).json({ error: 'No active rental plan for this bike' });
+
+    const availableUnits = model.bikes.filter((b) => b.status === 'AVAILABLE').length;
+    if (availableUnits < 1) {
+      return res
+        .status(409)
+        .json({ error: 'No units of this bike are available right now' });
+    }
+
+    // Prefer the hub the rider picked; fall back to the first active hub.
+    const hub =
+      (hubId
+        ? await prisma.hub.findFirst({ where: { id: String(hubId), status: 'ACTIVE' } })
+        : null) ||
+      (await prisma.hub.findFirst({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } }));
+    if (!hub) return res.status(409).json({ error: 'No active pickup hub is configured' });
+
+    // One open booking per rider at a time keeps V1 simple.
+    const openBooking = await prisma.booking.findFirst({
+      where: { userId, status: { in: OPEN_BOOKING_STATES } },
+      include: BOOKING_INCLUDE,
+    });
+    if (openBooking) {
+      return res.status(409).json({
+        error: 'You already have a booking in progress. Finish or cancel it first.',
+        code: 'BOOKING_EXISTS',
+        booking: serializeBooking(openBooking),
+      });
+    }
+
+    const rentAmount = plan.price;
+    const depositAmount = plan.deposit;
+    const totalAmount = rentAmount + depositAmount + PLATFORM_FEE;
+
+    const booking = await prisma.booking.create({
+      data: {
+        reference: bookingRef(),
+        userId,
+        modelId: model.id,
+        planId: plan.id,
+        hubId: hub.id,
+        status: 'PENDING',
+        rentAmount,
+        depositAmount,
+        platformFee: PLATFORM_FEE,
+        totalAmount,
+        nomineeName: nomineeName ? String(nomineeName).trim() : null,
+        nomineeRelation: nomineeRelation ? String(nomineeRelation).trim() : null,
+        nomineePhone: nomineePhone ? String(nomineePhone).trim() : null,
+        consentAcceptedAt: consentAccepted ? new Date() : null,
+        consentLanguage: consentAccepted
+          ? String(consentLanguage || 'EN').toUpperCase()
+          : null,
+      },
+      include: BOOKING_INCLUDE,
+    });
+
+    return res.status(201).json({
+      message: 'Booking created. Complete payment to confirm.',
+      booking: serializeBooking(booking),
+    });
+  } catch (error: any) {
+    console.error('Error in createBooking:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// GET /rental/bookings
+export async function listMyBookings(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const bookings = await prisma.booking.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: BOOKING_INCLUDE,
+    });
+
+    return res.json({
+      count: bookings.length,
+      bookings: bookings.map(serializeBooking),
+    });
+  } catch (error: any) {
+    console.error('Error in listMyBookings:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// GET /rental/bookings/:id
+export async function getMyBooking(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const booking = await prisma.booking.findFirst({
+      where: { id: req.params.id, userId },
+      include: BOOKING_INCLUDE,
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    return res.json({ booking: serializeBooking(booking) });
+  } catch (error: any) {
+    console.error('Error in getMyBooking:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// POST /rental/bookings/:id/pay   Body: { method: 'PHONEPE'|'RAZORPAY'|'UPI'|'CARD' }
+//
+// Dummy payment for V1. No gateway call — it succeeds immediately, writes the
+// RENT / DEPOSIT / PLATFORM_FEE Payment rows, then moves the booking to
+// CONFIRMED so an executive can hand the bike over.
+export async function payBooking(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const method = String(req.body?.method || 'UPI').toUpperCase();
+    const provider = PROVIDER_BY_METHOD[method] || 'UPI_MANUAL';
+
+    const booking = await prisma.booking.findFirst({
+      where: { id: req.params.id, userId },
+      include: { payments: true },
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    if (booking.status === 'CANCELLED' || booking.status === 'EXPIRED') {
+      return res
+        .status(409)
+        .json({ error: `This booking is ${booking.status.toLowerCase()}.` });
+    }
+    if (booking.status !== 'PENDING') {
+      // Already paid — treat as an idempotent success.
+      const full = await prisma.booking.findUnique({
+        where: { id: booking.id },
+        include: BOOKING_INCLUDE,
+      });
+      return res.json({
+        message: 'Booking already confirmed',
+        booking: serializeBooking(full),
+      });
+    }
+
+    const txnRef = `DUMMY-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+    const rows: { purpose: string; amount: number }[] = [
+      { purpose: 'RENT', amount: booking.rentAmount },
+      ...(booking.depositAmount > 0
+        ? [{ purpose: 'DEPOSIT', amount: booking.depositAmount }]
+        : []),
+      { purpose: 'PLATFORM_FEE', amount: booking.platformFee },
+    ];
+
+    await prisma.$transaction([
+      ...rows.map((r) =>
+        prisma.payment.create({
+          data: {
+            userId,
+            bookingId: booking.id,
+            purpose: r.purpose,
+            amount: r.amount,
+            provider,
+            providerPaymentId: txnRef,
+            status: 'SUCCESS',
+            note: 'Test payment (no gateway wired in V1)',
+          },
+        })
+      ),
+      prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: 'CONFIRMED' },
+      }),
+    ]);
+
+    const full = await prisma.booking.findUnique({
+      where: { id: booking.id },
+      include: BOOKING_INCLUDE,
+    });
+
+    return res.json({
+      message: 'Payment successful. Your booking is confirmed.',
+      transactionId: txnRef,
+      booking: serializeBooking(full),
+    });
+  } catch (error: any) {
+    console.error('Error in payBooking:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// POST /rental/bookings/:id/cancel
+export async function cancelMyBooking(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const booking = await prisma.booking.findFirst({
+      where: { id: req.params.id, userId },
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
+      return res.status(409).json({
+        error: `A ${booking.status.toLowerCase()} booking can't be cancelled from the app.`,
+      });
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: new Date(),
+        cancelReason: 'Cancelled by rider',
+      },
+      include: BOOKING_INCLUDE,
+    });
+    return res.json({
+      message: 'Booking cancelled',
+      booking: serializeBooking(updated),
+    });
+  } catch (error: any) {
+    console.error('Error in cancelMyBooking:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}

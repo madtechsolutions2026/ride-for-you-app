@@ -5,6 +5,11 @@ import {
   listSwapStations,
   listBikes,
   getBikeModel,
+  createBooking,
+  listMyBookings,
+  getMyBooking,
+  payBooking,
+  cancelMyBooking,
 } from '../controllers/rental.controller';
 import { authenticateToken } from '../middleware/auth';
 
@@ -16,5 +21,12 @@ router.get('/hubs', authenticateToken, listHubs);
 router.get('/swap-stations', authenticateToken, listSwapStations);
 router.get('/bikes', authenticateToken, listBikes);
 router.get('/bikes/:modelId', authenticateToken, getBikeModel);
+
+// Rider bookings. createBooking is KYC-gated inside the controller.
+router.post('/bookings', authenticateToken, createBooking);
+router.get('/bookings', authenticateToken, listMyBookings);
+router.get('/bookings/:id', authenticateToken, getMyBooking);
+router.post('/bookings/:id/pay', authenticateToken, payBooking);
+router.post('/bookings/:id/cancel', authenticateToken, cancelMyBooking);
 
 export default router;

@@ -10,4 +10,8 @@ export type RootStackParamList = {
     hubName: string;
     hubAddress: string;
   };
+  // Booking flow: VehiclesList -> BookingPayment -> BookingConfirmed
+  BookingPayment: { bookingId: string };
+  BookingConfirmed: { bookingId: string };
+  MyBookings: undefined;
 };

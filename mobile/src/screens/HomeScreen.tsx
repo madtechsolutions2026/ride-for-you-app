@@ -76,7 +76,9 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
     apiClient
       .get('/auth/me')
       .then((r) => {
-        if (r.data) setProfile(r.data);
+        // /auth/me returns { user: {...} }; tolerate a bare object too.
+        const u = r.data?.user ?? r.data;
+        if (u) setProfile(u);
       })
       .catch(() => {});
   };
@@ -305,7 +307,8 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
               onPress={() => {
                 if (t.key === 'profile') navigation.navigate('Profile');
                 else if (t.key === 'inbox') setNotifVisible(true);
-                else if (t.key === 'bookings' || t.key === 'wallet') setDrawerVisible(true);
+                else if (t.key === 'bookings') navigation.navigate('MyBookings');
+                else if (t.key === 'wallet') setDrawerVisible(true);
               }}
             >
               <View>
@@ -335,6 +338,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
         userPhone={profile?.phone || undefined}
         kycStatus={profile?.kycStatus || undefined}
         onNavigateProfile={() => navigation.navigate('Profile')}
+        onNavigateBookings={() => navigation.navigate('MyBookings')}
         onLogout={() => setLogoutModalVisible(true)}
       />
 

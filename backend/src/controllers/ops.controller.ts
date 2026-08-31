@@ -659,3 +659,102 @@ export async function updateRecovery(req: Request, res: Response) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+// GET /admin/api/bookings/:id  — full detail for the drawer on the Bookings page
+export async function getBookingDetail(req: Request, res: Response) {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: req.params.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            email: true,
+            city: true,
+            kycStatus: true,
+            accountStatus: true,
+            createdAt: true,
+          },
+        },
+        model: { select: { id: true, name: true, category: true, topSpeedKmph: true, rangeKm: true } },
+        plan: { select: { duration: true, price: true, deposit: true, kmLimit: true } },
+        hub: { select: { id: true, name: true, address: true, city: true, contactPhone: true } },
+        payments: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            purpose: true,
+            amount: true,
+            provider: true,
+            providerPaymentId: true,
+            status: true,
+            note: true,
+            createdAt: true,
+          },
+        },
+        rental: {
+          include: {
+            bike: { select: { registrationNumber: true, batteryPercent: true, model: { select: { name: true } } } },
+            weeklyInvoices: {
+              orderBy: { weekNumber: 'asc' },
+              select: { id: true, weekNumber: true, amount: true, status: true, dueAt: true, paidAt: true },
+            },
+            handoverBy: { select: { fullName: true } },
+            returnBy: { select: { fullName: true } },
+          },
+        },
+      },
+    });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    const paidTotal = booking.payments
+      .filter((p) => p.status === 'SUCCESS' && p.amount > 0)
+      .reduce((s, p) => s + p.amount, 0);
+    const refundedTotal = booking.payments
+      .filter((p) => p.purpose === 'REFUND')
+      .reduce((s, p) => s + Math.abs(p.amount), 0);
+
+    // A simple event timeline the dashboard can render as a vertical list.
+    const timeline: { at: Date; label: string }[] = [
+      { at: booking.createdAt, label: 'Booking created by rider' },
+    ];
+    booking.payments
+      .filter((p) => p.status === 'SUCCESS' && p.amount > 0)
+      .forEach((p) =>
+        timeline.push({ at: p.createdAt, label: `${p.purpose.replace('_', ' ')} paid — ₹${p.amount} (${p.provider})` })
+      );
+    if (booking.status === 'CONFIRMED')
+      timeline.push({ at: booking.updatedAt, label: 'Payment received — booking confirmed' });
+    if (booking.rental) {
+      timeline.push({
+        at: booking.rental.handoverAt,
+        label: `Bike ${booking.rental.bike?.registrationNumber ?? ''} handed over${
+          booking.rental.handoverBy?.fullName ? ` by ${booking.rental.handoverBy.fullName}` : ''
+        }`,
+      });
+      if (booking.rental.returnedAt)
+        timeline.push({ at: booking.rental.returnedAt, label: 'Bike returned' });
+      if (booking.rental.closedAt)
+        timeline.push({ at: booking.rental.closedAt, label: 'Rental closed' });
+    }
+    if (booking.cancelledAt)
+      timeline.push({ at: booking.cancelledAt, label: `Cancelled — ${booking.cancelReason || 'no reason given'}` });
+    timeline.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+
+    return res.json({
+      booking,
+      finance: {
+        billed: booking.totalAmount,
+        paid: paidTotal,
+        refunded: refundedTotal,
+        balance: booking.totalAmount - paidTotal + refundedTotal,
+      },
+      timeline,
+    });
+  } catch (e: any) {
+    console.error('getBookingDetail:', e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
