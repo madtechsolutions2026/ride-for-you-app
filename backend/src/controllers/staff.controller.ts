@@ -77,34 +77,36 @@ export async function createStaff(req: AuthRequest, res: Response) {
     const normalised = normalisePhone(phone);
     const existing = await prisma.user.findUnique({ where: { phone: normalised } });
 
-    // This form is create-only. If the number already has an account we don't
-    // silently overwrite it — the admin edits the existing record explicitly.
+    const data = {
+      fullName: String(fullName).trim(),
+      role,
+      email: email ? String(email).trim().toLowerCase() : null,
+      assignedHubId: assignedHubId || null,
+      permissions: Array.isArray(permissions) ? permissions : [],
+      invitedById: req.user?.id ?? null,
+      accountStatus: 'ACTIVE',
+    };
+
+    let staff;
     if (existing) {
-      const who = existing.fullName ? `${existing.fullName} (${normalised})` : normalised;
-      const msg =
-        existing.role === 'RIDER'
-          ? `${who} already has a RIDER account — promote them from the Riders page instead.`
-          : `${who} already has a ${existing.role} account — use Edit to change their role, hub or permissions.`;
-      return res.status(409).json({ error: msg, userId: existing.id, role: existing.role });
+      // Promote an existing account (e.g. a rider who now works at a hub).
+      // Never promote a blocked/suspended account — it has to be reactivated
+      // deliberately first, so we don't silently revive a banned user as staff.
+      if (existing.accountStatus !== 'ACTIVE') {
+        return res.status(409).json({
+          error: `${normalised} belongs to a ${existing.accountStatus} account — reactivate it before promoting to staff.`,
+        });
+      }
+      staff = await prisma.user.update({ where: { id: existing.id }, data });
+      await delCache(`auth:me:${existing.id}`);
+    } else {
+      staff = await prisma.user.create({
+        data: { id: genId(), phone: normalised, ...data },
+      });
     }
 
-    const fullNameTrimmed = String(fullName).trim();
-    const staff = await prisma.user.create({
-      data: {
-        id: genId(),
-        phone: normalised,
-        fullName: fullNameTrimmed,
-        role,
-        email: email ? String(email).trim().toLowerCase() : null,
-        assignedHubId: assignedHubId || null,
-        permissions: Array.isArray(permissions) ? permissions : [],
-        invitedById: req.user?.id ?? null,
-        accountStatus: 'ACTIVE',
-      },
-    });
-
     return res.status(201).json({
-      message: `${role} ${fullNameTrimmed} can now sign in with ${normalised} + OTP`,
+      message: `${role} ${data.fullName} can now sign in with ${normalised} + OTP`,
       staff,
     });
   } catch (e: any) {
