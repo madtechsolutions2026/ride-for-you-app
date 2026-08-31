@@ -34,17 +34,37 @@ export async function getAdminStats(_req: Request, res: Response) {
       prisma.bikeModel.count({ where: { status: 'ACTIVE' } }),
     ]);
 
-    // Financial estimations based on active fleet & verification pipeline
-    const estimatedWeeklyRevenue = rentedBikes * 1925;
-    const estimatedPlatformFees = verifiedRiders * 1500;
-    const fleetUtilization = totalBikes > 0 ? Math.round(((totalBikes - availableBikes) / totalBikes) * 100) : 0;
+    const now = new Date();
+    const [
+      activeRentals,
+      overdueRentals,
+      pendingBookings,
+      staffCount,
+      openRecovery,
+      pendingDamage,
+      collectedAgg,
+      overdueAgg,
+      pendingInvoiceAgg,
+    ] = await Promise.all([
+      prisma.rental.count({ where: { status: 'ACTIVE' } }),
+      prisma.rental.count({ where: { status: 'ACTIVE', expectedReturnAt: { lt: now } } }),
+      prisma.booking.count({ where: { status: 'PENDING' } }),
+      prisma.user.count({ where: { role: { in: ['ADMIN', 'EXECUTIVE', 'SUPPORT'] } } }),
+      prisma.recoveryJob.count({ where: { status: { in: ['OPEN', 'DISPATCHED', 'IN_PROGRESS'] } } }),
+      prisma.damageReport.count({ where: { chargeStatus: 'PENDING' } }),
+      prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'SUCCESS' } }),
+      prisma.weeklyInvoice.aggregate({
+        _sum: { amount: true },
+        where: { status: { in: ['PENDING', 'OVERDUE'] }, dueAt: { lt: now } },
+      }),
+      prisma.weeklyInvoice.aggregate({ _sum: { amount: true }, where: { status: 'PENDING' } }),
+    ]);
+
+    const fleetUtilization =
+      totalBikes > 0 ? Math.round(((totalBikes - availableBikes) / totalBikes) * 100) : 0;
 
     return res.json({
-      riders: {
-        total: totalRiders,
-        verified: verifiedRiders,
-        pendingKyc,
-      },
+      riders: { total: totalRiders, verified: verifiedRiders, pendingKyc },
       fleet: {
         totalBikes,
         availableBikes,
@@ -53,14 +73,19 @@ export async function getAdminStats(_req: Request, res: Response) {
         totalModels,
         utilizationRate: fleetUtilization,
       },
-      infrastructure: {
-        hubs: totalHubs,
-        swapStations: totalSwapStations,
+      infrastructure: { hubs: totalHubs, swapStations: totalSwapStations },
+      operations: {
+        activeRentals,
+        overdueRentals,
+        pendingBookings,
+        staffCount,
+        openRecovery,
+        pendingDamage,
       },
       finance: {
-        estimatedWeeklyRevenue,
-        estimatedPlatformFees,
-        totalRevenue: estimatedWeeklyRevenue * 4 + estimatedPlatformFees,
+        collectedRevenue: collectedAgg._sum.amount ?? 0,
+        overdueAmount: overdueAgg._sum.amount ?? 0,
+        pendingInvoiceAmount: pendingInvoiceAgg._sum.amount ?? 0,
       },
     });
   } catch (error: any) {
@@ -379,6 +404,182 @@ export async function getKycSubmissions(req: Request, res: Response) {
     return res.json({ count: serialized.length, submissions: serialized });
   } catch (error: any) {
     console.error('Error in getKycSubmissions:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Catalogue: bike models & pricing plans                                      */
+/* -------------------------------------------------------------------------- */
+
+// POST /admin/api/fleet/models
+export async function createBikeModel(req: Request, res: Response) {
+  try {
+    const { name, category, topSpeedKmph, rangeKm, requiresLicense, chargerIncluded, status } =
+      req.body ?? {};
+    if (!name || !category || typeof topSpeedKmph !== 'number' || typeof rangeKm !== 'number') {
+      return res
+        .status(400)
+        .json({ error: 'name, category, numeric topSpeedKmph and rangeKm are required' });
+    }
+    const model = await prisma.bikeModel.create({
+      data: {
+        name: String(name).trim(),
+        category,
+        topSpeedKmph,
+        rangeKm,
+        requiresLicense: Boolean(requiresLicense),
+        chargerIncluded: Boolean(chargerIncluded),
+        status: status || 'ACTIVE',
+      },
+    });
+    await delCache('rental:models');
+    return res.status(201).json({ message: 'Model added to catalogue', model });
+  } catch (error: any) {
+    console.error('Error in createBikeModel:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// PUT /admin/api/fleet/models/:id
+export async function updateBikeModel(req: Request, res: Response) {
+  try {
+    const { name, category, topSpeedKmph, rangeKm, requiresLicense, chargerIncluded, status } =
+      req.body ?? {};
+    const data: any = {};
+    if (name !== undefined) data.name = String(name).trim();
+    if (category !== undefined) data.category = category;
+    if (typeof topSpeedKmph === 'number') data.topSpeedKmph = topSpeedKmph;
+    if (typeof rangeKm === 'number') data.rangeKm = rangeKm;
+    if (requiresLicense !== undefined) data.requiresLicense = Boolean(requiresLicense);
+    if (chargerIncluded !== undefined) data.chargerIncluded = Boolean(chargerIncluded);
+    if (status !== undefined) data.status = status;
+
+    const model = await prisma.bikeModel.update({ where: { id: req.params.id }, data });
+    await delCache('rental:models');
+    return res.json({ message: 'Model updated', model });
+  } catch (error: any) {
+    console.error('Error in updateBikeModel:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// POST /admin/api/fleet/plans  — create or update the (model, duration) plan
+export async function upsertRentalPlan(req: Request, res: Response) {
+  try {
+    const { modelId, duration, price, deposit, kmLimit, status } = req.body ?? {};
+    if (!modelId || !duration || typeof price !== 'number') {
+      return res.status(400).json({ error: 'modelId, duration and numeric price are required' });
+    }
+    const plan = await prisma.rentalPlan.upsert({
+      where: { modelId_duration: { modelId, duration } },
+      create: {
+        modelId,
+        duration,
+        price,
+        deposit: typeof deposit === 'number' ? deposit : 0,
+        kmLimit: typeof kmLimit === 'number' ? kmLimit : null,
+        status: status || 'ACTIVE',
+      },
+      update: {
+        price,
+        ...(typeof deposit === 'number' ? { deposit } : {}),
+        ...(kmLimit !== undefined ? { kmLimit: typeof kmLimit === 'number' ? kmLimit : null } : {}),
+        ...(status ? { status } : {}),
+      },
+    });
+    await delCache('rental:models');
+    return res.json({ message: 'Plan saved', plan });
+  } catch (error: any) {
+    console.error('Error in upsertRentalPlan:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// PUT /admin/api/hubs/:id  — edit a hub (address, hours, status, coordinates)
+export async function updateHub(req: Request, res: Response) {
+  try {
+    const { name, address, lat, lng, city, status, openTime, closeTime, contactPhone } =
+      req.body ?? {};
+    const data: any = {};
+    if (name !== undefined) data.name = name;
+    if (address !== undefined) data.address = address;
+    if (typeof lat === 'number') data.lat = lat;
+    if (typeof lng === 'number') data.lng = lng;
+    if (city !== undefined) data.city = city;
+    if (status !== undefined) data.status = status;
+    if (openTime !== undefined) data.openTime = openTime;
+    if (closeTime !== undefined) data.closeTime = closeTime;
+    if (contactPhone !== undefined) data.contactPhone = contactPhone;
+
+    const hub = await prisma.hub.update({ where: { id: req.params.id }, data });
+    await delCache('rental:hub');
+    return res.json({ message: 'Hub updated', hub });
+  } catch (error: any) {
+    console.error('Error in updateHub:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// GET /admin/api/fleet/map  — everything the live operations map needs
+export async function getFleetMap(_req: Request, res: Response) {
+  try {
+    const [hubs, swapStations, bikes] = await Promise.all([
+      prisma.hub.findMany({
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          lat: true,
+          lng: true,
+          city: true,
+          status: true,
+          _count: { select: { bikes: true } },
+        },
+      }),
+      prisma.swapStation.findMany({
+        select: { id: true, name: true, address: true, lat: true, lng: true, status: true },
+      }),
+      prisma.bike.findMany({
+        select: {
+          id: true,
+          registrationNumber: true,
+          status: true,
+          batteryPercent: true,
+          colour: true,
+          lastLat: true,
+          lastLng: true,
+          lastSeenAt: true,
+          model: { select: { name: true, category: true } },
+          hub: { select: { id: true, name: true, lat: true, lng: true } },
+        },
+      }),
+    ]);
+
+    // A bike with no GPS ping yet is shown at its home hub with a small jitter
+    // so multiple bikes at one hub don't stack on a single pixel.
+    const positioned = bikes.map((b, i) => {
+      const hasFix = typeof b.lastLat === 'number' && typeof b.lastLng === 'number';
+      const jitter = (n: number) => n + ((i % 7) - 3) * 0.0006;
+      return {
+        id: b.id,
+        registrationNumber: b.registrationNumber,
+        status: b.status,
+        batteryPercent: b.batteryPercent,
+        colour: b.colour,
+        model: b.model?.name,
+        category: b.model?.category,
+        hubName: b.hub?.name,
+        lat: hasFix ? b.lastLat : jitter(b.hub.lat),
+        lng: hasFix ? b.lastLng : jitter(b.hub.lng),
+        hasLiveFix: hasFix,
+        lastSeenAt: b.lastSeenAt,
+      };
+    });
+
+    return res.json({ hubs, swapStations, bikes: positioned });
+  } catch (error: any) {
+    console.error('Error in getFleetMap:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

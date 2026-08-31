@@ -252,8 +252,11 @@ export async function getCurrentUser(req: AuthRequest, res: Response) {
         role: true,
         accountStatus: true,
         kycStatus: true,
-        createdAt: true
-      }
+        permissions: true,
+        assignedHubId: true,
+        assignedHub: { select: { id: true, name: true, city: true } },
+        createdAt: true,
+      },
     });
 
     if (!user) {

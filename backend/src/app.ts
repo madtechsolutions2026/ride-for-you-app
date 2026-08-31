@@ -8,6 +8,7 @@ import userRoutes from './routes/user.routes';
 import kycRoutes from './routes/kyc.routes';
 import rentalRoutes from './routes/rental.routes';
 import adminRoutes from './routes/admin.routes';
+import { startWeeklyBilling } from './services/weeklyBilling';
 import { prisma } from './utils/prisma';
 
 dotenv.config();
@@ -36,14 +37,18 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'ride-for-you-backend' });
 });
 
-// 2. Serve Static Admin Web App
-const publicPath = path.join(__dirname, '../public');
+// 2. Serve the admin dashboard.
+//
+// Single source of truth: admin/dist, produced by `npm run build` (which now
+// also runs the admin build). No more hand-copying into backend/public.
+// __dirname is backend/dist in prod and backend/src under ts-node-dev; both
+// resolve ../../admin/dist correctly.
 const adminDistPath = path.join(__dirname, '../../admin/dist');
-const resolvedStaticPath = fs.existsSync(publicPath)
-  ? publicPath
-  : fs.existsSync(adminDistPath)
-  ? adminDistPath
-  : null;
+const resolvedStaticPath = fs.existsSync(adminDistPath) ? adminDistPath : null;
+
+if (!resolvedStaticPath) {
+  console.warn('[admin] admin/dist not found — run `npm run build` to build the dashboard.');
+}
 
 if (resolvedStaticPath) {
   // Static assets
@@ -74,6 +79,8 @@ const server = app.listen(PORT, async () => {
     console.log(`\n========================================`);
     console.log(`Ride For You Auth Backend is running on port ${PORT}`);
     console.log(`Database connected successfully (PostgreSQL)`);
+    startWeeklyBilling();
+    console.log(`Weekly billing sweep scheduled (every 6h)`);
     console.log(`Admin Dashboard available at http://localhost:${PORT}/admin/`);
     console.log(`========================================\n`);
   } catch (error) {

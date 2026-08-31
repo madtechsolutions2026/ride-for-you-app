@@ -19,3 +19,6 @@ mobile/ios/
 *.db
 *.db-journal
 backend/prisma/dev.db
+
+# admin build output — served straight from admin/dist now
+backend/public/

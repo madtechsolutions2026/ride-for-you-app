@@ -1,135 +1,300 @@
-import React, { useState } from 'react';
-import { Wrench, Truck, MapPin } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Wrench, Truck, Plus, ShieldAlert } from 'lucide-react';
+import { apiClient } from '../api/client';
+import { Card, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptyState } from '../components/ui';
+
+type Tab = 'damage' | 'recovery';
 
 export const ServiceRecovery: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'service' | 'recovery'>('service');
+  const [tab, setTab] = useState<Tab>('damage');
+  const [damage, setDamage] = useState<any[]>([]);
+  const [recovery, setRecovery] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newRecovery, setNewRecovery] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const serviceTickets = [
-    {
-      id: 'SRV-102',
-      bike: 'SPRINTO HS (TS09EV3004)',
-      hub: 'Kondapur Main Hub',
-      issue: 'Brake pad replacement & tire pressure inspection',
-      priority: 'HIGH',
-      status: 'IN_PROGRESS',
-      technician: 'Raju Mechanic',
-      date: 'Today, 11:30 AM',
-    },
-    {
-      id: 'SRV-101',
-      bike: 'ODYSSEY (TS09EV3019)',
-      hub: 'Hitech City Station',
-      issue: 'Battery connector cleaning & firmware diagnostics',
-      priority: 'NORMAL',
-      status: 'COMPLETED',
-      technician: 'Kiran EV Tech',
-      date: 'Yesterday',
-    },
-  ];
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [d, r] = await Promise.all([
+        apiClient.get('/admin/api/damage'),
+        apiClient.get('/admin/api/recovery'),
+      ]);
+      setDamage(d.data.reports || []);
+      setRecovery(r.data.jobs || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
 
-  const recoveryRequests = [
-    {
-      id: 'REC-55',
-      rider: 'Anil Reddy (+91 9887766554)',
-      bike: 'HALA CKD (TS09EV3009)',
-      location: 'Near Inorbit Mall Flyover, Hitech City',
-      issue: 'Flat rear tire on delivery route',
-      dispatch: 'En Route (ETA 12 mins)',
-      status: 'DISPATCHED',
-      van: 'Van #02 (Driver: Suresh)',
-    },
-  ];
+  const resolveDamage = async (id: string, action: 'CHARGE' | 'WAIVE') => {
+    let finalCost: number | undefined;
+    if (action === 'CHARGE') {
+      const v = prompt('Final charge amount ₹:');
+      if (v === null) return;
+      finalCost = Number(v);
+    }
+    setBusyId(id);
+    try {
+      await apiClient.post(`/admin/api/damage/${id}/resolve`, { action, finalCost });
+      await load();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const updateRecovery = async (id: string, body: any) => {
+    setBusyId(id);
+    try {
+      await apiClient.post(`/admin/api/recovery/${id}/update`, body);
+      await load();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const createRecovery = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    setBusyId('new');
+    try {
+      await apiClient.post('/admin/api/recovery', {
+        type: f.get('type'),
+        priority: f.get('priority'),
+        description: f.get('description'),
+        reportedByPhone: f.get('reportedByPhone') || undefined,
+        locationText: f.get('locationText') || undefined,
+      });
+      setNewRecovery(false);
+      load();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (loading) return <Loader />;
 
   return (
-    <div className="space-y-6">
-      {/* Sub tabs */}
-      <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-        <button
-          onClick={() => setActiveTab('service')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-            activeTab === 'service'
-              ? 'bg-emerald-700 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-          }`}
-        >
-          <Wrench className="w-4 h-4" />
-          <span>Service & Job Cards ({serviceTickets.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('recovery')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
-            activeTab === 'recovery'
-              ? 'bg-amber-600 text-white shadow-sm'
-              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-          }`}
-        >
-          <Truck className="w-4 h-4" />
-          <span>Roadside Recovery SOS ({recoveryRequests.length})</span>
-        </button>
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2">
+          {(['damage', 'recovery'] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold capitalize transition ${
+                tab === t
+                  ? 'bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white shadow-neo-btn'
+                  : 'bg-white text-[#8A97A0] border border-[#EDF2F1] shadow-neo-sm'
+              }`}
+            >
+              {t === 'damage' ? <Wrench className="w-3.5 h-3.5" /> : <Truck className="w-3.5 h-3.5" />}
+              {t === 'damage' ? `Damage (${damage.length})` : `Recovery (${recovery.length})`}
+            </button>
+          ))}
+        </div>
+        {tab === 'recovery' && (
+          <Btn variant="primary" onClick={() => setNewRecovery(true)}>
+            <Plus className="w-3.5 h-3.5" /> Open Recovery Job
+          </Btn>
+        )}
       </div>
 
-      {activeTab === 'service' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {serviceTickets.map((t) => (
-            <div key={t.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
-                    {t.id}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      t.status === 'COMPLETED'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {t.status}
-                  </span>
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 mb-1">{t.bike}</h4>
-                <p className="text-xs text-slate-600 mb-3">{t.issue}</p>
-              </div>
+      {tab === 'damage' && (
+        <Card>
+          {damage.length === 0 ? (
+            <EmptyState
+              icon={<Wrench className="w-8 h-8 mx-auto text-[#CBD5E1]" />}
+              title="No damage reports"
+              hint="Executives log damage at return, from the Bookings → Rentals screen."
+            />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                  <th className="px-5 py-3">Bike · Rider</th>
+                  <th className="px-5 py-3">Severity</th>
+                  <th className="px-5 py-3">Description</th>
+                  <th className="px-5 py-3">Est. cost</th>
+                  <th className="px-5 py-3">Charge</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {damage.map((d) => (
+                  <tr key={d.id} className="border-b border-[#F1F5F9] last:border-0">
+                    <td className="px-5 py-3">
+                      <div className="font-extrabold text-[#172B3A]">{d.bike?.registrationNumber}</div>
+                      <div className="text-xs text-[#8A97A0]">
+                        {d.rental?.user?.fullName} · {d.rental?.user?.phone}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3">
+                      <Pill tone={toneFor(d.severity)}>{d.severity}</Pill>
+                    </td>
+                    <td className="px-5 py-3 text-xs text-[#475569] max-w-xs">{d.description}</td>
+                    <td className="px-5 py-3 font-bold text-[#172B3A]">{rupees(d.estimatedCost)}</td>
+                    <td className="px-5 py-3">
+                      <Pill tone={toneFor(d.chargeStatus)}>{d.chargeStatus}</Pill>
+                    </td>
+                    <td className="px-5 py-3 text-right space-x-1.5 whitespace-nowrap">
+                      {d.chargeStatus === 'PENDING' && (
+                        <>
+                          <Btn disabled={busyId === d.id} onClick={() => resolveDamage(d.id, 'WAIVE')}>
+                            Waive
+                          </Btn>
+                          <Btn
+                            variant="primary"
+                            disabled={busyId === d.id}
+                            onClick={() => resolveDamage(d.id, 'CHARGE')}
+                          >
+                            Charge rider
+                          </Btn>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <span>Tech: {t.technician}</span>
-                <span>{t.hub}</span>
-              </div>
+      {tab === 'recovery' && (
+        <Card>
+          {recovery.length === 0 ? (
+            <EmptyState icon={<Truck className="w-8 h-8 mx-auto text-[#CBD5E1]" />} title="No recovery jobs" />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                  <th className="px-5 py-3">Ref · Type</th>
+                  <th className="px-5 py-3">Bike / Rider</th>
+                  <th className="px-5 py-3">Location</th>
+                  <th className="px-5 py-3">Priority</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recovery.map((j) => (
+                  <tr key={j.id} className="border-b border-[#F1F5F9] last:border-0">
+                    <td className="px-5 py-3">
+                      <div className="font-extrabold text-[#172B3A]">{j.reference}</div>
+                      <Pill tone={j.type === 'POLICE_HOLD' || j.type === 'THEFT' ? 'red' : 'slate'}>
+                        {j.type}
+                      </Pill>
+                    </td>
+                    <td className="px-5 py-3 text-xs text-[#475569]">
+                      {j.bike?.registrationNumber || '—'}
+                      <br />
+                      <span className="text-[#8A97A0]">
+                        {j.rental?.user?.fullName || j.reportedByPhone || ''}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-xs text-[#475569] max-w-[180px]">{j.locationText || '—'}</td>
+                    <td className="px-5 py-3">
+                      <Pill tone={toneFor(j.priority)}>{j.priority}</Pill>
+                    </td>
+                    <td className="px-5 py-3">
+                      <Pill tone={toneFor(j.status)}>{j.status}</Pill>
+                    </td>
+                    <td className="px-5 py-3 text-right space-x-1.5 whitespace-nowrap">
+                      {j.status === 'OPEN' && (
+                        <Btn
+                          disabled={busyId === j.id}
+                          onClick={() => {
+                            const van = prompt('Van / driver label:') || undefined;
+                            updateRecovery(j.id, { status: 'DISPATCHED', vanLabel: van });
+                          }}
+                        >
+                          Dispatch
+                        </Btn>
+                      )}
+                      {['DISPATCHED', 'IN_PROGRESS'].includes(j.status) && (
+                        <Btn
+                          variant="primary"
+                          disabled={busyId === j.id}
+                          onClick={() => {
+                            const note = prompt('Resolution note:') || undefined;
+                            updateRecovery(j.id, { status: 'RESOLVED', resolutionNote: note });
+                          }}
+                        >
+                          Resolve
+                        </Btn>
+                      )}
+                      {(j.type === 'POLICE_HOLD' || j.type === 'THEFT') && j.status !== 'CLOSED' && (
+                        <Btn
+                          disabled={busyId === j.id}
+                          onClick={() => {
+                            const fir = prompt('FIR number:') || undefined;
+                            const station = prompt('Police station:') || undefined;
+                            updateRecovery(j.id, { firNumber: fir, policeStation: station });
+                          }}
+                        >
+                          <ShieldAlert className="w-3 h-3" /> FIR
+                        </Btn>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {newRecovery && (
+        <Modal title="Open Recovery Job" onClose={() => setNewRecovery(false)}>
+          <form onSubmit={createRecovery} className="space-y-3.5">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Type">
+                <select name="type" className={input}>
+                  {['ROADSIDE', 'BREAKDOWN', 'ACCIDENT', 'THEFT', 'POLICE_HOLD'].map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Priority">
+                <select name="priority" className={input} defaultValue="NORMAL">
+                  {['LOW', 'NORMAL', 'HIGH', 'CRITICAL'].map((t) => (
+                    <option key={t}>{t}</option>
+                  ))}
+                </select>
+              </Field>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {recoveryRequests.map((r) => (
-            <div key={r.id} className="bg-white rounded-2xl p-5 border border-amber-200 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                  {r.id} • SOS ROAD RECOVERY
-                </span>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                  {r.dispatch}
-                </span>
-              </div>
-
-              <h4 className="text-sm font-bold text-slate-900 mt-2">{r.rider}</h4>
-              <p className="text-xs text-slate-700 mt-1 font-semibold">{r.bike} • {r.issue}</p>
-              <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>{r.location}</span>
-              </p>
-
-              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                <span>Assigned: <strong className="text-slate-900">{r.van}</strong></span>
-                <button className="px-3 py-1 bg-emerald-700 text-white rounded-lg font-bold text-xs hover:bg-emerald-800 transition">
-                  Mark Resolved
-                </button>
-              </div>
+            <Field label="Reporter phone (optional)">
+              <input name="reportedByPhone" className={input} placeholder="+91…" />
+            </Field>
+            <Field label="Location">
+              <input name="locationText" className={input} placeholder="Near Inorbit Mall flyover" />
+            </Field>
+            <Field label="Description">
+              <textarea name="description" required rows={3} className={input} />
+            </Field>
+            <div className="flex justify-end gap-2">
+              <Btn type="button" onClick={() => setNewRecovery(false)}>
+                Cancel
+              </Btn>
+              <Btn type="submit" variant="primary" disabled={busyId === 'new'}>
+                {busyId === 'new' ? 'Opening…' : 'Open job'}
+              </Btn>
             </div>
-          ))}
-        </div>
+          </form>
+        </Modal>
       )}
     </div>
   );
 };
-

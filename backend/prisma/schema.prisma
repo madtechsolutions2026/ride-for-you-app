@@ -8,23 +8,45 @@ generator client {
 }
 
 model User {
-  id              String      @id
-  phone           String      @unique
-  fullName        String?
-  email           String?
-  city            String?
-  avatarUrl       String?
-  role            String      @default("RIDER") // RIDER, DRIVER, ADMIN
-  accountStatus   String      @default("ACTIVE") // ACTIVE, SUSPENDED
+  id            String  @id
+  phone         String  @unique
+  fullName      String?
+  email         String?
+  city          String?
+  avatarUrl     String?
+  // RIDER · ADMIN · EXECUTIVE (hub handover/return/damage) · SUPPORT (payments/queries)
+  role          String  @default("RIDER")
+  accountStatus String  @default("ACTIVE") // ACTIVE, SUSPENDED
+
+  // --- Staff-only (null for riders) ---
+  // Which hub an EXECUTIVE is posted to. Their queues are scoped to it.
+  assignedHubId String?
+  assignedHub   Hub?     @relation("HubStaff", fields: [assignedHubId], references: [id], onDelete: SetNull)
+  // Extra screen grants on top of the role's defaults, e.g. ["finance","fleet"].
+  permissions   String[] @default([])
+  invitedById   String?
+  invitedBy     User?    @relation("StaffInvites", fields: [invitedById], references: [id], onDelete: SetNull)
+  staffInvites  User[]   @relation("StaffInvites")
 
   // Cached KYC summary. Source of truth is the latest KycVerification row.
-  kycStatus       String      @default("PENDING") // PENDING, SUBMITTED, APPROVED, REJECTED
+  kycStatus String @default("PENDING") // PENDING, SUBMITTED, APPROVED, REJECTED
 
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   sessions         Session[]
   kycVerifications KycVerification[]
+
+  bookings        Booking[]
+  rentals         Rental[]       @relation("RentalRider")
+  handoversGiven  Rental[]       @relation("RentalHandoverBy")
+  returnsReceived Rental[]       @relation("RentalReturnBy")
+  payments        Payment[]
+  damageReports   DamageReport[] @relation("DamageReporter")
+  recoveryJobs    RecoveryJob[]  @relation("RecoveryAssignee")
+
+  @@index([role])
+  @@index([assignedHubId])
 }
 
 model OtpChallenge {
@@ -108,7 +130,10 @@ model Hub {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  bikes Bike[]
+  bikes    Bike[]
+  bookings Booking[]
+  rentals  Rental[]
+  staff    User[]    @relation("HubStaff")
 
   @@index([status])
 }
@@ -142,8 +167,9 @@ model BikeModel {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  bikes Bike[]
-  plans RentalPlan[]
+  bikes    Bike[]
+  plans    RentalPlan[]
+  bookings Booking[]
 
   @@index([category])
   @@index([status])
@@ -151,7 +177,7 @@ model BikeModel {
 
 // A physical bike in the fleet.
 model Bike {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   modelId            String
   model              BikeModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   hubId              String
@@ -161,8 +187,18 @@ model Bike {
   batteryPercent     Int       @default(100)
   odometerKm         Int       @default(0)
   status             String    @default("AVAILABLE") // AVAILABLE, RESERVED, RENTED, MAINTENANCE
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+
+  // Last known position (updated by the IoT tracker; null until first ping).
+  lastLat    Float?
+  lastLng    Float?
+  lastSeenAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rentals       Rental[]
+  damageReports DamageReport[]
+  recoveryJobs  RecoveryJob[]
 
   @@index([modelId])
   @@index([hubId])
@@ -171,17 +207,252 @@ model Bike {
 
 // Pricing tiers for a model. One row per (model, duration).
 model RentalPlan {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   modelId   String
   model     BikeModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   duration  String // DAY, WEEK, MONTH
   price     Int // integer rupees
-  deposit   Int      @default(0)
+  deposit   Int       @default(0)
   kmLimit   Int? // null = unlimited
-  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String    @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  bookings Booking[]
 
   @@unique([modelId, duration])
   @@index([modelId])
+}
+
+// ===========================================================================
+// V1 operational layer — bookings, rentals, payments, weekly billing,
+// damage, roadside/police recovery. Riders create Bookings from the app;
+// staff run everything else from the admin dashboard.
+// ===========================================================================
+
+// A rider's commitment to rent one BikeModel on one RentalPlan, picked up at
+// the Hub. A physical Bike is only attached at handover (-> Rental).
+model Booking {
+  id        String @id @default(uuid())
+  reference String @unique // human code e.g. RFY-8H2K9
+
+  userId  String
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  modelId String
+  model   BikeModel  @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  planId  String
+  plan    RentalPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  hubId   String
+  hub     Hub        @relation(fields: [hubId], references: [id], onDelete: Restrict)
+
+  // PENDING (awaiting payment) · CONFIRMED (paid) · READY (bike allocated) ·
+  // HANDED_OVER · CANCELLED · EXPIRED
+  status String @default("PENDING")
+
+  // Price snapshot (rupees) taken at booking time so later plan edits don't move it.
+  rentAmount    Int
+  depositAmount Int @default(0)
+  platformFee   Int @default(0)
+  totalAmount   Int
+
+  // Insurance / nominee captured in the app before payment.
+  nomineeName     String?
+  nomineeRelation String?
+  nomineePhone    String?
+  insuranceRef    String?
+
+  // Consent: T&C accepted with a drawn signature (R2 key) + language.
+  consentAcceptedAt   DateTime?
+  consentLanguage     String? // EN, HI, TE
+  consentSignatureKey String?
+
+  startsAt     DateTime? // planned handover
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+  rental   Rental?
+
+  @@index([userId])
+  @@index([status])
+  @@index([hubId])
+}
+
+// The active-rental lifecycle. Exactly one per Booking, created at handover.
+model Rental {
+  id        String  @id @default(uuid())
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation("RentalRider", fields: [userId], references: [id], onDelete: Cascade)
+  bikeId String
+  bike   Bike   @relation(fields: [bikeId], references: [id], onDelete: Restrict)
+  hubId  String
+  hub    Hub    @relation(fields: [hubId], references: [id], onDelete: Restrict)
+
+  // ACTIVE · OVERDUE · RETURNED (bike back, closing) · COMPLETED · RECOVERED
+  status String @default("ACTIVE")
+
+  handoverById  String?
+  handoverBy    User?    @relation("RentalHandoverBy", fields: [handoverById], references: [id], onDelete: SetNull)
+  handoverAt    DateTime @default(now())
+  odometerStart Int      @default(0)
+
+  expectedReturnAt DateTime
+  returnedAt       DateTime?
+  returnById       String?
+  returnBy         User?     @relation("RentalReturnBy", fields: [returnById], references: [id], onDelete: SetNull)
+  odometerEnd      Int?
+
+  closedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  weeklyInvoices WeeklyInvoice[]
+  damageReports  DamageReport[]
+  recoveryJobs   RecoveryJob[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([bikeId])
+}
+
+// Every money movement. Riders pay from the app; staff can record MANUAL/CASH
+// and mark refunds. Gateway webhooks flip status to SUCCESS/FAILED.
+model Payment {
+  id String @id @default(uuid())
+
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookingId       String?
+  booking         Booking?       @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  weeklyInvoiceId String?
+  weeklyInvoice   WeeklyInvoice? @relation(fields: [weeklyInvoiceId], references: [id], onDelete: SetNull)
+
+  // RENT · DEPOSIT · PLATFORM_FEE · WEEKLY_RENT · LATE_FEE · DAMAGE · REFUND
+  purpose  String
+  amount   Int // rupees; negative for REFUND
+  currency String @default("INR")
+
+  // PHONEPE · RAZORPAY · CASHFREE · CASH · UPI_MANUAL · ADJUSTMENT
+  provider          String
+  providerOrderId   String?
+  providerPaymentId String?
+  // INITIATED · SUCCESS · FAILED · REFUNDED
+  status            String  @default("INITIATED")
+
+  rawWebhook   Json?
+  note         String?
+  recordedById String? // staff User.id when entered manually
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([bookingId])
+  @@index([purpose])
+}
+
+// The recurring weekly rent for a live rental — the core of the old
+// billing dashboard. A cron job generates one row per rental per week.
+model WeeklyInvoice {
+  id       String @id @default(uuid())
+  rentalId String
+  rental   Rental @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  weekNumber  Int // 1-based, since rental start
+  periodStart DateTime
+  periodEnd   DateTime
+  amount      Int // rupees
+
+  // PENDING · PAID · OVERDUE · WAIVED
+  status String    @default("PENDING")
+  dueAt  DateTime
+  paidAt DateTime?
+
+  reminderCount  Int       @default(0)
+  lastReminderAt DateTime?
+  paymentLinkUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@unique([rentalId, weekNumber])
+  @@index([status])
+  @@index([dueAt])
+}
+
+// Damage logged by an EXECUTIVE at return (or mid-rental). May become a charge.
+model DamageReport {
+  id       String @id @default(uuid())
+  rentalId String
+  rental   Rental @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  bikeId   String
+  bike     Bike   @relation(fields: [bikeId], references: [id], onDelete: Restrict)
+
+  reportedById String?
+  reportedBy   User?   @relation("DamageReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+
+  // MINOR · MODERATE · MAJOR · TOTAL_LOSS
+  severity    String
+  description String
+  photoKeys   String[] @default([]) // private R2 keys
+
+  estimatedCost Int    @default(0)
+  // PENDING · CHARGED · WAIVED · DISPUTED
+  chargeStatus  String @default("PENDING")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([rentalId])
+  @@index([chargeStatus])
+}
+
+// Roadside assistance, accident, theft or police-hold recovery.
+model RecoveryJob {
+  id        String @id @default(uuid())
+  reference String @unique // REC-2049
+
+  rentalId String?
+  rental   Rental? @relation(fields: [rentalId], references: [id], onDelete: SetNull)
+  bikeId   String?
+  bike     Bike?   @relation(fields: [bikeId], references: [id], onDelete: SetNull)
+
+  // ROADSIDE · ACCIDENT · THEFT · POLICE_HOLD · BREAKDOWN
+  type     String
+  // OPEN · DISPATCHED · IN_PROGRESS · RESOLVED · CLOSED
+  status   String @default("OPEN")
+  priority String @default("NORMAL") // LOW · NORMAL · HIGH · CRITICAL
+
+  reportedByPhone String?
+  locationText    String?
+  lat             Float?
+  lng             Float?
+  description     String
+
+  assignedToId String?
+  assignedTo   User?   @relation("RecoveryAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  vanLabel     String?
+
+  // Police-specific
+  policeStation String?
+  firNumber     String?
+
+  dispatchedAt   DateTime?
+  resolvedAt     DateTime?
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([type])
 }

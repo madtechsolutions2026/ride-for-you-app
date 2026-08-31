@@ -1,126 +1,208 @@
-import React from 'react';
-import { CheckCircle2, Clock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Receipt, Bell } from 'lucide-react';
+import { apiClient } from '../api/client';
+import { Card, Stat, Pill, toneFor, Btn, rupees, Loader, EmptyState } from '../components/ui';
+
+type Tab = 'invoices' | 'payments';
 
 export const Finance: React.FC = () => {
-  const transactions = [
-    {
-      id: 'TXN-9021',
-      rider: 'Madhu Kunchala',
-      bike: 'SPRINTO HS (TS09EV3001)',
-      type: 'Weekly Rental + Platform Fee',
-      amount: '₹3,345',
-      status: 'PAID',
-      date: 'Today, 02:45 PM',
-      method: 'UPI / Razorpay',
-    },
-    {
-      id: 'TXN-9020',
-      rider: 'Vikram Singh',
-      bike: 'NEW Aeroflow (TS09EV3012)',
-      type: 'Weekly Rental (Renewal)',
-      amount: '₹1,925',
-      status: 'PAID',
-      date: 'Yesterday, 06:10 PM',
-      method: 'UPI / GPay',
-    },
-    {
-      id: 'TXN-9019',
-      rider: 'Ramesh Reddy',
-      bike: 'ODYSSEY (TS09EV3022)',
-      type: 'Weekly Rental + Platform Fee',
-      amount: '₹4,625',
-      status: 'PAID',
-      date: '28 Aug 2026',
-      method: 'Credit Card',
-    },
-    {
-      id: 'TXN-9018',
-      rider: 'Suresh Kumar',
-      bike: 'EVTRIC (TS09EV3008)',
-      type: 'Overdue Late Fee',
-      amount: '₹450',
-      status: 'PENDING',
-      date: '27 Aug 2026',
-      method: 'Payment Link Sent',
-    },
-  ];
+  const [tab, setTab] = useState<Tab>('invoices');
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invSummary, setInvSummary] = useState<any>({});
+  const [payments, setPayments] = useState<any[]>([]);
+  const [payTotals, setPayTotals] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [inv, pay] = await Promise.all([
+        apiClient.get('/admin/api/invoices'),
+        apiClient.get('/admin/api/payments'),
+      ]);
+      setInvoices(inv.data.invoices || []);
+      setInvSummary(inv.data.summary || {});
+      setPayments(pay.data.payments || []);
+      setPayTotals(pay.data.totals || {});
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    load();
+  }, []);
+
+  const doAction = async (url: string, body: any, id: string) => {
+    setBusyId(id);
+    try {
+      await apiClient.post(url, body);
+      await load();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Action failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (loading) return <Loader />;
 
   return (
-    <div className="space-y-6">
-      {/* Financial Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-semibold text-slate-500">Collected Revenue (This Month)</span>
-          <h3 className="text-2xl font-extrabold text-slate-900 mt-1">₹1,04,500</h3>
-          <p className="text-xs text-emerald-600 font-semibold mt-1">✓ 100% On-Time Weekly Settled</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-semibold text-slate-500">Platform Non-Refundable Fees</span>
-          <h3 className="text-2xl font-extrabold text-slate-900 mt-1">₹36,000</h3>
-          <p className="text-xs text-slate-500 font-medium mt-1">24 Active Onboarded Riders</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-semibold text-slate-500">Pending Dues & Overdue</span>
-          <h3 className="text-2xl font-extrabold text-amber-600 mt-1">₹1,650</h3>
-          <p className="text-xs text-amber-700 font-medium mt-1">2 Reminders Dispatched</p>
-        </div>
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Stat label="Collected (all time)" value={rupees(payTotals.settled)} tone="green" hint="successful payments" />
+        <Stat label="Invoices — pending" value={rupees(invSummary.pending)} tone="amber" />
+        <Stat label="Invoices — overdue" value={rupees(invSummary.overdue)} tone="red" hint="past due date" />
+        <Stat label="Invoices — collected" value={rupees(invSummary.collected)} tone="green" />
       </div>
 
-      {/* Transactions Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            Recent Payments & Transactions
-          </h4>
-          <button className="text-xs font-bold text-emerald-700 hover:underline">
-            Export CSV
+      <div className="flex gap-2">
+        {(['invoices', 'payments'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 rounded-xl text-xs font-extrabold capitalize transition ${
+              tab === t
+                ? 'bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white shadow-neo-btn'
+                : 'bg-white text-[#8A97A0] border border-[#EDF2F1] shadow-neo-sm'
+            }`}
+          >
+            {t === 'invoices' ? `Weekly invoices (${invoices.length})` : `Payments ledger (${payments.length})`}
           </button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-              <tr>
-                <th className="py-3.5 px-6">Transaction ID</th>
-                <th className="py-3.5 px-6">Rider & Vehicle</th>
-                <th className="py-3.5 px-6">Type</th>
-                <th className="py-3.5 px-6">Amount</th>
-                <th className="py-3.5 px-6">Payment Mode</th>
-                <th className="py-3.5 px-6">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {transactions.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-50/80 transition">
-                  <td className="py-3.5 px-6 font-mono font-bold text-slate-900">{t.id}</td>
-                  <td className="py-3.5 px-6">
-                    <p className="font-bold text-slate-900">{t.rider}</p>
-                    <p className="text-[11px] text-slate-500">{t.bike}</p>
-                  </td>
-                  <td className="py-3.5 px-6 text-slate-600">{t.type}</td>
-                  <td className="py-3.5 px-6 font-bold text-slate-900">{t.amount}</td>
-                  <td className="py-3.5 px-6 text-slate-500">{t.method}</td>
-                  <td className="py-3.5 px-6">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        t.status === 'PAID'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {t.status === 'PAID' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                      <span>{t.status}</span>
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        ))}
       </div>
+
+      {tab === 'invoices' && (
+        <Card>
+          {invoices.length === 0 ? (
+            <EmptyState
+              icon={<Receipt className="w-8 h-8 mx-auto text-[#CBD5E1]" />}
+              title="No weekly invoices yet"
+              hint="An invoice is raised for each active rental every week. The 6-hourly billing sweep keeps these current."
+            />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                  <th className="px-5 py-3">Rider · Bike</th>
+                  <th className="px-5 py-3">Week</th>
+                  <th className="px-5 py-3">Amount</th>
+                  <th className="px-5 py-3">Due</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((i) => (
+                  <tr key={i.id} className="border-b border-[#F1F5F9] last:border-0">
+                    <td className="px-5 py-3">
+                      <div className="font-extrabold text-[#172B3A]">{i.rental?.user?.fullName || '—'}</div>
+                      <div className="text-xs text-[#8A97A0]">
+                        {i.rental?.user?.phone} · {i.rental?.bike?.registrationNumber}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-xs text-[#475569]">W{i.weekNumber}</td>
+                    <td className="px-5 py-3 font-extrabold text-[#172B3A]">{rupees(i.amount)}</td>
+                    <td className="px-5 py-3 text-xs text-[#475569]">
+                      {new Date(i.dueAt).toLocaleDateString('en-IN')}
+                      {i.reminderCount > 0 && (
+                        <span className="text-[#94A3B8]"> · {i.reminderCount} reminder(s)</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <Pill tone={toneFor(i.status)}>{i.status}</Pill>
+                    </td>
+                    <td className="px-5 py-3 text-right space-x-1.5 whitespace-nowrap">
+                      {i.status !== 'PAID' && i.status !== 'WAIVED' && (
+                        <>
+                          <Btn
+                            disabled={busyId === i.id}
+                            onClick={() => doAction(`/admin/api/invoices/${i.id}/remind`, {}, i.id)}
+                          >
+                            <Bell className="w-3 h-3" /> Remind
+                          </Btn>
+                          <Btn
+                            variant="primary"
+                            disabled={busyId === i.id}
+                            onClick={() =>
+                              doAction(`/admin/api/invoices/${i.id}/mark-paid`, { provider: 'UPI_MANUAL' }, i.id)
+                            }
+                          >
+                            Mark paid
+                          </Btn>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
+      {tab === 'payments' && (
+        <Card>
+          {payments.length === 0 ? (
+            <EmptyState icon="💳" title="No payments recorded yet" />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                  <th className="px-5 py-3">Rider</th>
+                  <th className="px-5 py-3">Purpose</th>
+                  <th className="px-5 py-3">Amount</th>
+                  <th className="px-5 py-3">Method</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">When</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id} className="border-b border-[#F1F5F9] last:border-0">
+                    <td className="px-5 py-3">
+                      <div className="font-extrabold text-[#172B3A]">{p.user?.fullName || '—'}</div>
+                      <div className="text-xs text-[#8A97A0]">{p.user?.phone}</div>
+                    </td>
+                    <td className="px-5 py-3 text-xs">
+                      <Pill tone="slate">{p.purpose}</Pill>
+                    </td>
+                    <td
+                      className={`px-5 py-3 font-extrabold ${p.amount < 0 ? 'text-[#DC2626]' : 'text-[#172B3A]'}`}
+                    >
+                      {rupees(p.amount)}
+                    </td>
+                    <td className="px-5 py-3 text-xs text-[#475569]">{p.provider}</td>
+                    <td className="px-5 py-3">
+                      <Pill tone={toneFor(p.status)}>{p.status}</Pill>
+                    </td>
+                    <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                      {new Date(p.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      {p.status === 'SUCCESS' && p.amount > 0 && (
+                        <Btn
+                          variant="danger"
+                          disabled={busyId === p.id}
+                          onClick={() => {
+                            const note = prompt('Refund reason:');
+                            if (note) doAction(`/admin/api/payments/${p.id}/refund`, { note }, p.id);
+                          }}
+                        >
+                          Refund
+                        </Btn>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
     </div>
   );
 };
-

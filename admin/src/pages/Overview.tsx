@@ -22,7 +22,8 @@ interface OverviewProps {
 export const Overview: React.FC<OverviewProps> = ({ stats, setActiveTab }) => {
   const riders = stats?.riders || { total: 1, verified: 1, pendingKyc: 1 };
   const fleet = stats?.fleet || { totalBikes: 54, availableBikes: 42, rentedBikes: 12, utilizationRate: 22 };
-  const finance = stats?.finance || { estimatedWeeklyRevenue: 23100, totalRevenue: 104500 };
+  const finance = stats?.finance || { collectedRevenue: 0, overdueAmount: 0, pendingInvoiceAmount: 0 };
+  const ops = stats?.operations || { activeRentals: 0, overdueRentals: 0, pendingBookings: 0, openRecovery: 0, pendingDamage: 0, staffCount: 0 };
 
   const cards = [
     {
@@ -53,12 +54,15 @@ export const Overview: React.FC<OverviewProps> = ({ stats, setActiveTab }) => {
       onClick: () => setActiveTab('kyc'),
     },
     {
-      title: 'Monthly Run-Rate (MRR)',
-      value: `₹${(finance.totalRevenue || 104500).toLocaleString()}`,
-      sub: `₹${(finance.estimatedWeeklyRevenue || 23100).toLocaleString()} / week collected`,
+      title: 'Collected Revenue',
+      value: `₹${(finance.collectedRevenue || 0).toLocaleString('en-IN')}`,
+      sub:
+        (finance.overdueAmount || 0) > 0
+          ? `₹${(finance.overdueAmount || 0).toLocaleString('en-IN')} overdue`
+          : `${ops.activeRentals} active rental(s)`,
       icon: Receipt,
-      badge: 'Live Run-Rate',
-      badgeColor: 'bg-[#F3E8FF] text-[#7E22CE]',
+      badge: (finance.overdueAmount || 0) > 0 ? 'Overdue dues' : 'On track',
+      badgeColor: (finance.overdueAmount || 0) > 0 ? 'bg-[#FEE2E2] text-[#DC2626]' : 'bg-[#EAF8F1] text-[#38A169]',
       onClick: () => setActiveTab('finance'),
     },
   ];

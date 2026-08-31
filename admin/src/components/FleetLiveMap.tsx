@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { apiClient } from '../api/client';
 import {
   Bike,
   Zap,
@@ -59,7 +60,7 @@ export interface SwapStationAsset {
   totalDocks: number;
 }
 
-const FLEET_VEHICLES: VehicleAsset[] = [
+const FALLBACK_VEHICLES: VehicleAsset[] = [
   {
     id: 'bike-01',
     plate: 'TS09EV3001',
@@ -158,7 +159,7 @@ const FLEET_VEHICLES: VehicleAsset[] = [
   },
 ];
 
-const FLEET_HUBS: HubAsset[] = [
+const FALLBACK_HUBS: HubAsset[] = [
   {
     id: 'hub-01',
     name: 'Kondapur Main EV Hub',
@@ -197,7 +198,7 @@ const FLEET_HUBS: HubAsset[] = [
   },
 ];
 
-const SWAP_STATIONS: SwapStationAsset[] = [
+const FALLBACK_SWAPS: SwapStationAsset[] = [
   {
     id: 'swap-01',
     name: 'Mindspace 2-Min Swap Dock',
@@ -247,6 +248,75 @@ export const FleetLiveMap: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
   const [commandFeedback, setCommandFeedback] = useState<string | null>(null);
 
+  const [vehicles, setVehicles] = useState<VehicleAsset[]>(FALLBACK_VEHICLES);
+  const [hubs, setHubs] = useState<HubAsset[]>(FALLBACK_HUBS);
+  const [swaps, setSwaps] = useState<SwapStationAsset[]>(FALLBACK_SWAPS);
+  const [live, setLive] = useState(false);
+
+  // Pull the real fleet from the backend; keep the demo data as a fallback so
+  // the map never renders empty while the request is in flight or if it fails.
+  useEffect(() => {
+    let alive = true;
+    const pull = async () => {
+      try {
+        const { data } = await apiClient.get('/admin/api/fleet/map');
+        if (!alive) return;
+        setVehicles(
+          (data.bikes || []).map((b: any): VehicleAsset => ({
+            id: b.id,
+            plate: b.registrationNumber,
+            model: b.model || '—',
+            status: b.status === 'RENTED' ? 'MOVING' : b.status === 'MAINTENANCE' ? 'PARKED' : 'AVAILABLE',
+            speed: b.status === 'RENTED' ? 24 : 0,
+            battery: b.batteryPercent ?? 100,
+            voltage: '—',
+            temp: '—',
+            rangeKm: Math.round(((b.batteryPercent ?? 100) / 100) * 90),
+            lat: b.lat,
+            lng: b.lng,
+            rider: b.status === 'RENTED' ? 'On rent' : '—',
+            hub: b.hubName || '—',
+            lastPing: b.hasLiveFix && b.lastSeenAt ? new Date(b.lastSeenAt).toLocaleTimeString() : 'no GPS yet',
+          }))
+        );
+        setHubs(
+          (data.hubs || []).map((h: any): HubAsset => ({
+            id: h.id,
+            name: h.name,
+            address: h.address,
+            city: h.city || 'Hyderabad',
+            lat: h.lat,
+            lng: h.lng,
+            availableBikes: h._count?.bikes ?? 0,
+            totalBikes: h._count?.bikes ?? 0,
+            openTime: '09:00 - 21:00',
+            contact: '+91 40 1234 5678',
+          }))
+        );
+        setSwaps(
+          (data.swapStations || []).map((w: any): SwapStationAsset => ({
+            id: w.id,
+            name: w.name,
+            address: w.address,
+            lat: w.lat,
+            lng: w.lng,
+            chargedBatteries: 8,
+            totalDocks: 10,
+          }))
+        );
+        setLive(true);
+      } catch (e) {
+        // keep fallback data
+      }
+    };
+    pull();
+    const t = setInterval(pull, 30000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+
   // Initialize Map with Silky Clean Carto Light (Zero Watermarks)
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
@@ -286,7 +356,7 @@ export const FleetLiveMap: React.FC = () => {
 
     // 1. Hub Markers
     if (activeFilter === 'ALL' || activeFilter === 'HUBS') {
-      FLEET_HUBS.forEach((hub) => {
+      hubs.forEach((hub) => {
         const isSelected = selectedAsset?.id === hub.id;
         const icon = L.divIcon({
           className: 'custom-hub-pin',
@@ -339,7 +409,7 @@ export const FleetLiveMap: React.FC = () => {
 
     // 2. Swap Stations
     if (activeFilter === 'ALL' || activeFilter === 'SWAPS') {
-      SWAP_STATIONS.forEach((station) => {
+      swaps.forEach((station) => {
         const isSelected = selectedAsset?.id === station.id;
         const icon = L.divIcon({
           className: 'custom-swap-pin',
@@ -391,7 +461,7 @@ export const FleetLiveMap: React.FC = () => {
     }
 
     // 3. Vehicles
-    FLEET_VEHICLES.forEach((bike) => {
+    vehicles.forEach((bike) => {
       if (activeFilter === 'MOVING' && bike.status !== 'MOVING') return;
       if (activeFilter === 'PARKED' && bike.status !== 'PARKED') return;
       if (activeFilter === 'LOW_BATTERY' && bike.battery >= 20) return;
@@ -450,7 +520,7 @@ export const FleetLiveMap: React.FC = () => {
       });
       layerGroup.addLayer(marker);
     });
-  }, [activeFilter, selectedAsset]);
+  }, [activeFilter, selectedAsset, vehicles, hubs, swaps]);
 
   const handleCommand = (cmd: string) => {
     setCommandFeedback(`Executing "${cmd}" on ${selectedAsset?.plate || 'device'}...`);

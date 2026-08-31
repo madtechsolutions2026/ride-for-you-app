@@ -5,12 +5,13 @@
   "main": "dist/app.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "build": "tsc",
-    "start": "prisma db push --accept-data-loss && node dist/app.js",
+    "build": "tsc && npm --prefix ../admin ci && npm --prefix ../admin run build",
+    "start": "prisma db push && node dist/app.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "seed": "node prisma/seed.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
