@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
-import { getCache, setCache, delCache, delCachePrefix } from '../utils/cache';
+import { getCache, setCache, delCache } from '../utils/cache';
 import { presignGet, PRESIGNED_URL_TTL_SECONDS } from '../utils/r2';
 
 /**
@@ -107,9 +107,8 @@ export async function getAdminStats(_req: Request, res: Response) {
 }
 
 // 2. GET /admin/users - Riders list with search, filter, pagination
-const USERS_CACHE_PREFIX = 'admin:users:';
-const USERS_TTL_SECONDS = 15;
-
+// Not cached: paginated + indexed this is a cheap query, and a live list avoids
+// any staleness after a block/unblock or role change.
 export async function getAllUsers(req: Request, res: Response) {
   try {
     const search = String(req.query.search || '').trim();
@@ -142,10 +141,6 @@ export async function getAllUsers(req: Request, res: Response) {
       }
     }
 
-    const cacheKey = `${USERS_CACHE_PREFIX}${roleFilter}|${kycFilter}|${search}|${page}|${pageSize}`;
-    const cached = await getCache<any>(cacheKey);
-    if (cached) return res.json(cached);
-
     const [total, users] = await Promise.all([
       prisma.user.count({ where }),
       prisma.user.findMany({
@@ -176,7 +171,6 @@ export async function getAllUsers(req: Request, res: Response) {
       users,
     };
 
-    await setCache(cacheKey, payload, USERS_TTL_SECONDS);
     return res.json(payload);
   } catch (error: any) {
     console.error('Error in getAllUsers:', error);
@@ -201,7 +195,6 @@ export async function updateUserStatus(req: Request, res: Response) {
 
     await delCache(`user:profile:${id}`);
     await delCache(`auth:me:${id}`);
-    await delCachePrefix(USERS_CACHE_PREFIX);
     await delCache(STATS_CACHE_KEY);
 
     return res.json({ message: 'User status updated successfully', user });
