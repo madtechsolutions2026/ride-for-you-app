@@ -39,4 +39,19 @@ export const images = {
   kycHero: require('../assets/kyc-hero.jpg'),
   riderAvatar: require('../assets/rider-avatar.jpg'),
   safeLock: require('../assets/safe-lock.jpg'),
+
+  /**
+   * Booking-confirmed hero — an EV scooter beside a charging station with a
+   * bright city + wind-turbine backdrop. Drop a `booking-hero.png` into
+   * `mobile/assets/` and point this line at it; until then it reuses the auth
+   * hero scene so the screen still renders.
+   */
+  bookingHero: require('../assets/auth-hero.png'),
+
+  /**
+   * Optional: a single white + green helmet cut-out for the "Important
+   * Reminders" card. Add `helmet.png` (transparent) and swap this in; the
+   * screen hides the image gracefully if it's the placeholder.
+   */
+  helmet: null as number | null,
 };
