@@ -22,14 +22,21 @@ There is deliberately no SQLite fallback — if `DATABASE_URL` is missing the
 server refuses to start instead of quietly writing to a disposable file.
 
 ### 3. Set the commands
-| Setting       | Value                                                     |
-| ------------- | --------------------------------------------------------- |
-| Root Directory| `backend`                                                  |
-| Build Command | `npm install && npm run build`                             |
-| Start Command | `npx prisma migrate deploy && npm start`                   |
+| Setting        | Value                             |
+| -------------- | --------------------------------- |
+| Root Directory | `backend`                         |
+| Build Command  | `npm install && npm run build`    |
+| Start Command  | `npm start`                       |
 
-`postinstall` runs `prisma generate`. `migrate deploy` applies
-`prisma/migrations/` — it only adds what's missing and never drops data.
+- `postinstall` runs `prisma generate`.
+- `build` compiles the API **and** builds the admin dashboard
+  (`npm --prefix ../admin ci && npm --prefix ../admin run build`) into
+  `admin/dist`, which `app.ts` serves at `/admin/`. There is no committed
+  build output any more.
+- `start` = `prisma db push && node dist/app.js`. Plain `db push` (no
+  `--accept-data-loss`) applies additive schema changes on boot and **exits
+  non-zero on any destructive change** instead of dropping data unattended.
+  Schema history is managed with `db push`, not a migrations folder.
 
 ### 4. Deploy, then verify
 ```bash
@@ -39,6 +46,18 @@ curl https://ride-for-you-app.onrender.com/health
 > **Free tier note:** the service sleeps after ~15 min idle, so the first
 > request can take 30–60s. The mobile client already allows a 45s timeout.
 > Database contents survive this — only the old SQLite file did not.
+
+### Admin dashboard access
+The dashboard is at `/admin/`. Staff sign in with **phone + OTP** (dev master
+code `123456`). `ADMIN_PHONES` in `auth.controller.ts` auto-elevates the
+seeded admin numbers; every other staff member is created from
+**Employees & Roles** inside the dashboard. Roles: ADMIN (everything),
+EXECUTIVE (hub floor), SUPPORT (riders + payments).
+
+### Cloudflare R2 (KYC documents)
+Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`
+on Render too, or KYC uploads return 503 and submitted documents won't be
+viewable in the review queue.
 
 ## Local backend
 ```bash
