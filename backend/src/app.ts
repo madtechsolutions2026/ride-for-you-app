@@ -28,9 +28,8 @@ app.use('/user', userRoutes);
 app.use('/kyc', kycRoutes);
 app.use('/rental', rentalRoutes);
 
-// Admin API endpoints (available under /admin/api and /api/admin)
+// Admin API endpoints
 app.use('/admin/api', adminRoutes);
-app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
