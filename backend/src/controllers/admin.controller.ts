@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
-import { delCache } from '../utils/cache';
+import { getCache, setCache, delCache } from '../utils/cache';
 import { presignGet, PRESIGNED_URL_TTL_SECONDS } from '../utils/r2';
 
 /**
@@ -8,8 +8,21 @@ import { presignGet, PRESIGNED_URL_TTL_SECONDS } from '../utils/r2';
  */
 
 // 1. GET /admin/stats - High level overview KPI metrics
+//
+// ~19 count/aggregate queries. They fan out in a single Promise.all (one wave,
+// not two) and the whole payload is cached briefly — a dashboard refresh or
+// several staff online no longer means N * 19 queries against the DB. TTL-only:
+// the numbers can lag by STATS_TTL_SECONDS, which is fine for KPI tiles, so
+// there is deliberately no manual invalidation wired into the mutating paths.
+const STATS_CACHE_KEY = 'admin:stats';
+const STATS_TTL_SECONDS = 30;
+
 export async function getAdminStats(_req: Request, res: Response) {
   try {
+    const cached = await getCache<any>(STATS_CACHE_KEY);
+    if (cached) return res.json(cached);
+
+    const now = new Date();
     const [
       totalRiders,
       verifiedRiders,
@@ -21,6 +34,15 @@ export async function getAdminStats(_req: Request, res: Response) {
       totalHubs,
       totalSwapStations,
       totalModels,
+      activeRentals,
+      overdueRentals,
+      pendingBookings,
+      staffCount,
+      openRecovery,
+      pendingDamage,
+      collectedAgg,
+      overdueAgg,
+      pendingInvoiceAgg,
     ] = await Promise.all([
       prisma.user.count({ where: { role: 'RIDER' } }),
       prisma.user.count({ where: { role: 'RIDER', kycStatus: 'APPROVED' } }),
@@ -32,20 +54,6 @@ export async function getAdminStats(_req: Request, res: Response) {
       prisma.hub.count({ where: { status: 'ACTIVE' } }),
       prisma.swapStation.count({ where: { status: 'ACTIVE' } }),
       prisma.bikeModel.count({ where: { status: 'ACTIVE' } }),
-    ]);
-
-    const now = new Date();
-    const [
-      activeRentals,
-      overdueRentals,
-      pendingBookings,
-      staffCount,
-      openRecovery,
-      pendingDamage,
-      collectedAgg,
-      overdueAgg,
-      pendingInvoiceAgg,
-    ] = await Promise.all([
       prisma.rental.count({ where: { status: 'ACTIVE' } }),
       prisma.rental.count({ where: { status: 'ACTIVE', expectedReturnAt: { lt: now } } }),
       prisma.booking.count({ where: { status: 'PENDING' } }),
@@ -63,7 +71,7 @@ export async function getAdminStats(_req: Request, res: Response) {
     const fleetUtilization =
       totalBikes > 0 ? Math.round(((totalBikes - availableBikes) / totalBikes) * 100) : 0;
 
-    return res.json({
+    const payload = {
       riders: { total: totalRiders, verified: verifiedRiders, pendingKyc },
       fleet: {
         totalBikes,
@@ -87,7 +95,11 @@ export async function getAdminStats(_req: Request, res: Response) {
         overdueAmount: overdueAgg._sum.amount ?? 0,
         pendingInvoiceAmount: pendingInvoiceAgg._sum.amount ?? 0,
       },
-    });
+    };
+
+    await setCache(STATS_CACHE_KEY, payload, STATS_TTL_SECONDS);
+
+    return res.json(payload);
   } catch (error: any) {
     console.error('Error in getAdminStats:', error);
     return res.status(500).json({ error: 'Internal server error' });
