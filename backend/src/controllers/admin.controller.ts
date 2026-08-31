@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
-import { getCache, setCache, delCache } from '../utils/cache';
+import { getCache, setCache, delCache, delCachePrefix } from '../utils/cache';
 import { presignGet, PRESIGNED_URL_TTL_SECONDS } from '../utils/r2';
 
 /**
@@ -107,45 +107,77 @@ export async function getAdminStats(_req: Request, res: Response) {
 }
 
 // 2. GET /admin/users - Riders list with search, filter, pagination
+const USERS_CACHE_PREFIX = 'admin:users:';
+const USERS_TTL_SECONDS = 15;
+
 export async function getAllUsers(req: Request, res: Response) {
   try {
     const search = String(req.query.search || '').trim();
     const kycFilter = String(req.query.kycStatus || '').trim();
     const roleFilter = String(req.query.role || '').trim();
 
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, parseInt(String(req.query.pageSize ?? '25'), 10) || 25)
+    );
+
     const where: any = {};
     if (roleFilter) where.role = roleFilter;
     if (kycFilter) where.kycStatus = kycFilter;
 
-    if (search) {
-      where.OR = [
-        { fullName: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { city: { contains: search, mode: 'insensitive' } },
-      ];
+    // Search rules:
+    //  - all-digit input -> phone only (one column, not four ILIKEs)
+    //  - text input      -> case-insensitive substring over name / email / city
+    //  - < 2 chars       -> ignored, so we never scan the table for "a"
+    if (search.length >= 2) {
+      if (/^\d+$/.test(search)) {
+        where.phone = { contains: search };
+      } else {
+        where.OR = [
+          { fullName: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { city: { contains: search, mode: 'insensitive' } },
+        ];
+      }
     }
 
-    const users = await prisma.user.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        phone: true,
-        fullName: true,
-        email: true,
-        city: true,
-        role: true,
-        accountStatus: true,
-        kycStatus: true,
-        createdAt: true,
-      },
-    });
+    const cacheKey = `${USERS_CACHE_PREFIX}${roleFilter}|${kycFilter}|${search}|${page}|${pageSize}`;
+    const cached = await getCache<any>(cacheKey);
+    if (cached) return res.json(cached);
 
-    return res.json({
+    const [total, users] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          phone: true,
+          fullName: true,
+          email: true,
+          city: true,
+          role: true,
+          accountStatus: true,
+          kycStatus: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    const payload = {
       count: users.length,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
       users,
-    });
+    };
+
+    await setCache(cacheKey, payload, USERS_TTL_SECONDS);
+    return res.json(payload);
   } catch (error: any) {
     console.error('Error in getAllUsers:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -169,6 +201,8 @@ export async function updateUserStatus(req: Request, res: Response) {
 
     await delCache(`user:profile:${id}`);
     await delCache(`auth:me:${id}`);
+    await delCachePrefix(USERS_CACHE_PREFIX);
+    await delCache(STATS_CACHE_KEY);
 
     return res.json({ message: 'User status updated successfully', user });
   } catch (error: any) {
