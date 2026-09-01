@@ -2,9 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-// Screens need the real status-bar height instead of a hardcoded guess.
-// Android's status bar varies 24-48dp by device, and SDK 54 draws edge-to-edge
-// by default, so anything with a fixed top inset sits wrong on real hardware.
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -31,16 +28,11 @@ import BookingPaymentScreen from './src/screens/BookingPaymentScreen';
 import BookingConfirmedScreen from './src/screens/BookingConfirmedScreen';
 import MyBookingsScreen from './src/screens/MyBookingsScreen';
 
-// Keep the native splash screen on screen while we load fonts + check the
-// login token. We hide it manually once everything is ready (see below).
-// The .catch is just to silence a harmless warning during Fast Refresh.
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-  // ---- 1. Load the Poppins font files into memory ----
-  // useFonts returns [true] once every listed font is ready to use.
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -50,7 +42,6 @@ export default function App() {
     Poppins_900Black,
   });
 
-  // ---- 2. Existing auth check ----
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -70,17 +61,14 @@ export default function App() {
     });
   }, []);
 
-  // ---- 3. The app is ready only when BOTH are done ----
   const appIsReady = fontsLoaded && authChecked;
 
-  // ---- 4. Hide the splash screen the moment the first screen has drawn ----
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady) {
       await SplashScreen.hideAsync();
     }
   }, [appIsReady]);
 
-  // While not ready: render nothing. The native splash screen stays visible.
   if (!appIsReady) {
     return null;
   }
@@ -101,40 +89,28 @@ export default function App() {
               freezeOnBlur: true,
             }}
           >
-            {isAuthenticated ? (
-              <>
-                <Stack.Screen
-                  name="BookingConfirmed"
-                  component={BookingConfirmedScreen}
-                  options={{ gestureEnabled: false }}
-                />
-                <Stack.Screen name="Home">
-                  {(props) => <HomeScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
-                </Stack.Screen>
-                <Stack.Screen name="Profile">
-                  {(props) => (
-                    <ProfileScreen {...props} onLogout={() => setIsAuthenticated(false)} />
-                  )}
-                </Stack.Screen>
-                <Stack.Screen name="VehiclesList" component={VehiclesListScreen} />
-                <Stack.Screen name="BookingPayment" component={BookingPaymentScreen} />
-                <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
-              </>
-            ) : (
-              <>
-                <Stack.Screen
-                  name="BookingConfirmed"
-                  component={BookingConfirmedScreen}
-                  options={{ gestureEnabled: false }}
-                />
-                <Stack.Screen name="RequestOtp" component={RequestOtpScreen} />
-                <Stack.Screen name="VerifyOtp">
-                  {(props) => (
-                    <VerifyOtpScreen {...props} onLoginSuccess={() => setIsAuthenticated(true)} />
-                  )}
-                </Stack.Screen>
-              </>
-            )}
+            <Stack.Screen
+              name="BookingConfirmed"
+              component={BookingConfirmedScreen}
+              options={{ gestureEnabled: false }}
+            />
+            <Stack.Screen name="Home">
+              {(props) => <HomeScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
+            </Stack.Screen>
+            <Stack.Screen name="Profile">
+              {(props) => (
+                <ProfileScreen {...props} onLogout={() => setIsAuthenticated(false)} />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="VehiclesList" component={VehiclesListScreen} />
+            <Stack.Screen name="BookingPayment" component={BookingPaymentScreen} />
+            <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+            <Stack.Screen name="RequestOtp" component={RequestOtpScreen} />
+            <Stack.Screen name="VerifyOtp">
+              {(props) => (
+                <VerifyOtpScreen {...props} onLoginSuccess={() => setIsAuthenticated(true)} />
+              )}
+            </Stack.Screen>
           </Stack.Navigator>
         </NavigationContainer>
       </View>
