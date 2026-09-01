@@ -12,6 +12,7 @@ export type RootStackParamList = {
   };
   // Booking flow: VehiclesList -> BookingPayment -> BookingConfirmed
   BookingPayment: { bookingId: string };
+  BookingConfirmed: { bookingId: string };
   BookingConfirmed: { bookingId?: string } | undefined;
   MyBookings: undefined;
 };

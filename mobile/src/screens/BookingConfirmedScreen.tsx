@@ -72,6 +72,7 @@ const planLabel = (d?: string) =>
 
 export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
+  const { bookingId } = route.params;
   const { bookingId } = route.params || {};
 
   const [booking, setBooking] = useState<Booking | null>(null);
@@ -118,6 +119,8 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
 
     apiClient
       .get(`/rental/bookings/${bookingId}`)
+      .then((res) => setBooking(res.data.booking))
+      .catch(() => {})
       .then((res) => setBooking(res.data.booking || sampleBooking))
       .catch(() => setBooking(sampleBooking))
       .finally(() => setLoading(false));
