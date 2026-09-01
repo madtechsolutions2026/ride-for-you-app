@@ -17,7 +17,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
-import { CurvedCardTop, Glass, HeroBlob, NeoSurface, PrimaryButton } from '../components';
+import { CurvedCardTop, Glass, HeroBlob, NeoSurface, PrimaryButton, PrivacyPolicyModal } from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RequestOtp'>;
 
@@ -41,9 +41,6 @@ const DESIGN = {
 
 export default function RequestOtpScreen({ navigation }: Props) {
   const { width, height } = useWindowDimensions();
-  // Real status-bar height. This used to be a hardcoded `paddingTop: 46`,
-  // which only happened to look right on one device — Android status bars run
-  // 24-48dp depending on hardware, and SDK 54 draws edge-to-edge by default.
   const insets = useSafeAreaInsets();
 
   /** design pt -> dp for this device */
@@ -51,14 +48,12 @@ export default function RequestOtpScreen({ navigation }: Props) {
 
   const cardMargin = Math.round(u(DESIGN.cardMargin));
   const cardWidth = width - cardMargin * 2;
-  // Space above the card body, taken straight from the design frame rather
-  // than a percentage of screen height. The blob and the curved cap both live
-  // inside this band.
   const heroHeight = Math.round(u(DESIGN.cardTop));
 
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
 
   const handleRequestOtp = async () => {
     setError('');
@@ -220,13 +215,21 @@ export default function RequestOtpScreen({ navigation }: Props) {
             style={{ marginTop: spacing.lg }}
           />
 
-          {/* V1 is phone + OTP only — there is no separate account to create,
-              so the OR divider, Google sign-in and "Create an account" link
-              that the mockup shows are deliberately not built. */}
+          {/* Privacy Policy & Terms Link */}
+          <View style={styles.termsRow}>
+            <Text style={styles.termsText}>By continuing, you agree to our </Text>
+            <Pressable onPress={() => setPrivacyModalVisible(true)} hitSlop={6}>
+              <Text style={styles.termsLink}>Privacy Policy</Text>
+            </Pressable>
+            <Text style={styles.termsText}> & </Text>
+            <Pressable onPress={() => setPrivacyModalVisible(true)} hitSlop={6}>
+              <Text style={styles.termsLink}>Terms</Text>
+            </Pressable>
+          </View>
 
           {/* Takes up the slack so the trust badges settle at the foot of the
               card instead of floating just under the CTA. */}
-          <View style={[styles.spacer, { maxHeight: Math.round(u(70)) }]} />
+          <View style={[styles.spacer, { maxHeight: Math.round(u(50)) }]} />
 
           {/* trust badges */}
           <View style={styles.trustRow}>
@@ -239,6 +242,11 @@ export default function RequestOtpScreen({ navigation }: Props) {
 
         </NeoSurface>
       </ScrollView>
+
+      <PrivacyPolicyModal
+        visible={privacyModalVisible}
+        onClose={() => setPrivacyModalVisible(false)}
+      />
     </View>
   );
 }
@@ -417,4 +425,24 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   trustDivider: { width: 1, backgroundColor: colors.border, marginVertical: 2 },
+  termsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  termsText: {
+    fontFamily: fontFamily.regular,
+    fontSize: 11,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  termsLink: {
+    fontFamily: fontFamily.bold,
+    fontSize: 11,
+    color: colors.brand.primary,
+    textDecorationLine: 'underline',
+  },
 });

@@ -22,7 +22,7 @@ import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
-import { NeoSurface, PrimaryButton } from '../components';
+import { NeoSurface, PrimaryButton, PrivacyPolicyModal } from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'> & {
   onLogout?: () => void;
@@ -60,6 +60,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
   const [kycStatus, setKycStatus] = useState<'Pending' | 'Verified' | 'Submitted' | 'Rejected'>('Pending');
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
 
   // Temp Edit fields
   const [tempName, setTempName] = useState('');
@@ -559,24 +560,29 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           </NeoSurface>
         </Pressable>
 
-        {/* ---------------- DATA SAFE BANNER ---------------- */}
-        <LinearGradient
-          colors={[colors.brand.mint, colors.brand.mintSoft]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.safetyCard}
-        >
-          <View style={styles.safetyIconWrapper}>
-            <Ionicons name="shield-checkmark" size={26} color={colors.brand.primary} />
-          </View>
-          <View style={styles.safetyTextWrapper}>
-            <Text style={styles.safetyTitle}>Bank-Level Vault Encryption</Text>
-            <Text style={styles.safetySub}>
-              All documents are stored encrypted in private Cloudflare R2 cloud storage.
-            </Text>
-          </View>
-          <Image source={images.safeLock} style={styles.safetyImg} resizeMode="contain" />
-        </LinearGradient>
+        {/* ---------------- DATA SAFE BANNER (Clickable Privacy Policy) ---------------- */}
+        <Pressable onPress={() => setPrivacyModalVisible(true)}>
+          <LinearGradient
+            colors={[colors.brand.mint, colors.brand.mintSoft]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.safetyCard}
+          >
+            <View style={styles.safetyIconWrapper}>
+              <Ionicons name="shield-checkmark" size={26} color={colors.brand.primary} />
+            </View>
+            <View style={styles.safetyTextWrapper}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={styles.safetyTitle}>Bank-Level Vault Encryption</Text>
+                <Ionicons name="information-circle-outline" size={14} color={colors.brand.primary} />
+              </View>
+              <Text style={styles.safetySub}>
+                All documents are encrypted in private Cloudflare R2 cloud storage. Tap to read Privacy Policy.
+              </Text>
+            </View>
+            <Image source={images.safeLock} style={styles.safetyImg} resizeMode="contain" />
+          </LinearGradient>
+        </Pressable>
 
         {/* ---------------- SUBMIT BUTTON ---------------- */}
         <PrimaryButton
@@ -591,6 +597,17 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           loading={submitting}
           style={styles.submitBtn}
         />
+
+        {/* Privacy Policy Footer Link */}
+        <Pressable
+          onPress={() => setPrivacyModalVisible(true)}
+          style={{ alignItems: 'center', marginVertical: spacing.sm }}
+          hitSlop={8}
+        >
+          <Text style={{ fontFamily: fontFamily.semibold, fontSize: 12, color: colors.brand.primary, textDecorationLine: 'underline' }}>
+            🔒 View Rider Data Privacy Policy & Compliance
+          </Text>
+        </Pressable>
 
         {/* Logout button */}
         {onLogout && (
@@ -949,6 +966,12 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           </View>
         </View>
       </Modal>
+
+      {/* Privacy Policy & Data Vault Modal */}
+      <PrivacyPolicyModal
+        visible={privacyModalVisible}
+        onClose={() => setPrivacyModalVisible(false)}
+      />
     </View>
   );
 }

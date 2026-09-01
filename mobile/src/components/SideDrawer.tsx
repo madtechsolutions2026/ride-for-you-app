@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fontFamily, radius, shadows, spacing } from '../theme';
+import { PrivacyPolicyModal } from './PrivacyPolicyModal';
 
 type Props = {
   visible: boolean;
@@ -36,6 +37,7 @@ export function SideDrawer({
 }: Props) {
   const { width } = useWindowDimensions();
   const drawerWidth = Math.min(width * 0.8, 320);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
 
   const isVerified = kycStatus === 'APPROVED' || kycStatus === 'Verified';
 
@@ -143,6 +145,17 @@ export function SideDrawer({
 
             <Pressable
               style={styles.menuItem}
+              onPress={() => setPrivacyModalVisible(true)}
+            >
+              <View style={styles.menuIconWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color={colors.brand.primary} />
+              </View>
+              <Text style={styles.menuLabel}>Privacy Policy & Data Security</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
+            </Pressable>
+
+            <Pressable
+              style={styles.menuItem}
               onPress={onClose}
             >
               <View style={styles.menuIconWrapper}>
@@ -168,6 +181,11 @@ export function SideDrawer({
             <Text style={styles.versionText}>Ride For You • v1.0.2</Text>
           </View>
         </View>
+
+        <PrivacyPolicyModal
+          visible={privacyModalVisible}
+          onClose={() => setPrivacyModalVisible(false)}
+        />
       </View>
     </Modal>
   );

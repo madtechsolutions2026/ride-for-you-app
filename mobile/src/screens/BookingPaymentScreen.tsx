@@ -16,7 +16,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
-import { ThemedModal } from '../components';
+import { ThemedModal, PrivacyPolicyModal } from '../components';
 import { apiClient } from '../api/client';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BookingPayment'>;
@@ -50,6 +50,7 @@ export default function BookingPaymentScreen({ navigation, route }: Props) {
   const [method, setMethod] = useState<string>('PHONEPE');
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -191,11 +192,18 @@ export default function BookingPaymentScreen({ navigation, route }: Props) {
           })}
         </View>
 
-        {/* Test-mode notice */}
+        {/* Test-mode notice & Privacy Policy link */}
         <View style={styles.noticeBox}>
           <Ionicons name="information-circle-outline" size={16} color={colors.status.info} />
           <Text style={styles.noticeText}>
-            Test checkout — no money is charged. A real payment gateway will replace this before launch.
+            By proceeding, you agree to the{' '}
+            <Text
+              style={{ color: colors.brand.primary, fontFamily: fontFamily.bold, textDecorationLine: 'underline' }}
+              onPress={() => setPrivacyModalVisible(true)}
+            >
+              Rental Agreement & Privacy Policy
+            </Text>
+            . Security deposit is 100% refundable upon vehicle inspection.
           </Text>
         </View>
 
@@ -223,6 +231,11 @@ export default function BookingPaymentScreen({ navigation, route }: Props) {
           )}
         </Pressable>
       </View>
+
+      <PrivacyPolicyModal
+        visible={privacyModalVisible}
+        onClose={() => setPrivacyModalVisible(false)}
+      />
     </View>
   );
 }
