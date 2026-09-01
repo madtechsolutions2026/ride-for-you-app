@@ -659,6 +659,12 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               </Pressable>
             </View>
 
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             <Text style={styles.inputLabel}>Aadhaar Number (12 Digits)</Text>
             <TextInput
               style={styles.modalInput}
@@ -735,9 +741,10 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
                 <Text style={styles.uploadingText}>Uploading to R2 Vault...</Text>
               </View>
             )}
+            </ScrollView>
 
             <Pressable
-              style={styles.modalSaveBtn}
+              style={[styles.modalSaveBtn, { marginTop: spacing.md }]}
               onPress={() => setActiveDocModal(null)}
             >
               <Text style={styles.modalSaveText}>Done & Save</Text>
@@ -762,6 +769,12 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               </Pressable>
             </View>
 
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             <Text style={styles.inputLabel}>Current Street Address</Text>
             <TextInput
               style={styles.modalInput}
@@ -797,6 +810,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
                 <Text style={styles.miniBtnText}>Choose from Gallery</Text>
               </Pressable>
             </View>
+            </ScrollView>
 
             <Pressable
               style={[styles.modalSaveBtn, { marginTop: spacing.md }]}
@@ -824,6 +838,12 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               </Pressable>
             </View>
 
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             <Text style={styles.inputLabel}>Take a clear portrait photo in good lighting</Text>
 
             {selfieUri ? (
@@ -851,6 +871,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
                 <Text style={styles.miniBtnText}>Choose Photo</Text>
               </Pressable>
             </View>
+            </ScrollView>
 
             <Pressable
               style={[styles.modalSaveBtn, { marginTop: spacing.md }]}
@@ -878,6 +899,12 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               </Pressable>
             </View>
 
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             <Text style={styles.inputLabel}>Full Name</Text>
             <TextInput
               style={styles.modalInput}
@@ -906,6 +933,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               placeholder="e.g. Kondapur, Hyderabad"
               placeholderTextColor={colors.text.secondary}
             />
+            </ScrollView>
 
             <View style={styles.modalBtnRow}>
               <Pressable
@@ -914,7 +942,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </Pressable>
-              <Pressable style={styles.modalSaveBtn} onPress={handleSaveProfile}>
+              <Pressable style={[styles.modalSaveBtn, { flex: 1 }]} onPress={handleSaveProfile}>
                 <Text style={styles.modalSaveText}>Save Changes</Text>
               </Pressable>
             </View>
@@ -1402,7 +1430,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.common.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
     maxHeight: '90%',
   },
   modalHeader: {
@@ -1451,12 +1481,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text.secondary,
   },
+  modalScroll: {
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  modalScrollContent: {
+    paddingBottom: spacing.xs,
+  },
   modalSaveBtn: {
-    flex: 1,
-    paddingVertical: 12,
+    alignSelf: 'stretch',
+    paddingVertical: 14,
     borderRadius: radius.pill,
     backgroundColor: colors.brand.primary,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   modalSaveText: {
     fontFamily: fontFamily.bold,
