@@ -91,6 +91,7 @@ export default function App() {
         <NavigationContainer>
           <StatusBar style="dark" />
           <Stack.Navigator
+            initialRouteName="BookingConfirmed"
             screenOptions={{
               headerShown: false,
               animation: 'slide_from_right',
@@ -102,6 +103,11 @@ export default function App() {
           >
             {isAuthenticated ? (
               <>
+                <Stack.Screen
+                  name="BookingConfirmed"
+                  component={BookingConfirmedScreen}
+                  options={{ gestureEnabled: false }}
+                />
                 <Stack.Screen name="Home">
                   {(props) => <HomeScreen {...props} onLogout={() => setIsAuthenticated(false)} />}
                 </Stack.Screen>
@@ -112,15 +118,15 @@ export default function App() {
                 </Stack.Screen>
                 <Stack.Screen name="VehiclesList" component={VehiclesListScreen} />
                 <Stack.Screen name="BookingPayment" component={BookingPaymentScreen} />
+                <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+              </>
+            ) : (
+              <>
                 <Stack.Screen
                   name="BookingConfirmed"
                   component={BookingConfirmedScreen}
                   options={{ gestureEnabled: false }}
                 />
-                <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
-              </>
-            ) : (
-              <>
                 <Stack.Screen name="RequestOtp" component={RequestOtpScreen} />
                 <Stack.Screen name="VerifyOtp">
                   {(props) => (
