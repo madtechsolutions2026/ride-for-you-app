@@ -41,17 +41,15 @@ export const images = {
   safeLock: require('../assets/safe-lock.jpg'),
 
   /**
-   * Booking-confirmed hero — an EV scooter beside a charging station with a
-   * bright city + wind-turbine backdrop. Drop a `booking-hero.png` into
-   * `mobile/assets/` and point this line at it; until then it reuses the auth
-   * hero scene so the screen still renders.
+   * Booking-confirmed screen art — sliced straight out of the Figma export
+   * ("Booking Confirmed Screen.svg").
+   *   confirmHeroScene  the misty green-city / wind-turbine blob behind the hero
+   *   confirmLeaves     a few floating leaves layered over the hero
+   *   confirmScooter    the white EV scooter, front 3/4, facing left (hero)
+   *   confirmScan       hand holding a phone showing "Scan to Unlock"
    */
-  bookingHero: require('../assets/auth-hero.png'),
-
-  /**
-   * Optional: a single white + green helmet cut-out for the "Important
-   * Reminders" card. Add `helmet.png` (transparent) and swap this in; the
-   * screen hides the image gracefully if it's the placeholder.
-   */
-  helmet: null as number | null,
+  confirmHeroScene: require('../assets/confirm-hero-scene.png'),
+  confirmLeaves: require('../assets/confirm-leaves.png'),
+  confirmScooter: require('../assets/confirm-scooter.png'),
+  confirmScan: require('../assets/confirm-scan.png'),
 };
