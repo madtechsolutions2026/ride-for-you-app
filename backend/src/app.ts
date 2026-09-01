@@ -1,5 +1,6 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -19,13 +20,14 @@ const PORT = process.env.PORT || 3000;
 // Enable CORS for all origins (important for Android emulator & Web Dashboard connections)
 app.use(cors());
 
-// Request logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  if (!req.url.startsWith('/assets') && req.url !== '/health') {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  }
-  next();
-});
+// Request logging — one line per request in the terminal / host logs.
+// `dev` is concise + colour-coded for local; `combined` is Apache-style for prod.
+// Static asset noise from the admin dashboard is skipped.
+app.use(
+  morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
+    skip: (req) => req.url.startsWith('/assets') || req.url === '/health',
+  })
+);
 
 // Parse JSON request bodies
 app.use(express.json());

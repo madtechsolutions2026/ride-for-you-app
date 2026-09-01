@@ -38,7 +38,7 @@ async function sendWay2ChatsPayload(payload: any): Promise<boolean> {
 }
 
 /**
- * 1. Send Login OTP via WhatsApp
+ * 1. Send Login OTP via WhatsApp (Using your approved 'otp' template)
  */
 export async function sendWhatsAppOtp(phone: string, otp: string): Promise<boolean> {
   const to = cleanPhoneNumber(phone);
@@ -46,12 +46,19 @@ export async function sendWhatsAppOtp(phone: string, otp: string): Promise<boole
     to,
     phoneNoId: way2chatsConfig.phoneId,
     type: 'template',
-    name: 'otp_verification',
+    name: 'otp',
     language: 'en',
     bodyParams: [otp],
+    buttons: [
+      {
+        type: 'button',
+        sub_type: 'url',
+        text: otp,
+      },
+    ],
   };
 
-  console.log(`📡 [WHATSAPP-OTP] Dispatching OTP [${otp}] to ${to}...`);
+  console.log(`📡 [WHATSAPP-OTP] Dispatching OTP [${otp}] via 'otp' template to ${to}...`);
   return sendWay2ChatsPayload(payload);
 }
 

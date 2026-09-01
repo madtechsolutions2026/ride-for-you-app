@@ -5,7 +5,6 @@ import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { r2, R2_BUCKET, isR2Configured, presignGet, PRESIGNED_URL_TTL_SECONDS } from '../utils/r2';
 import { getCache, setCache, delCache } from '../utils/cache';
-import { sendKycApprovalWhatsApp } from '../utils/whatsapp';
 
 /**
  * KYC module.
@@ -413,12 +412,6 @@ export async function reviewKyc(req: AuthRequest, res: Response) {
     ]);
 
     console.log(`[KYC] ${verification.user.phone} verification ${verification.id} -> ${newStatus}`);
-
-    if (action === 'APPROVE') {
-      sendKycApprovalWhatsApp(verification.user.phone, verification.fullName || verification.user.fullName || '').catch(
-        (err) => console.warn(`[WHATSAPP NOTICE] Could not send KYC WhatsApp approval:`, err?.message)
-      );
-    }
 
     return res.json({
       message: `KYC ${newStatus.toLowerCase()} for ${verification.user.phone}`,
