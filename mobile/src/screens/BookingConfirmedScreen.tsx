@@ -207,24 +207,13 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
   }
 
   const hub = booking?.hub;
-  const hubShort = hub?.name.replace(/^ride for you\s*[–—-]\s*/i, '') || 'the hub';
-  const hours = hub?.operatingHours || 'opening hours';
-  const deposit = booking?.charges?.deposit ?? 0;
 
+  // Copy is verbatim from the Figma ("Booking Confirmed Screen.svg").
   const STEPS = [
-    {
-      title: 'Go to the pickup station',
-      body: hub ? `Reach ${hubShort}, open ${hours}.` : 'Reach the hub during opening hours.',
-    },
-    { title: 'Verify at the desk', body: 'Show your Booking ID and KYC document.' },
-    { title: 'Collect your bike', body: 'Staff checks the helmet and hands over the keys.' },
-    {
-      title: 'Return on time',
-      body:
-        deposit > 0
-          ? `Return to the same hub to get your ${rupee(deposit)} deposit back.`
-          : 'Return to the same hub to avoid late fees.',
-    },
+    { title: 'Go to the pickup station', body: 'Reach the station 10 mins before your pickup time.' },
+    { title: 'Scan & Unlock', body: 'Use the app to scan the QR and unlock your ride.' },
+    { title: 'Enjoy your ride', body: 'Ride safe and follow traffic rules.' },
+    { title: 'Return on time', body: 'Return the vehicle by 01:00 PM to avoid late fees.' },
   ];
 
   const leafY = leaf.interpolate({ inputRange: [0, 1], outputRange: [0, -10] });
@@ -321,14 +310,14 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
         {/* ---------------- REMINDER (dark) ---------------- */}
         <View style={styles.reminder}>
           <View style={styles.bell}>
-            <Ionicons name="notifications" size={17} color={colors.common.white} />
+            <Ionicons name="notifications" size={18} color={C.green} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.reminderTitle}>Add a pickup reminder</Text>
-            <Text style={styles.reminderSub}>A calendar nudge before the hub opening hours.</Text>
+            <Text style={styles.reminderTitle}>Reminder set!</Text>
+            <Text style={styles.reminderSub}>We'll remind you before your ride starts.</Text>
           </View>
           <Pressable style={styles.reminderBtn} onPress={addReminder}>
-            <Text style={styles.reminderBtnText}>Add</Text>
+            <Text style={styles.reminderBtnText}>View Reminder</Text>
           </Pressable>
         </View>
 
@@ -339,13 +328,12 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
           <Text style={styles.cardTitle}>What's Next?</Text>
 
           <View style={styles.steps}>
+            {/* one continuous dashed rail; the white circles sit on top of it */}
+            <View style={styles.rail} pointerEvents="none" />
             {STEPS.map((s, i) => (
               <View key={i} style={styles.step}>
-                <View style={styles.stepRail}>
-                  <View style={styles.stepDot}>
-                    <Text style={styles.stepNum}>{i + 1}</Text>
-                  </View>
-                  {i < STEPS.length - 1 && <View style={styles.stepLine} />}
+                <View style={styles.stepDot}>
+                  <Text style={styles.stepNum}>{i + 1}</Text>
                 </View>
                 <View style={styles.stepBody}>
                   <Text style={styles.stepTitle}>{s.title}</Text>
@@ -537,10 +525,11 @@ const styles = StyleSheet.create({
   reminder: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     marginHorizontal: H_PAD,
     marginTop: 22,
-    padding: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     borderRadius: 16,
     backgroundColor: C.ink,
   },
@@ -548,20 +537,23 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: C.green,
+    backgroundColor: colors.common.white,
+    borderWidth: 2.5,
+    borderColor: C.green,
     alignItems: 'center',
     justifyContent: 'center',
   },
   reminderTitle: { fontFamily: fontFamily.bold, fontSize: 15, color: colors.common.white },
-  reminderSub: { fontFamily: fontFamily.regular, fontSize: 11.5, color: C.inkSub, marginTop: 2 },
+  reminderSub: { fontFamily: fontFamily.regular, fontSize: 11, lineHeight: 15, color: C.inkSub, marginTop: 2 },
   reminderBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    flexShrink: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderRadius: 15,
     borderWidth: 1.5,
     borderColor: C.green,
   },
-  reminderBtnText: { fontFamily: fontFamily.bold, fontSize: 12.5, color: C.green },
+  reminderBtnText: { fontFamily: fontFamily.bold, fontSize: 11.5, color: C.green },
 
   /* what's next card */
   card: {
@@ -578,38 +570,44 @@ const styles = StyleSheet.create({
   },
   wnScan: {
     position: 'absolute',
-    right: -22,
-    bottom: -6,
-    width: SCREEN_W * 0.34,
-    height: 190,
+    right: -14,
+    top: 44,
+    width: SCREEN_W * 0.38,
+    height: 200,
   },
-  cardTitle: { fontFamily: fontFamily.bold, fontSize: 19, color: C.ink, marginBottom: 16 },
-  steps: { paddingRight: SCREEN_W * 0.2 },
-  step: { flexDirection: 'row', gap: 12 },
-  stepRail: { alignItems: 'center', width: 18 },
+  cardTitle: { fontFamily: fontFamily.bold, fontSize: 20, color: C.ink, marginBottom: 18 },
+  steps: { position: 'relative' },
+  rail: {
+    position: 'absolute',
+    left: 9.25,
+    top: 14,
+    bottom: 30,
+    width: 0,
+    borderLeftWidth: 1.5,
+    borderColor: C.green,
+    borderStyle: 'dashed',
+  },
+  step: { flexDirection: 'row', gap: 12, paddingRight: SCREEN_W * 0.24 },
   stepDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: C.green,
     backgroundColor: colors.common.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepNum: { fontFamily: fontFamily.bold, fontSize: 9.5, color: C.green },
-  stepLine: {
-    flex: 1,
-    width: 0,
-    borderLeftWidth: 1.5,
-    borderColor: C.green,
-    borderStyle: 'dashed',
-    marginVertical: 3,
-    opacity: 0.55,
+  stepNum: { fontFamily: fontFamily.bold, fontSize: 10, color: C.green },
+  stepBody: { flex: 1, paddingBottom: 18 },
+  stepTitle: { fontFamily: fontFamily.semibold, fontSize: 14, color: C.ink, marginTop: -1 },
+  stepText: {
+    fontFamily: fontFamily.regular,
+    fontSize: 11.5,
+    lineHeight: 15.5,
+    color: colors.text.secondary,
+    marginTop: 3,
   },
-  stepBody: { flex: 1, paddingBottom: 16 },
-  stepTitle: { fontFamily: fontFamily.semibold, fontSize: 13.5, color: C.ink, marginTop: -2 },
-  stepText: { fontFamily: fontFamily.regular, fontSize: 11.5, lineHeight: 15.5, color: colors.text.secondary, marginTop: 3 },
 
   /* need help */
   helpCard: {
