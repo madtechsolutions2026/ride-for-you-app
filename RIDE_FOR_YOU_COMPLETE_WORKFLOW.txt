@@ -1,0 +1,176 @@
+================================================================================
+                    RIDE FOR YOU - COMPLETE APP WORKFLOW & ROADMAP
+================================================================================
+
+TABLE OF CONTENTS:
+1. Complete End-to-End Rider Journey (Example: Madhu, Hyderabad)
+2. Detailed Step-by-Step Flow (From Login to Bike Return)
+3. Current Implementation Status (What is Already Built & Working)
+4. Recommended Next Features to Implement
+
+================================================================================
+1. COMPLETE END-TO-END RIDER JOURNEY
+================================================================================
+
+Rider Profile Example:
+- Name: Madhu Kunchala
+- Phone: +91 7095682464
+- Location: Hyderabad
+- Selected Plan: SPRINTO HS (Dual Battery EV) - Weekly Subscription
+
+--------------------------------------------------------------------------------
+WORKFLOW PIPELINE AT A GLANCE:
+--------------------------------------------------------------------------------
+1. App Launch & Mobile Number OTP Verification
+2. Profile & KYC Document Upload (Aadhaar, Selfie, Address Proof)
+3. Admin Review & 1-Click Verification in Admin Portal
+4. Vehicle Model & Distribution Hub Selection
+5. Plan Confirmation & Payment Checkout
+6. Booking Confirmed Screen & Booking Reference ID Issued
+7. Physical Pickup at EV Hub (Keys, Helmet & Bike Handover)
+8. Active Rental: Live GPS Tracking & 2-Minute Battery Swapping
+9. Vehicle Return at Hub & Security Deposit Settlement
+
+================================================================================
+2. DETAILED STEP-BY-STEP FLOW
+================================================================================
+
+--------------------------------------------------------------------------------
+STEP 1: APP LAUNCH & 2FA OTP LOGIN
+--------------------------------------------------------------------------------
+1. Rider opens the Ride For You mobile app.
+2. Enters phone number (+91 7095682464) and taps "Get OTP".
+3. Mobile app sends POST /auth/request-otp to backend.
+4. Backend generates a 6-digit OTP challenge (master OTP: 123456).
+5. Rider submits the OTP -> Backend validates challenge and returns JWT Access &
+   Refresh Tokens.
+6. Mobile app stores tokens securely in Expo SecureStore.
+
+--------------------------------------------------------------------------------
+STEP 2: PROFILE & KYC DOCUMENT UPLOAD
+--------------------------------------------------------------------------------
+1. Rider goes to "Profile" -> "KYC Verification".
+2. Rider attaches required government documents:
+   - Aadhaar Card (Front & Back photos)
+   - Live Selfie (Camera capture)
+   - Utility Bill / Rental Agreement (Address Proof)
+3. Mobile app requests encrypted presigned upload URLs from:
+   POST /kyc/presign-upload
+4. Documents are uploaded straight into private Cloudflare R2 Cloud Storage
+   (Bucket: ride-for-you-kyc-bucket).
+5. App calls POST /kyc/submit -> Database marks user status as "SUBMITTED".
+
+--------------------------------------------------------------------------------
+STEP 3: ADMIN PORTAL REVIEW & APPROVAL
+--------------------------------------------------------------------------------
+1. Operations Admin opens Admin Portal (https://ride-for-you-app.onrender.com/admin/).
+2. Admin opens "KYC Approvals" tab in the sidebar.
+3. Madhu's submission appears under the "Pending Review" queue.
+4. Admin reviews high-resolution documents using the secure preview modal.
+5. Admin clicks "Approve & Grant High-Speed Access".
+6. Backend updates user kycStatus to "APPROVED", clears Redis cache, and unlocks
+   full commercial vehicle booking for the rider.
+
+--------------------------------------------------------------------------------
+STEP 4: VEHICLE & HUB SELECTION
+--------------------------------------------------------------------------------
+1. On the Home screen, rider chooses rental category:
+   - 2-Min Battery Swapping Fleet (Commercial delivery riders)
+   - Home Charging Line (Personal commuters)
+2. Rider selects closest Base Hub:
+   - Kondapur Main Hub (Botanical Garden Rd)
+   - Hitech City Deployment Station (Cyber Towers)
+   - Gachibowli Operations Hub (DLF Cybercity)
+3. Rider selects Vehicle Model:
+   - SPRINTO HS (Top Speed: 65 km/h, 120 km Range, 2.4 kWh Dual Swappable)
+   - Rental Plan: Weekly (Rs. 1,925 / week)
+
+--------------------------------------------------------------------------------
+STEP 5: CHECKOUT & PAYMENT
+--------------------------------------------------------------------------------
+1. App presents transparent pricing summary:
+   - Weekly Rent: Rs. 1,925
+   - One-Time Platform Access Fee: Rs. 1,500
+   - Refundable Security Deposit: Rs. 0 (or configured deposit)
+   - Total Payable: Rs. 3,425
+2. Mobile app calls POST /rental/bookings to create booking order.
+3. Backend generates unique Booking Reference ID (e.g. RFY-8921-HYD).
+
+--------------------------------------------------------------------------------
+STEP 6: BOOKING CONFIRMED SCREEN
+--------------------------------------------------------------------------------
+1. Mobile app displays the interactive "Booking Confirmed!" screen:
+   - Celebration animations & Confetti
+   - Booking ID pill with 1-tap clipboard copy
+   - Hub details & operating hours (09:00 AM - 09:00 PM)
+   - One-tap "Add Calendar Reminder" before hub closing
+   - Direct Google Maps navigation shortcut to pickup station
+   - 24/7 Support Hotline dialer
+
+--------------------------------------------------------------------------------
+STEP 7: PHYSICAL PICKUP AT EV HUB
+--------------------------------------------------------------------------------
+1. Rider arrives at Kondapur Main Hub.
+2. Rider shows Booking ID (RFY-8921-HYD) to Hub Operations Executive.
+3. Executive verifies physical ID and assigns vehicle plate TS09EV3001 in Admin.
+4. Rider receives physical keys, sanitized helmet, and NFC battery swap card.
+5. Booking status transitions to "ACTIVE".
+
+--------------------------------------------------------------------------------
+STEP 8: ACTIVE RENTAL, LIVE GPS & 2-MIN BATTERY SWAPPING
+--------------------------------------------------------------------------------
+1. Bike IoT ECU transmits live GPS, speed, battery %, and telemetry to server.
+2. Admin tracks live moving fleet on the Admin Carto/OSM Fleet Map.
+3. When battery level drops below 20%:
+   - Rider navigates to any automated 2-minute swap station (e.g. Mindspace
+     Circle Dock, IKEA Exchange Point, Jubilee Hills Dock).
+   - Taps NFC card -> Station opens empty dock -> Rider inserts depleted battery
+     -> Station releases 100% charged battery in under 90 seconds.
+
+--------------------------------------------------------------------------------
+STEP 9: BIKE RETURN & DEPOSIT REFUND
+--------------------------------------------------------------------------------
+1. At the end of the rental period, rider brings vehicle back to Kondapur Hub.
+2. Staff conducts 2-minute physical inspection (chassis, tires, battery health).
+3. Executive marks booking "COMPLETED" in Admin Portal.
+4. Any held security deposit is automatically refunded to rider's original
+   payment method.
+
+================================================================================
+3. CURRENT IMPLEMENTATION STATUS (WHAT IS ALREADY BUILT & WORKING)
+================================================================================
+
+[X] 2FA Mobile OTP Authentication (Master dev OTP: 123456 + SMS integration ready)
+[X] Cloudflare R2 Private KYC Document Vault with presigned URL encryption
+[X] Enterprise Admin Dashboard with #62CE90 & #F8F7FD Neumorphic design
+[X] Real-Time KYC Review Queue & 1-Click Verification
+[X] Vehicle & Fleet Management (SPRINTO HS, AEROFLOW PRO, ODYSSEY MAX)
+[X] Interactive Fleet Live GPS Map with floating status pills & remote immobilizer
+[X] Booking Confirmed Screen with clipboard copy, Google Maps, & Calendar reminders
+[X] PostgreSQL Database hosted on Render + Upstash Redis cache acceleration
+
+================================================================================
+4. RECOMMENDED NEXT FEATURES TO IMPLEMENT
+================================================================================
+
+1. QR Code Handshake Scanner:
+   - Display a dynamic QR code on the rider's Booking Confirmed screen.
+   - Hub staff scans the QR code using the Admin portal to instantly assign and
+     release the bike.
+
+2. Production Payment Gateway Integration:
+   - Integrate Razorpay / Cashfree SDK with webhooks for automated UPI/card
+     deductions and instant security deposit refunds.
+
+3. IoT MQTT Telemetry Ingestion:
+   - Connect physical GPS tracker hardware directly via MQTT broker for
+     sub-second speed and battery state updates.
+
+4. Push Notifications:
+   - Send automated Expo push notifications for KYC approval, upcoming renewal,
+     and low-battery warnings.
+
+================================================================================
+                          END OF WORKFLOW DOCUMENTATION
+================================================================================
+

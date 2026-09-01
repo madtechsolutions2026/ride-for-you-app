@@ -1,0 +1,136 @@
+================================================================================
+          🛵 RIDE FOR YOU - COMPLETE END-TO-END RIDER JOURNEY & STEPS
+               (Example: Madhu Kunchala from Hyderabad)
+================================================================================
+
+--------------------------------------------------------------------------------
+STEP 1: ONBOARDING & 2FA OTP AUTHENTICATION
+--------------------------------------------------------------------------------
+• User Action: 
+  Madhu opens the Ride For You mobile app and enters his phone number (+91 7095682464).
+
+• System Behavior:
+  1. Mobile app calls: POST /auth/request-otp
+  2. Backend creates an OTP challenge in PostgreSQL and sends SMS (or uses master OTP 123456 in dev mode).
+
+• Verification:
+  1. Madhu enters the 6-digit OTP.
+  2. Mobile calls: POST /auth/verify-otp
+  3. Backend returns a JWT access token (Bearer <token>) and refresh token.
+  4. The mobile app securely stores it in tokenStore (Expo SecureStore).
+
+
+--------------------------------------------------------------------------------
+STEP 2: PROFILE & KYC DOCUMENT VERIFICATION
+--------------------------------------------------------------------------------
+• User Action: 
+  Madhu navigates to Profile ➔ KYC Verification.
+
+• Document Upload:
+  Madhu captures/uploads Aadhaar Front & Back, Live Selfie, and Address/Rental Proof.
+
+• Storage Pipeline:
+  1. App requests presigned upload URLs from: POST /kyc/presign-upload
+  2. Documents are encrypted and uploaded directly to Cloudflare R2 private bucket (ride-for-you-kyc-bucket).
+  3. App calls: POST /kyc/submit to mark KYC as SUBMITTED in PostgreSQL.
+
+
+--------------------------------------------------------------------------------
+STEP 3: ENTERPRISE ADMIN REVIEW & APPROVAL
+--------------------------------------------------------------------------------
+• Admin Action: 
+  Operations executive logs into the Admin Portal (https://ride-for-you-app.onrender.com/admin/).
+
+• Review Queue:
+  1. Admin opens the "KYC Approvals" tab in the sidebar.
+  2. Madhu's submission appears under the "Pending Review" queue.
+  3. Admin inspects the presigned high-resolution documents in the secure viewer modal.
+
+• 1-Click Approval:
+  1. Admin clicks "Approve & Grant High-Speed Access ✓".
+  2. Backend updates user.kycStatus = 'APPROVED' and clears Redis cache.
+  3. Madhu's mobile app instantly reflects verified status.
+
+
+--------------------------------------------------------------------------------
+STEP 4: VEHICLE MODEL & HUB SELECTION
+--------------------------------------------------------------------------------
+• User Action: 
+  On the Home tab, Madhu chooses his rental category:
+  - 2-Min Battery Swapping Fleet (Commercial delivery riders)
+  - Home Charging Line (Personal commuters)
+
+• Hub Selection:
+  Madhu selects Kondapur Main Hub (Botanical Garden Rd, Hyderabad).
+
+• Bike Model Selection:
+  Madhu chooses SPRINTO HS (Dual Battery, 120 km range, 65 km/h top speed) on a Weekly Plan (₹1,925/week).
+
+
+--------------------------------------------------------------------------------
+STEP 5: CHECKOUT & PAYMENT
+--------------------------------------------------------------------------------
+• Pricing Breakdown:
+  - Weekly Rent: ₹1,925
+  - One-time Platform Fee: ₹1,500
+  - Refundable Security Deposit: ₹0 (or configured deposit)
+  - Total Due: ₹3,425
+
+• Payment Processing:
+  1. Mobile calls: POST /rental/bookings with modelId, hubId, and planDuration: 'WEEK'.
+  2. Backend generates a unique Booking Reference (RFY-8921-HYD).
+  3. Payment order is initiated and verified.
+
+
+--------------------------------------------------------------------------------
+STEP 6: BOOKING CONFIRMED SCREEN
+--------------------------------------------------------------------------------
+• Instant Feedback:
+  Madhu arrives at the Booking Confirmed screen featuring animated celebrations, dynamic pickup instructions, and a one-tap Google Calendar pickup reminder.
+
+• Screen Displays:
+  - Booking ID: RFY-8921-HYD (with 1-tap clipboard copy).
+  - Pickup Hub: Kondapur Main EV Hub, Botanical Garden Rd.
+  - Hub Contact: Direct phone dialer & Google Maps navigation shortcut.
+
+
+--------------------------------------------------------------------------------
+STEP 7: PHYSICAL PICKUP AT EV HUB
+--------------------------------------------------------------------------------
+• At the Hub: 
+  Madhu visits the Kondapur hub counter.
+
+• Desk Handshake:
+  1. Hub staff checks Madhu's Booking ID (RFY-8921-HYD) and physical ID card.
+  2. Staff assigns physical bike registration plate TS09EV3001 to Madhu's booking in the Admin Fleet system.
+  3. Madhu receives the helmet, physical keys, and battery NFC swap card.
+  4. Booking status changes to ACTIVE.
+
+
+--------------------------------------------------------------------------------
+STEP 8: ACTIVE RIDE, LIVE GPS & 2-MIN BATTERY SWAPS
+--------------------------------------------------------------------------------
+• Riding & Telemetry:
+  1. The bike's onboard IoT ECU sends real-time GPS coordinates, speed, SoC %, and battery temperature to the server.
+  2. Operations monitors vehicle TS09EV3001 on the Admin Fleet Live Map.
+
+• Swapping Station:
+  When the battery drops below 20%, Madhu visits any nearby automated 2-min swap station (e.g. Mindspace Circle Dock or IKEA Exchange Point), taps his NFC card, and swaps in a fully charged battery in under 90 seconds.
+
+
+--------------------------------------------------------------------------------
+STEP 9: VEHICLE RETURN & SECURITY DEPOSIT REFUND
+--------------------------------------------------------------------------------
+• Return at Hub: 
+  At the end of the rental period, Madhu returns the bike and helmet to the Kondapur Hub.
+
+• Inspection: 
+  Staff inspects the bike for any physical damage and confirms battery health.
+
+• Closing the Rental: 
+  Staff marks the booking as COMPLETED in the admin portal. Any security deposit is instantly released back to Madhu's original payment method.
+
+================================================================================
+                          END OF WORKFLOW STEPS
+================================================================================
+
