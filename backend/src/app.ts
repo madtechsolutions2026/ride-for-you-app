@@ -1,6 +1,5 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -20,14 +19,13 @@ const PORT = process.env.PORT || 3000;
 // Enable CORS for all origins (important for Android emulator & Web Dashboard connections)
 app.use(cors());
 
-// Request logging — one line per request in the terminal / host logs.
-// `dev` is concise + colour-coded for local; `combined` is Apache-style for prod.
-// Static asset noise from the admin dashboard is skipped.
-app.use(
-  morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
-    skip: (req) => req.url.startsWith('/assets') || req.url === '/health',
-  })
-);
+// Request logging middleware
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  if (!req.url.startsWith('/assets') && req.url !== '/health') {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  }
+  next();
+});
 
 // Parse JSON request bodies
 app.use(express.json());
@@ -42,71 +40,67 @@ app.use('/rental', rentalRoutes);
 app.use('/admin/api', adminRoutes);
 
 // Health check endpoint
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'ride-for-you-backend' });
+app.get('/health', (_req: Request, res: Response) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'ride-for-you-backend',
+  });
 });
 
-// 2. Serve the admin dashboard.
-//
-// Single source of truth: admin/dist, produced by `npm run build` (which now
-// also runs the admin build). No more hand-copying into backend/public.
-// __dirname is backend/dist in prod and backend/src under ts-node-dev; both
-// resolve ../../admin/dist correctly.
-const adminDistPath = path.join(__dirname, '../../admin/dist');
-const resolvedStaticPath = fs.existsSync(adminDistPath) ? adminDistPath : null;
+// 2. Serve Static Admin Dashboard Files (if build exists)
+const adminDistPath = path.resolve(__dirname, '../../admin/dist');
+const fallbackPublicPath = path.resolve(__dirname, '../public');
 
-if (!resolvedStaticPath) {
-  console.warn('[admin] admin/dist not found — run `npm run build` to build the dashboard.');
+let staticPath = '';
+if (fs.existsSync(adminDistPath)) {
+  staticPath = adminDistPath;
+} else if (fs.existsSync(fallbackPublicPath)) {
+  staticPath = fallbackPublicPath;
 }
 
-if (resolvedStaticPath) {
-  // Static assets
-  app.use('/admin', express.static(resolvedStaticPath, {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.html')) {
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      }
-    }
-  }));
-  app.use(express.static(resolvedStaticPath));
+if (staticPath) {
+  console.log(`Serving admin dashboard from: ${staticPath}`);
+  app.use(express.static(staticPath));
+  app.use('/admin', express.static(staticPath));
 
-  // SPA fallback for /admin and subroutes
-  app.get(['/admin', '/admin/*'], (_req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(resolvedStaticPath, 'index.html'));
-  });
-
-  app.get('/', (_req, res) => {
-    res.redirect('/admin/');
+  app.get('/admin/*', (_req: Request, res: Response) => {
+    res.sendFile(path.join(staticPath, 'index.html'));
   });
 }
 
-// Start Express server
-const server = app.listen(PORT, async () => {
+// 3. Fallback Route
+app.use((req: Request, res: Response) => {
+  if (req.accepts('html') && staticPath) {
+    return res.sendFile(path.join(staticPath, 'index.html'));
+  }
+  res.status(404).json({
+    error: 'Not Found',
+    path: req.originalUrl,
+    message: 'The requested resource does not exist on this server.',
+  });
+});
+
+// Start Background Services & Server
+async function startServer() {
   try {
     await prisma.$connect();
-    console.log(`\n========================================`);
-    console.log(`Ride For You Auth Backend is running on port ${PORT}`);
-    console.log(`Database connected successfully (PostgreSQL)`);
+    console.log('Connected to PostgreSQL Database successfully.');
+
     startWeeklyBilling();
-    console.log(`Weekly billing sweep scheduled (every 6h)`);
-    console.log(`Admin Dashboard available at http://localhost:${PORT}/admin/`);
-    console.log(`========================================\n`);
+
+    app.listen(PORT, () => {
+      console.log(`Ride For You Backend listening on http://localhost:${PORT}`);
+      console.log(`Admin Portal available at http://localhost:${PORT}/admin/`);
+    });
   } catch (error) {
-    console.error('Failed to connect to the database:', error);
+    console.error('Failed to initialize server:', error);
     process.exit(1);
   }
-});
+}
 
-// Handle graceful shutdowns
-const shutdown = async () => {
-  console.log('Shutting down server gracefully...');
-  server.close(async () => {
-    await prisma.$disconnect();
-    console.log('Prisma database client disconnected.');
-    process.exit(0);
-  });
-};
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
 
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
+export default app;

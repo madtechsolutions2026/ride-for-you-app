@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { prisma } from '../utils/prisma';
 import { generateAccessToken, generateRefreshToken, AuthRequest } from '../middleware/auth';
 import { getCache, setCache, delCache } from '../utils/cache';
+import { sendWhatsAppOtp } from '../utils/whatsapp';
 
 const generateId = (prefix: string) => `${prefix}_${crypto.randomBytes(12).toString('hex')}`;
 
@@ -51,12 +52,11 @@ export async function requestOtp(req: Request, res: Response) {
       }
     });
 
-    // Logging OTP to terminal console
-    console.log(`\n========================================`);
-    console.log(`[MOCK SMS] Sent to ${phone}:`);
-    console.log(`OTP Code: ${otp} (or use default 123456)`);
-    console.log(`Challenge ID: ${challengeId}`);
-    console.log(`========================================\n`);
+    // Log OTP to console (dev fallback) + dispatch via WhatsApp
+    console.log(`[OTP] ${phone} -> ${otp} (challenge: ${challengeId})`);
+    sendWhatsAppOtp(phone, otp).catch((err) =>
+      console.warn(`[WHATSAPP] Could not send OTP:`, err?.message)
+    );
 
     return res.json({
       challengeId,
