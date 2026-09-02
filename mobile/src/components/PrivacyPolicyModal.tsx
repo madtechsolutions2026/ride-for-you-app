@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.card,
     paddingTop: spacing.lg,
     paddingHorizontal: spacing.lg,
-    ...shadows.prominent,
+    ...shadows.card,
   },
   header: {
     flexDirection: 'row',
