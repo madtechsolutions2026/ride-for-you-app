@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../utils/prisma';
+import { getCache, setCache } from '../utils/cache';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
 
@@ -34,22 +36,62 @@ export function requireRole(...roles: string[]) {
   };
 }
 
-export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+type AuthSnapshot = { id: string; role: string; accountStatus: string };
 
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
+/**
+ * Resolve the live account behind a token's user id. Cached briefly under the
+ * `auth:me:<id>` key that the staff / rider mutations already invalidate
+ * (staff.controller, admin.controller.updateUserStatus, ...), so a suspension or
+ * role change takes effect within a few seconds — immediately on the paths that
+ * call delCache.
+ */
+async function loadAccount(userId: string): Promise<AuthSnapshot | null> {
+  if (!userId) return null;
+  const cacheKey = `auth:me:${userId}`;
 
-  jwt.verify(token, JWT_SECRET, (err, decoded: any) => {
-    if (err) {
+  const cached = await getCache<AuthSnapshot>(cacheKey);
+  if (cached) return cached;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, accountStatus: true },
+  });
+  if (!user) return null;
+
+  await setCache(cacheKey, user, 60);
+  return user;
+}
+
+export async function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'Access token required' });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
       return res.status(403).json({ error: 'Invalid or expired access token' });
     }
-    req.user = {
-      id: decoded.id,
-      role: decoded.role
-    };
+
+    const account = await loadAccount(decoded.id);
+    if (!account) {
+      return res.status(403).json({ error: 'Account no longer exists' });
+    }
+    if (account.accountStatus !== 'ACTIVE') {
+      return res.status(403).json({ error: 'Account suspended' });
+    }
+
+    // Role is read from the DB, not the token, so a role change or a revoke
+    // takes effect on the next request rather than after the 15-minute TTL.
+    req.user = { id: account.id, role: account.role };
     next();
-  });
+  } catch (err) {
+    console.error('authenticateToken:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 }

@@ -8,7 +8,6 @@
 import { api } from '../helpers/api';
 import { prisma } from '../../src/utils/prisma';
 import { actingAs, bearer, makeUser } from '../helpers/factories';
-import { generateAccessToken } from '../../src/middleware/auth';
 
 describe('Role-Based Access', () => {
   it('ROL-001 ADMIN reaches every dashboard area', async () => {
@@ -49,13 +48,15 @@ describe('Role-Based Access', () => {
     expect((await api().post('/admin/api/hubs').set(headers).send({})).status).toBe(403);
   });
 
-  it('ROL-006 a role change takes effect on the next token (JWT carries the role)', async () => {
+  it('ROL-006 a role change takes effect on the next request (role is read from the DB)', async () => {
     const user = await makeUser({ role: 'RIDER' });
-    expect((await api().get('/admin/api/stats').set(bearer(user.id, 'RIDER'))).status).toBe(403);
+    const token = bearer(user.id, 'RIDER');
+    expect((await api().get('/admin/api/stats').set(token)).status).toBe(403);
 
     await prisma.user.update({ where: { id: user.id }, data: { role: 'ADMIN' } });
-    const fresh = generateAccessToken(user.id, 'ADMIN');
-    expect((await api().get('/admin/api/stats').set('Authorization', `Bearer ${fresh}`)).status).toBe(200);
+
+    // same token, no re-issue needed — authenticateToken now sources the role
+    expect((await api().get('/admin/api/stats').set(token)).status).toBe(200);
   });
 
   it('ROL-008 a non-ADMIN staff member cannot perform ADMIN-only mutations', async () => {
@@ -68,14 +69,22 @@ describe('Role-Based Access', () => {
     expect(await prisma.bikeModel.count()).toBe(0);
   });
 
-  it.failing(
-    'ROL-007 a SUSPENDED staff account should lose dashboard access immediately (GAP: authenticateToken ignores accountStatus)',
-    async () => {
-      const staff = await makeUser({ role: 'ADMIN', accountStatus: 'SUSPENDED' });
-      const res = await api().get('/admin/api/stats').set(bearer(staff.id, 'ADMIN'));
-      expect(res.status).toBe(403);
-    }
-  );
+  it('ROL-007 a SUSPENDED staff account loses dashboard access immediately', async () => {
+    const staff = await makeUser({ role: 'ADMIN', accountStatus: 'SUSPENDED' });
+    const res = await api().get('/admin/api/stats').set(bearer(staff.id, 'ADMIN'));
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/suspended/i);
+  });
+
+  it('ROL-007b suspending an active staff member takes effect on their next request', async () => {
+    const { headers: adminHeaders } = await actingAs('ADMIN'); // keeps a second admin around
+    const staff = await makeUser({ role: 'EXECUTIVE' });
+    expect((await api().get('/admin/api/stats').set(bearer(staff.id, 'EXECUTIVE'))).status).toBe(200);
+
+    await api().put(`/admin/api/staff/${staff.id}`).set(adminHeaders).send({ accountStatus: 'SUSPENDED' });
+
+    expect((await api().get('/admin/api/stats').set(bearer(staff.id, 'EXECUTIVE'))).status).toBe(403);
+  });
 
   it.skip('ROL-009 role changes recorded in audit logs — no audit-log table/endpoint exists yet', () => {});
 });

@@ -28,8 +28,11 @@ global.fetch = jest.fn(async () =>
 ) as unknown as typeof fetch;
 
 // The app logs every request + internal catch blocks; keep the test output clean.
-for (const level of ['log', 'info', 'warn', 'error'] as const) {
+for (const level of ['log', 'info', 'warn'] as const) {
   jest.spyOn(console, level).mockImplementation(() => {});
+}
+if (!process.env.TEST_VERBOSE_ERRORS) {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
 }
 
 let tableList: string[] = [];
