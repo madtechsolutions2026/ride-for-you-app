@@ -11,15 +11,15 @@ Legend
   `it.skip` with a note. Nothing to test at the API layer.
 - **🖥️ client-only** — front-end / browser concern, no API surface; `it.skip`.
 
-Full run: **16 suites, 200 tests — 168 pass (incl. 10 open `it.failing` gaps), 32 skip.**
-(1 gap fixed — GAP-1 / ROL-007, see `GAPS.md`.)
+Full run: **16 suites — 9 open `it.failing` gaps, ~32 skip.**
+(2 gaps fixed — GAP-1 / ROL-007 and GAP-2 / EMP-010, see `GAPS.md`.)
 
 | Module | File | Status |
 |---|---|---|
 | Login & Authentication (LOG-001..008) | `auth.test.ts` | ✅ 001–007. ⛔ 008 (no password to reset — OTP only). NOTE 007: no attempt lockout. |
 | Role-Based Access (ROL-001..009) | `rbac.test.ts` | ✅ 001–008 (007 fixed 2026-09-03 — see GAPS.md GAP-1). ⛔ 009 (no audit-log table). |
 | Dashboard Overview (DAS-001..012) | `dashboard.test.ts` | ✅ 001–005, 007–010, 012 + finance/overdue. ⛔ 006 (no refund-request entity). 🖥️ 011. |
-| Employee Management (EMP-001..012) | `employees.test.ts` | ✅ 001–009 + revoke/self-revoke guards. ⚠️ 010 (`verifyOtp` ignores `accountStatus`). ⛔ 011/012 (no search/status params on `listStaff`). |
+| Employee Management (EMP-001..012) | `employees.test.ts` | ✅ 001–010 + revoke/self-revoke guards (010 fixed 2026-09-03 — GAP-2). ⛔ 011/012 (no search/status params on `listStaff`). |
 | Customer / Rider Management (CUS-001..012) | `riders.test.ts` | ✅ 001–006, 009–012 + block/unblock. ⛔ 007 (no bank entity), 008 (no attachment entity). |
 | KYC Approval (KYC-001..016) | `kyc.test.ts` | ✅ 001–006, 010, 013–015 + review-twice + legacy path. ⚠️ 012 (approval doesn't check documents present). ⛔ 007/008 (no DL field), 009 (no face-match result), 011 (no responsibility-video field), 016 (no search param). |
 | Inventory & Vehicle Management (INV-001..017) | `fleet.test.ts` | ✅ 001–007, 009–011, 017 + catalogue model/plan CRUD + model validation. ⛔ 008 (no retired status), 012 (range not in admin API), 013–016 (no server-side filter params). |
@@ -43,11 +43,10 @@ Full run: **16 suites, 200 tests — 168 pass (incl. 10 open `it.failing` gaps),
 | Performance Testing (PER-001..010) | — | not attempted: load/latency assertions are flaky in a functional suite and need a seeded large dataset + a dedicated runner (k6 / autocannon). Out of scope for API integration tests. |
 | Cross-Browser & Responsive (CRO-001..009) | — | 🖥️ browser-only: needs Playwright/BrowserStack. No API surface. |
 
-## The open gaps (`it.failing`) — 10 left, see `GAPS.md`
+## The open gaps (`it.failing`) — 9 left, see `GAPS.md`
 
 | ID | File | Missing check |
 |---|---|---|
-| EMP-010 | `employees.test.ts` | `verifyOtp` issues tokens to a SUSPENDED account. |
 | VEH-008 | `handover.test.ts` | `handoverBike` never checks `booking.user.kycStatus`. |
 | VEH-001/007 | `handover.test.ts` | `listBookings` / handover are not scoped to an EXECUTIVE's `assignedHubId`. |
 | KYC-012 | `kyc.test.ts` | `reviewKyc` approves even with no document keys on the row. |

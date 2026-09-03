@@ -135,6 +135,13 @@ export async function verifyOtp(req: Request, res: Response) {
       });
     }
 
+    // A suspended / blocked account passes OTP but is not let back in.
+    if (user.accountStatus !== 'ACTIVE') {
+      return res.status(403).json({
+        error: 'This account has been suspended. Please contact support.',
+      });
+    }
+
     // Generate tokens
     const accessToken = generateAccessToken(user.id, user.role);
     const refreshToken = generateRefreshToken(user.id);
@@ -190,6 +197,14 @@ export async function refreshToken(req: Request, res: Response) {
 
     if (!session || !session.user) {
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    // Suspended after the session was created — kill it so it can't be reused.
+    if (session.user.accountStatus !== 'ACTIVE') {
+      await prisma.session.update({ where: { id: session.id }, data: { revoked: true } });
+      return res.status(403).json({
+        error: 'This account has been suspended. Please contact support.',
+      });
     }
 
     const newAccessToken = generateAccessToken(session.user.id, session.user.role);

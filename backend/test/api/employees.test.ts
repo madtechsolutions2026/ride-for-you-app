@@ -146,17 +146,19 @@ describe('Employee Management', () => {
     expect(res.body.error).toMatch(/your own access/i);
   });
 
-  it.failing(
-    'EMP-010 a deactivated employee should not be able to obtain fresh tokens (GAP: verifyOtp ignores accountStatus)',
-    async () => {
-      const staff = await makeUser({ role: 'EXECUTIVE', accountStatus: 'SUSPENDED', phone: uniquePhone() });
-      const { body } = await api().post('/auth/otp/request').send({ phone: staff.phone });
-      const verify = await api()
-        .post('/auth/otp/verify')
-        .send({ challengeId: body.challengeId, otp: '123456' });
-      expect(verify.status).toBeGreaterThanOrEqual(400);
-    }
-  );
+  it('EMP-010 a deactivated employee cannot obtain fresh tokens via OTP', async () => {
+    const staff = await makeUser({ role: 'EXECUTIVE', accountStatus: 'SUSPENDED', phone: uniquePhone() });
+    const { body } = await api().post('/auth/otp/request').send({ phone: staff.phone });
+    const verify = await api()
+      .post('/auth/otp/verify')
+      .send({ challengeId: body.challengeId, otp: '123456' });
+
+    expect(verify.status).toBe(403);
+    expect(verify.body.error).toMatch(/suspended/i);
+    expect(verify.body.tokens).toBeUndefined();
+    // no session was minted
+    expect(await prisma.session.count({ where: { userId: staff.id } })).toBe(0);
+  });
 
   it.skip('EMP-011 search employee — listStaff exposes no search param (client-side filter only)', () => {});
   it.skip('EMP-012 filter employees by status — listStaff exposes no status filter param', () => {});

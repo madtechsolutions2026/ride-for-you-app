@@ -8,7 +8,7 @@ exists** and flips to **failing** once the gap is fixed. When you fix one:
 
 Discovered: 2026-09-02.
 
-Progress: **1 / 11 fixed.**
+Progress: **2 / 11 fixed.**
 
 ---
 
@@ -20,16 +20,13 @@ Progress: **1 / 11 fixed.**
   non-ACTIVE status, and sources `role` from the DB so a role change / revoke is
   effective on the next request. Tests: `rbac.test.ts` ROL-006, ROL-007,
   ROL-007b.
-  NOTE: `/auth/token/refresh` still *issues* tokens to a suspended account — but
-  those tokens are now inert everywhere `authenticateToken` runs. Closing the
-  refresh + login paths is GAP-2.
+  (Refresh + OTP-login paths for suspended accounts closed in GAP-2.)
 
-- [ ] **GAP-2 · EMP-010 — suspended accounts can still log in**
-  `src/controllers/auth.controller.ts` — `verifyOtp` (and `refreshToken`) issue
-  tokens regardless of `accountStatus`. Combined with GAP-1, "suspend" is a
-  no-op for auth; only a role change (`revokeStaff`) actually locks someone out.
-  Test: `test/api/employees.test.ts` "EMP-010".
-  Severity: **high**.
+- [x] **GAP-2 · EMP-010 — suspended accounts can still log in** — FIXED 2026-09-03
+  `src/controllers/auth.controller.ts` — `verifyOtp` now returns **403
+  "suspended"** after the OTP check and mints no session; `refreshToken` returns
+  403 and revokes the session on the attempt. Tests: `employees.test.ts`
+  EMP-010, `auth.test.ts` LOG-005c.
 
 - [ ] **GAP-3 · VEH-001 / VEH-007 — bookings not scoped to an Executive's hub**
   `src/controllers/ops.controller.ts` — `listBookings`, `getBookingDetail`,

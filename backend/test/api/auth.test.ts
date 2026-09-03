@@ -115,6 +115,21 @@ describe('Login & Authentication', () => {
     expect(stale.status).toBe(401);
   });
 
+  it('LOG-005c a suspended account cannot refresh — the session is revoked on the attempt', async () => {
+    const user = await makeUser({ role: 'EXECUTIVE' });
+    const refreshToken = jwt.sign({ id: user.id, type: 'refresh' }, JWT_SECRET, { expiresIn: '30d' });
+    const session = await prisma.session.create({
+      data: { userId: user.id, refreshToken, expiresAt: new Date(Date.now() + 30 * 86400_000) },
+    });
+
+    await prisma.user.update({ where: { id: user.id }, data: { accountStatus: 'SUSPENDED' } });
+
+    const res = await api().post('/auth/token/refresh').send({ refreshToken });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/suspended/i);
+    expect((await prisma.session.findUniqueOrThrow({ where: { id: session.id } })).revoked).toBe(true);
+  });
+
   it('LOG-006 a protected dashboard route requires a token', async () => {
     const res = await api().get('/admin/api/stats');
     expect(res.status).toBe(401);
