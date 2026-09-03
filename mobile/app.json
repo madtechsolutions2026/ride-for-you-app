@@ -4,11 +4,11 @@
     "slug": "ride-for-you-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/scooter.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "rideforyou",
     "splash": {
-      "image": "./assets/scooter.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,8 +18,8 @@
     "android": {
       "package": "com.rideforyou.mobile",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/scooter.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#10B981"
       },
       "permissions": [
         "CAMERA",
@@ -30,7 +30,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/scooter.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-font",

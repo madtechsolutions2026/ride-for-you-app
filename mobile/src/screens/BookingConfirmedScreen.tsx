@@ -17,7 +17,13 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, ClipPath, Defs, Image as SvgImage } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
+/**
+ * expo-clipboard is loaded lazily (inside copyRef) rather than at module scope.
+ * It's a native module; importing it eagerly crashes any older standalone build
+ * that was compiled before the dependency was added (an OTA JS update can't add
+ * native code). The lazy require keeps the copy button working on fresh builds
+ * and simply no-ops on older ones instead of taking the whole app down.
+ */
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -153,11 +159,13 @@ export default function BookingConfirmedScreen({ navigation, route }: Props) {
   const copyRef = async () => {
     if (!booking) return;
     try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const Clipboard = require('expo-clipboard');
       await Clipboard.setStringAsync(booking.reference);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      flashToast('Could not copy');
+      flashToast('Update the app to copy');
     }
   };
 
