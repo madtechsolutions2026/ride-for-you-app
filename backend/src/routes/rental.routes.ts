@@ -10,6 +10,9 @@ import {
   getMyBooking,
   payBooking,
   cancelMyBooking,
+  listMyRentals,
+  getActiveRental,
+  payWeeklyInvoice,
 } from '../controllers/rental.controller';
 import { authenticateToken } from '../middleware/auth';
 
@@ -28,5 +31,10 @@ router.get('/bookings', authenticateToken, listMyBookings);
 router.get('/bookings/:id', authenticateToken, getMyBooking);
 router.post('/bookings/:id/pay', authenticateToken, payBooking);
 router.post('/bookings/:id/cancel', authenticateToken, cancelMyBooking);
+
+// Rider rentals + weekly rent. `/rentals/active` must precede any `/rentals/:id`.
+router.get('/rentals/active', authenticateToken, getActiveRental);
+router.get('/rentals', authenticateToken, listMyRentals);
+router.post('/invoices/:id/pay', authenticateToken, payWeeklyInvoice);
 
 export default router;

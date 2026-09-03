@@ -759,3 +759,254 @@ export async function cancelMyBooking(req: AuthRequest, res: Response) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Rider rentals + weekly rent                                                 */
+/*                                                                            */
+/*  GET  /rental/rentals            every rental I've had, newest first        */
+/*  GET  /rental/rentals/active     the live one (or null) — drives Home       */
+/*  POST /rental/invoices/:id/pay   settle one week's rent                     */
+/*                                                                            */
+/* A weekly rental is a recurring obligation, so the rider needs the same      */
+/* ledger the dashboard has: what each week cost, what's paid, what's next.    */
+/* -------------------------------------------------------------------------- */
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const RENTAL_INCLUDE = {
+  bike: {
+    select: {
+      registrationNumber: true,
+      colour: true,
+      batteryPercent: true,
+      model: { select: { name: true, category: true, imageKey: true } },
+    },
+  },
+  hub: true,
+  booking: { select: { reference: true, depositAmount: true, plan: { select: { duration: true } } } },
+  weeklyInvoices: { orderBy: { weekNumber: 'asc' as const } },
+  damageReports: {
+    select: { id: true, severity: true, description: true, estimatedCost: true, chargeStatus: true },
+  },
+};
+
+/** An invoice past its due date is overdue even if the sweep hasn't run yet. */
+function effectiveInvoiceStatus(inv: any, now: number): string {
+  if (inv.status === 'PENDING' && new Date(inv.dueAt).getTime() < now) return 'OVERDUE';
+  return inv.status;
+}
+
+function serializeRental(r: any) {
+  const now = Date.now();
+
+  const weeks = (r.weeklyInvoices ?? []).map((w: any) => {
+    const status = effectiveInvoiceStatus(w, now);
+    const dueMs = new Date(w.dueAt).getTime();
+    return {
+      id: w.id,
+      weekNumber: w.weekNumber,
+      periodStart: w.periodStart,
+      periodEnd: w.periodEnd,
+      amount: w.amount,
+      status,
+      dueAt: w.dueAt,
+      paidAt: w.paidAt ?? null,
+      // negative = overdue by that many days
+      daysUntilDue: Math.ceil((dueMs - now) / DAY_MS),
+      payable: status === 'PENDING' || status === 'OVERDUE',
+    };
+  });
+
+  const unpaid = weeks.filter((w: any) => w.payable);
+  const nextDue = unpaid.sort((a: any, b: any) => a.daysUntilDue - b.daysUntilDue)[0] ?? null;
+
+  const totalBilled = weeks.reduce((s: number, w: any) => s + w.amount, 0);
+  const totalPaid = weeks
+    .filter((w: any) => w.status === 'PAID')
+    .reduce((s: number, w: any) => s + w.amount, 0);
+  const outstanding = unpaid.reduce((s: number, w: any) => s + w.amount, 0);
+
+  const expectedMs = r.expectedReturnAt ? new Date(r.expectedReturnAt).getTime() : null;
+  const isLive = r.status === 'ACTIVE' || r.status === 'OVERDUE';
+
+  const pendingDamage = (r.damageReports ?? []).filter((d: any) => d.chargeStatus === 'PENDING');
+
+  return {
+    id: r.id,
+    status: r.status,
+    isOverdue:
+      isLive && (outstanding > 0 ? unpaid.some((w: any) => w.status === 'OVERDUE') : false),
+    reference: r.booking?.reference ?? null,
+    plan: r.booking?.plan?.duration ?? null,
+
+    bike: r.bike
+      ? {
+          registrationNumber: r.bike.registrationNumber,
+          colour: r.bike.colour ?? null,
+          batteryPercent: r.bike.batteryPercent ?? null,
+          modelName: r.bike.model?.name ?? null,
+          category: r.bike.model?.category ?? null,
+          imageUrl: publicUrl(r.bike.model?.imageKey),
+        }
+      : null,
+
+    hub: r.hub
+      ? {
+          id: r.hub.id,
+          name: r.hub.name,
+          address: r.hub.address,
+          lat: r.hub.lat,
+          lng: r.hub.lng,
+          contactPhone: r.hub.contactPhone ?? null,
+          operatingHours: operatingHours(r.hub.openTime, r.hub.closeTime),
+        }
+      : null,
+
+    handoverAt: r.handoverAt,
+    expectedReturnAt: r.expectedReturnAt ?? null,
+    returnedAt: r.returnedAt ?? null,
+    closedAt: r.closedAt ?? null,
+    daysRemaining: expectedMs && isLive ? Math.ceil((expectedMs - now) / DAY_MS) : null,
+
+    weeks,
+    summary: {
+      weeksBilled: weeks.length,
+      totalBilled,
+      totalPaid,
+      outstanding,
+      depositHeld: r.booking?.depositAmount ?? 0,
+      nextDue: nextDue
+        ? {
+            invoiceId: nextDue.id,
+            weekNumber: nextDue.weekNumber,
+            amount: nextDue.amount,
+            dueAt: nextDue.dueAt,
+            daysUntilDue: nextDue.daysUntilDue,
+            status: nextDue.status,
+          }
+        : null,
+    },
+
+    damage: pendingDamage.map((d: any) => ({
+      id: d.id,
+      severity: d.severity,
+      description: d.description,
+      estimatedCost: d.estimatedCost,
+    })),
+  };
+}
+
+// GET /rental/rentals — full history, newest first
+export async function listMyRentals(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const rentals = await prisma.rental.findMany({
+      where: { userId },
+      orderBy: { handoverAt: 'desc' },
+      include: RENTAL_INCLUDE,
+    });
+
+    return res.json({ count: rentals.length, rentals: rentals.map(serializeRental) });
+  } catch (error: any) {
+    console.error('Error in listMyRentals:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// GET /rental/rentals/active — the one the rider is on right now, or null.
+// This is what the Home screen's "Active Ride" card polls.
+export async function getActiveRental(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const rental = await prisma.rental.findFirst({
+      where: { userId, status: { in: ['ACTIVE', 'OVERDUE', 'RETURNED'] } },
+      orderBy: { handoverAt: 'desc' },
+      include: RENTAL_INCLUDE,
+    });
+
+    return res.json({ rental: rental ? serializeRental(rental) : null });
+  } catch (error: any) {
+    console.error('Error in getActiveRental:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// POST /rental/invoices/:id/pay   Body: { method }
+//
+// Same stub as booking payment — no gateway yet, but it writes a real
+// WEEKLY_RENT Payment row so the admin ledger and collections stay truthful.
+export async function payWeeklyInvoice(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const method = String(req.body?.method || 'UPI').toUpperCase();
+    const provider = PROVIDER_BY_METHOD[method] || 'UPI_MANUAL';
+
+    const invoice = await prisma.weeklyInvoice.findUnique({
+      where: { id: req.params.id },
+      include: { rental: { select: { id: true, userId: true, status: true } } },
+    });
+
+    if (!invoice || invoice.rental.userId !== userId) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    if (invoice.status === 'PAID') {
+      return res.status(409).json({ error: 'This week is already paid', code: 'ALREADY_PAID' });
+    }
+    if (invoice.status === 'WAIVED') {
+      return res.status(409).json({ error: 'This week was waived — nothing to pay' });
+    }
+
+    const txnRef = `DUMMY-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+
+    await prisma.$transaction([
+      prisma.weeklyInvoice.update({
+        where: { id: invoice.id },
+        data: { status: 'PAID', paidAt: new Date() },
+      }),
+      prisma.payment.create({
+        data: {
+          userId,
+          weeklyInvoiceId: invoice.id,
+          purpose: 'WEEKLY_RENT',
+          amount: invoice.amount,
+          provider,
+          providerPaymentId: txnRef,
+          status: 'SUCCESS',
+          note: `Week ${invoice.weekNumber} rent (test payment — no gateway in V1)`,
+        },
+      }),
+    ]);
+
+    // Lift the rental out of OVERDUE once nothing is actually *late*. A week
+    // that simply hasn't fallen due yet must not keep the rider flagged.
+    const stillLate = await prisma.weeklyInvoice.count({
+      where: {
+        rentalId: invoice.rentalId,
+        OR: [{ status: 'OVERDUE' }, { status: 'PENDING', dueAt: { lt: new Date() } }],
+      },
+    });
+    if (stillLate === 0 && invoice.rental.status === 'OVERDUE') {
+      await prisma.rental.update({ where: { id: invoice.rentalId }, data: { status: 'ACTIVE' } });
+    }
+
+    const fresh = await prisma.rental.findUnique({
+      where: { id: invoice.rentalId },
+      include: RENTAL_INCLUDE,
+    });
+
+    return res.json({
+      message: `Week ${invoice.weekNumber} rent paid`,
+      transactionId: txnRef,
+      rental: fresh ? serializeRental(fresh) : null,
+    });
+  } catch (error: any) {
+    console.error('Error in payWeeklyInvoice:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}

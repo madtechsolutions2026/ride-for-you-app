@@ -27,6 +27,7 @@ import VehiclesListScreen from './src/screens/VehiclesListScreen';
 import BookingPaymentScreen from './src/screens/BookingPaymentScreen';
 import BookingConfirmedScreen from './src/screens/BookingConfirmedScreen';
 import MyBookingsScreen from './src/screens/MyBookingsScreen';
+import MyRentalScreen from './src/screens/MyRentalScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -106,6 +107,7 @@ export default function App() {
                   options={{ gestureEnabled: false }}
                 />
                 <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
+                <Stack.Screen name="MyRental" component={MyRentalScreen} />
               </>
             ) : (
               <>

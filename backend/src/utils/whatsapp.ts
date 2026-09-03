@@ -103,3 +103,67 @@ export async function sendBookingConfirmationWhatsApp(
   console.log(`📡 [WHATSAPP-BOOKING] Dispatching booking receipt for ${reference} to ${to}...`);
   return sendWay2ChatsPayload(payload);
 }
+
+/**
+ * 4. Weekly rent due tomorrow.
+ * Template `rent_due_v1` — body params: name, amount, week number, due date.
+ */
+export async function sendRentDueWhatsApp(
+  phone: string,
+  fullName: string,
+  amount: number,
+  weekNumber: number,
+  dueDate: string
+): Promise<boolean> {
+  const to = cleanPhoneNumber(phone);
+  return sendWay2ChatsPayload({
+    to,
+    phoneNoId: way2chatsConfig.phoneId,
+    type: 'template',
+    name: 'rent_due_v1',
+    language: 'en',
+    bodyParams: [fullName || 'Rider', String(amount), String(weekNumber), dueDate],
+  });
+}
+
+/**
+ * 5. Weekly rent overdue.
+ * Template `rent_overdue_v1` — body params: name, amount, days late.
+ */
+export async function sendRentOverdueWhatsApp(
+  phone: string,
+  fullName: string,
+  amount: number,
+  daysLate: number
+): Promise<boolean> {
+  const to = cleanPhoneNumber(phone);
+  return sendWay2ChatsPayload({
+    to,
+    phoneNoId: way2chatsConfig.phoneId,
+    type: 'template',
+    name: 'rent_overdue_v1',
+    language: 'en',
+    bodyParams: [fullName || 'Rider', String(amount), String(daysLate)],
+  });
+}
+
+/**
+ * 6. Payment receipt (weekly rent settled).
+ * Template `payment_received_v1` — body params: name, amount, what it covered.
+ */
+export async function sendPaymentReceiptWhatsApp(
+  phone: string,
+  fullName: string,
+  amount: number,
+  covers: string
+): Promise<boolean> {
+  const to = cleanPhoneNumber(phone);
+  return sendWay2ChatsPayload({
+    to,
+    phoneNoId: way2chatsConfig.phoneId,
+    type: 'template',
+    name: 'payment_received_v1',
+    language: 'en',
+    bodyParams: [fullName || 'Rider', String(amount), covers],
+  });
+}

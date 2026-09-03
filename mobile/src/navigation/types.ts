@@ -14,4 +14,5 @@ export type RootStackParamList = {
   BookingPayment: { bookingId: string };
   BookingConfirmed: { bookingId: string };
   MyBookings: undefined;
+  MyRental: { payInvoiceId?: string } | undefined;
 };

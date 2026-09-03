@@ -17,6 +17,8 @@ export { StylizedMap } from './StylizedMap';
 export type { MapStation } from './StylizedMap';
 export { ThemedModal } from './ThemedModal';
 export { Confetti } from './Confetti';
+export { ActiveRideCard } from './ActiveRideCard';
+export type { ActiveRental } from './ActiveRideCard';
 export { SideDrawer } from './SideDrawer';
 export { NotificationSheet } from './NotificationSheet';
 export { NearbyHubsSheet, NEARBY_HUBS, type StationHub } from './NearbyHubsSheet';

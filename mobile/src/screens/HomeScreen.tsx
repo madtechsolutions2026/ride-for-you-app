@@ -19,6 +19,8 @@ import { clearTokens } from '../api/tokenStore';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
 import {
+  ActiveRideCard,
+  type ActiveRental,
   CategoryHubsSheet,
   Glass,
   NearbyHubsSheet,
@@ -72,6 +74,15 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<'swap' | 'home'>('swap');
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
+  const [activeRental, setActiveRental] = useState<ActiveRental | null>(null);
+
+  const fetchActiveRental = () => {
+    apiClient
+      .get('/rental/rentals/active')
+      .then((r) => setActiveRental(r.data?.rental ?? null))
+      .catch(() => {});
+  };
+
   const fetchProfile = () => {
     apiClient
       .get('/auth/me')
@@ -85,8 +96,10 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
 
   useEffect(() => {
     fetchProfile();
+    fetchActiveRental();
     const unsubscribe = navigation.addListener('focus', () => {
       fetchProfile();
+      fetchActiveRental();
     });
     return unsubscribe;
   }, [navigation]);
@@ -155,6 +168,13 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
             <Text style={styles.tagline}>Smart rides. Sustainable future.</Text>
           </View>
         </View>
+
+        {/* ---------------- ACTIVE RIDE (only when one is live) ---------------- */}
+        <ActiveRideCard
+          rental={activeRental}
+          onOpen={() => navigation.navigate('MyRental')}
+          onPay={(invoiceId) => navigation.navigate('MyRental', { payInvoiceId: invoiceId })}
+        />
 
         {/* ---------------- ENLARGED MAP + QUICK ACTIONS ---------------- */}
         <NeoSurface borderRadius={radius.lg} style={styles.mapCard}>
