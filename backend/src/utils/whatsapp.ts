@@ -14,6 +14,9 @@ function cleanPhoneNumber(to: string): string {
  */
 async function sendWay2ChatsPayload(payload: any): Promise<boolean> {
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
     const res = await fetch(way2chatsConfig.url, {
       method: 'POST',
       headers: {
@@ -21,7 +24,9 @@ async function sendWay2ChatsPayload(payload: any): Promise<boolean> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     const data: any = await res.json().catch(() => ({}));
     if (!res.ok) {

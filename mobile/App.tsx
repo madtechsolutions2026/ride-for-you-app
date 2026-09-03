@@ -17,7 +17,7 @@ import {
 
 import { RootStackParamList } from './src/navigation/types';
 import { getAccessToken } from './src/api/tokenStore';
-import { setSessionExpiredListener } from './src/api/client';
+import { apiClient, setSessionExpiredListener } from './src/api/client';
 import { registerForPush, attachPushHandlers } from './src/api/push';
 
 import RequestOtpScreen from './src/screens/RequestOtpScreen';
@@ -49,15 +49,13 @@ export default function App() {
   const navRef = useNavigationContainerRef<RootStackParamList>();
 
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      const token = await getAccessToken();
-      if (token) {
-        setIsAuthenticated(true);
-      }
-      setAuthChecked(true);
-    };
+    // 1. Immediately send a background pre-warm ping to the backend so it's warm
+    // by the time the user enters their phone number and requests an OTP.
+    apiClient.get('/health').catch(() => {});
 
-    checkAuthStatus();
+    // 2. Fresh launch always lands on the Login screen (RequestOtp)
+    setIsAuthenticated(false);
+    setAuthChecked(true);
 
     setSessionExpiredListener(() => {
       setIsAuthenticated(false);

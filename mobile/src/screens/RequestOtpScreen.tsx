@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Keyboard,
   Pressable,
@@ -55,6 +55,11 @@ export default function RequestOtpScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
+
+  useEffect(() => {
+    // Eagerly wake up the backend if it was sleeping
+    apiClient.get('/health').catch(() => {});
+  }, []);
 
   const handleRequestOtp = async () => {
     setError('');
