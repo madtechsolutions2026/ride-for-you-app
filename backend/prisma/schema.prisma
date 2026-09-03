@@ -31,6 +31,11 @@ model User {
   // Cached KYC summary. Source of truth is the latest KycVerification row.
   kycStatus String @default("PENDING") // PENDING, SUBMITTED, APPROVED, REJECTED
 
+  // Expo push token, registered by the app after login. Null until the
+  // rider grants notification permission (or on a build without the module).
+  pushToken          String?
+  pushTokenUpdatedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -196,9 +201,10 @@ model Bike {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  rentals       Rental[]
-  damageReports DamageReport[]
-  recoveryJobs  RecoveryJob[]
+  rentals        Rental[]
+  damageReports  DamageReport[]
+  recoveryJobs   RecoveryJob[]
+  reservations   Booking[]     @relation("BikeReservation")
 
   @@index([modelId])
   @@index([hubId])
@@ -267,8 +273,20 @@ model Booking {
   consentSignatureKey String?
 
   startsAt     DateTime? // planned handover
+  // A PENDING booking holds its unit until this moment, then a sweep
+  // expires it and puts the bike back on the shelf.
+  expiresAt  DateTime?
   cancelledAt  DateTime?
   cancelReason String?
+
+  // The specific unit held for this booking. Set at booking, cleared on
+  // expiry/cancel, and becomes the Rental's bike at handover.
+  // Uniqueness is NOT a DB constraint here: a plain `prisma db push` (what
+  // Render runs on deploy) refuses to add one. The real guarantee is an
+  // atomic Bike.status flip from AVAILABLE -> RESERVED, which only one
+  // concurrent booking can win.
+  reservedBikeId String?
+  reservedBike   Bike?   @relation("BikeReservation", fields: [reservedBikeId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

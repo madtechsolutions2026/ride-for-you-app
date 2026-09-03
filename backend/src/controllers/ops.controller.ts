@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
+import { notify } from '../utils/notifications';
 
 /**
  * Operational-layer admin controller: bookings, rentals, weekly billing,
@@ -78,10 +79,22 @@ export async function cancelBooking(req: Request, res: Response) {
     if (['HANDED_OVER', 'CANCELLED', 'EXPIRED'].includes(booking.status))
       return res.status(409).json({ error: `Cannot cancel a ${booking.status} booking` });
 
-    const updated = await prisma.booking.update({
-      where: { id: booking.id },
-      data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: reason || null },
-    });
+    const [updated] = await prisma.$transaction([
+      prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          status: 'CANCELLED',
+          cancelledAt: new Date(),
+          cancelReason: reason || null,
+          reservedBikeId: null,
+        },
+      }),
+      // Put the held unit back on the shelf.
+      prisma.bike.updateMany({
+        where: { id: booking.reservedBikeId ?? '__none__', status: 'RESERVED' },
+        data: { status: 'AVAILABLE' },
+      }),
+    ]);
     return res.json({ message: 'Booking cancelled', booking: updated });
   } catch (e: any) {
     console.error('cancelBooking:', e);
@@ -96,7 +109,6 @@ export async function cancelBooking(req: Request, res: Response) {
 export async function handoverBike(req: AuthRequest, res: Response) {
   try {
     const { bikeId, odometerStart } = req.body ?? {};
-    if (!bikeId) return res.status(400).json({ error: 'bikeId is required' });
 
     const booking = await prisma.booking.findUnique({
       where: { id: req.params.id },
@@ -107,13 +119,29 @@ export async function handoverBike(req: AuthRequest, res: Response) {
     if (!['CONFIRMED', 'READY'].includes(booking.status))
       return res.status(409).json({ error: `Booking must be CONFIRMED/READY, is ${booking.status}` });
 
-    const bike = await prisma.bike.findUnique({ where: { id: bikeId } });
+    // The booking already holds a unit. Default to it, so the executive
+    // normally just confirms; an explicit bikeId still wins if the reserved
+    // one is damaged or missing from the rack.
+    const targetId = bikeId || booking.reservedBikeId;
+    if (!targetId)
+      return res.status(400).json({ error: 'No bike reserved for this booking — pass bikeId' });
+
+    const bike = await prisma.bike.findUnique({ where: { id: targetId } });
     if (!bike) return res.status(404).json({ error: 'Bike not found' });
-    if (bike.status !== 'AVAILABLE')
+
+    const isOwnReservation = booking.reservedBikeId === bike.id;
+    if (!isOwnReservation && bike.status !== 'AVAILABLE') {
       return res.status(409).json({ error: `Bike is ${bike.status}, not AVAILABLE` });
+    }
+    if (isOwnReservation && !['RESERVED', 'AVAILABLE'].includes(bike.status)) {
+      return res.status(409).json({ error: `Reserved bike is ${bike.status}` });
+    }
 
     const days = booking.plan.duration === 'WEEK' ? 7 : booking.plan.duration === 'MONTH' ? 30 : 1;
     const expectedReturnAt = new Date(Date.now() + days * 86400_000);
+
+    const swappedAway =
+      booking.reservedBikeId && booking.reservedBikeId !== bike.id ? booking.reservedBikeId : null;
 
     const [rental] = await prisma.$transaction([
       prisma.rental.create({
@@ -128,7 +156,15 @@ export async function handoverBike(req: AuthRequest, res: Response) {
         },
       }),
       prisma.bike.update({ where: { id: bike.id }, data: { status: 'RENTED' } }),
-      prisma.booking.update({ where: { id: booking.id }, data: { status: 'HANDED_OVER' } }),
+      prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: 'HANDED_OVER', reservedBikeId: null },
+      }),
+      // If staff handed over a different unit, free the one we were holding.
+      prisma.bike.updateMany({
+        where: { id: swappedAway ?? '__none__', status: 'RESERVED' },
+        data: { status: 'AVAILABLE' },
+      }),
     ]);
 
     // Week-1 weekly invoice, due 7 days out.
@@ -142,6 +178,12 @@ export async function handoverBike(req: AuthRequest, res: Response) {
         dueAt: new Date(Date.now() + 7 * 86400_000),
       },
     });
+
+    void notify.handedOver(
+      booking.userId,
+      bike.registrationNumber,
+      expectedReturnAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    );
 
     return res.status(201).json({ message: 'Bike handed over, rental active', rental });
   } catch (e: any) {
@@ -247,14 +289,65 @@ export async function closeRental(req: Request, res: Response) {
       });
     }
 
-    const [updated] = await prisma.$transaction([
+    /* ---- deposit settlement -------------------------------------------
+     * The rider paid a refundable deposit at booking. On a clean close it
+     * comes back in full; anything charged for damage is netted off first.
+     * Recorded as a negative REFUND payment so the ledger balances without
+     * anyone having to remember to do it by hand.
+     */
+    const deposit = rental.booking.depositAmount ?? 0;
+
+    const damageCharged = await prisma.payment.aggregate({
+      where: { userId: rental.userId, purpose: 'DAMAGE', status: { in: ['SUCCESS', 'INITIATED'] } },
+      _sum: { amount: true },
+    });
+    const alreadyRefunded = await prisma.payment.aggregate({
+      where: { bookingId: rental.bookingId, purpose: 'REFUND' },
+      _sum: { amount: true },
+    });
+
+    const deducted = Math.min(deposit, damageCharged._sum.amount ?? 0);
+    const refundable = Math.max(0, deposit - deducted + (alreadyRefunded._sum.amount ?? 0));
+
+    const writes: any[] = [
       prisma.rental.update({
         where: { id: rental.id },
         data: { status: 'COMPLETED', closedAt: new Date() },
       }),
       prisma.booking.update({ where: { id: rental.bookingId }, data: { status: 'HANDED_OVER' } }),
-    ]);
-    return res.json({ message: 'Rental completed', rental: updated });
+    ];
+
+    if (refundable > 0) {
+      writes.push(
+        prisma.payment.create({
+          data: {
+            userId: rental.userId,
+            bookingId: rental.bookingId,
+            purpose: 'REFUND',
+            amount: -refundable,
+            provider: 'ADJUSTMENT',
+            status: 'SUCCESS',
+            note:
+              deducted > 0
+                ? `Deposit refund — ₹${deposit} less ₹${deducted} damage`
+                : 'Deposit refund on rental close-out',
+          },
+        })
+      );
+    }
+
+    const [updated] = await prisma.$transaction(writes);
+
+    if (refundable > 0) void notify.depositRefunded(rental.userId, refundable);
+
+    return res.json({
+      message:
+        refundable > 0
+          ? `Rental completed. ₹${refundable} deposit refunded${deducted > 0 ? ` (₹${deducted} withheld for damage)` : ''}.`
+          : 'Rental completed. No deposit to refund.',
+      rental: updated,
+      deposit: { held: deposit, withheld: deducted, refunded: refundable },
+    });
   } catch (e: any) {
     console.error('closeRental:', e);
     return res.status(500).json({ error: 'Internal server error' });

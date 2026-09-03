@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { publicUrl } from '../utils/r2';
 import { getCache, setCache } from '../utils/cache';
+import { notify } from '../utils/notifications';
 
 /**
  * Rental discovery module — RIDER, read-only.
@@ -395,6 +396,48 @@ const PROVIDER_BY_METHOD: Record<string, string> = {
 
 const OPEN_BOOKING_STATES = ['PENDING', 'CONFIRMED', 'READY'];
 
+/** How long an unpaid booking keeps its bike off the shelf. */
+export const BOOKING_HOLD_MS = 30 * 60 * 1000;
+
+/**
+ * Take one AVAILABLE unit of this model out of circulation, atomically.
+ *
+ * `updateMany` with the status in the WHERE clause is the lock: Postgres
+ * serialises the row update, so of two concurrent callers exactly one gets
+ * `count: 1` and the other gets `0` and moves to the next candidate.
+ */
+async function reserveUnitForModel(modelId: string, hubId: string) {
+  const candidates = await prisma.bike.findMany({
+    where: { modelId, status: 'AVAILABLE' },
+    // Same hub first so the rider collects where they expect to.
+    orderBy: [{ hubId: hubId ? 'asc' : 'asc' }, { batteryPercent: 'desc' }],
+    select: { id: true, hubId: true, registrationNumber: true },
+  });
+
+  const ordered = [
+    ...candidates.filter((b) => b.hubId === hubId),
+    ...candidates.filter((b) => b.hubId !== hubId),
+  ];
+
+  for (const bike of ordered) {
+    const claimed = await prisma.bike.updateMany({
+      where: { id: bike.id, status: 'AVAILABLE' },
+      data: { status: 'RESERVED' },
+    });
+    if (claimed.count === 1) return bike;
+  }
+  return null;
+}
+
+/** Put a reserved unit back on the shelf. Safe to call on an already-free bike. */
+async function releaseUnit(bikeId: string | null | undefined) {
+  if (!bikeId) return;
+  await prisma.bike.updateMany({
+    where: { id: bikeId, status: 'RESERVED' },
+    data: { status: 'AVAILABLE' },
+  });
+}
+
 const BOOKING_INCLUDE = {
   model: true,
   plan: true,
@@ -537,13 +580,6 @@ export async function createBooking(req: AuthRequest, res: Response) {
       model.plans.find((p) => p.status === 'ACTIVE');
     if (!plan) return res.status(409).json({ error: 'No active rental plan for this bike' });
 
-    const availableUnits = model.bikes.filter((b) => b.status === 'AVAILABLE').length;
-    if (availableUnits < 1) {
-      return res
-        .status(409)
-        .json({ error: 'No units of this bike are available right now' });
-    }
-
     // Prefer the hub the rider picked; fall back to the first active hub.
     const hub =
       (hubId
@@ -565,32 +601,54 @@ export async function createBooking(req: AuthRequest, res: Response) {
       });
     }
 
+    // --- reserve an actual unit ------------------------------------------
+    // Checking a count is not enough: two riders can both read "1 available"
+    // and both get a booking with no bike behind it. Flip one bike's status
+    // conditionally instead — updateMany reports how many rows it matched, so
+    // only the request that actually won the row proceeds.
+    const reserved = await reserveUnitForModel(model.id, hub.id);
+    if (!reserved) {
+      return res.status(409).json({
+        error: 'That bike was just taken. Pick another one — availability updates live.',
+        code: 'NO_UNIT_AVAILABLE',
+      });
+    }
+
     const rentAmount = plan.price;
     const depositAmount = plan.deposit;
     const totalAmount = rentAmount + depositAmount + PLATFORM_FEE;
 
-    const booking = await prisma.booking.create({
-      data: {
-        reference: bookingRef(),
-        userId,
-        modelId: model.id,
-        planId: plan.id,
-        hubId: hub.id,
-        status: 'PENDING',
-        rentAmount,
-        depositAmount,
-        platformFee: PLATFORM_FEE,
-        totalAmount,
-        nomineeName: nomineeName ? String(nomineeName).trim() : null,
-        nomineeRelation: nomineeRelation ? String(nomineeRelation).trim() : null,
-        nomineePhone: nomineePhone ? String(nomineePhone).trim() : null,
-        consentAcceptedAt: consentAccepted ? new Date() : null,
-        consentLanguage: consentAccepted
-          ? String(consentLanguage || 'EN').toUpperCase()
-          : null,
-      },
-      include: BOOKING_INCLUDE,
-    });
+    let booking;
+    try {
+      booking = await prisma.booking.create({
+        data: {
+          reference: bookingRef(),
+          userId,
+          modelId: model.id,
+          planId: plan.id,
+          hubId: hub.id,
+          status: 'PENDING',
+          expiresAt: new Date(Date.now() + BOOKING_HOLD_MS),
+          reservedBikeId: reserved.id,
+          rentAmount,
+          depositAmount,
+          platformFee: PLATFORM_FEE,
+          totalAmount,
+          nomineeName: nomineeName ? String(nomineeName).trim() : null,
+          nomineeRelation: nomineeRelation ? String(nomineeRelation).trim() : null,
+          nomineePhone: nomineePhone ? String(nomineePhone).trim() : null,
+          consentAcceptedAt: consentAccepted ? new Date() : null,
+          consentLanguage: consentAccepted
+            ? String(consentLanguage || 'EN').toUpperCase()
+            : null,
+        },
+        include: BOOKING_INCLUDE,
+      });
+    } catch (e) {
+      // Never strand a reserved bike if the booking row failed to write.
+      await releaseUnit(reserved.id).catch(() => {});
+      throw e;
+    }
 
     return res.status(201).json({
       message: 'Booking created. Complete payment to confirm.',
@@ -705,7 +763,8 @@ export async function payBooking(req: AuthRequest, res: Response) {
       ),
       prisma.booking.update({
         where: { id: booking.id },
-        data: { status: 'CONFIRMED' },
+        // Paid bookings never expire — the hold is now firm until handover.
+        data: { status: 'CONFIRMED', expiresAt: null },
       }),
     ]);
 
@@ -713,6 +772,10 @@ export async function payBooking(req: AuthRequest, res: Response) {
       where: { id: booking.id },
       include: BOOKING_INCLUDE,
     });
+
+    if (full) {
+      void notify.bookingConfirmed(userId, full.reference, full.hub?.name ?? 'the hub');
+    }
 
     return res.json({
       message: 'Payment successful. Your booking is confirmed.',
@@ -741,12 +804,16 @@ export async function cancelMyBooking(req: AuthRequest, res: Response) {
       });
     }
 
+    // Hand the reserved unit straight back so the next rider can take it.
+    await releaseUnit(booking.reservedBikeId);
+
     const updated = await prisma.booking.update({
       where: { id: booking.id },
       data: {
         status: 'CANCELLED',
         cancelledAt: new Date(),
         cancelReason: 'Cancelled by rider',
+        reservedBikeId: null,
       },
       include: BOOKING_INCLUDE,
     });
@@ -999,6 +1066,8 @@ export async function payWeeklyInvoice(req: AuthRequest, res: Response) {
       where: { id: invoice.rentalId },
       include: RENTAL_INCLUDE,
     });
+
+    void notify.paymentReceived(userId, invoice.amount, `week ${invoice.weekNumber} rent`);
 
     return res.json({
       message: `Week ${invoice.weekNumber} rent paid`,

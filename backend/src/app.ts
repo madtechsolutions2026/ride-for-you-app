@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import kycRoutes from './routes/kyc.routes';
 import rentalRoutes from './routes/rental.routes';
+import paymentRoutes from './routes/payment.routes';
 import adminRoutes from './routes/admin.routes';
 import { startWeeklyBilling } from './services/weeklyBilling';
 import { prisma } from './utils/prisma';
@@ -28,13 +29,23 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 });
 
 // Parse JSON request bodies
-app.use(express.json());
+// Keep the exact bytes of every request body. Gateway webhooks sign the raw
+// payload, and re-serialising the parsed JSON changes it enough to break the
+// signature — so capture it here, before anything reformats it.
+app.use(
+  express.json({
+    verify: (req, _res, buf) => {
+      (req as any).rawBody = buf.toString('utf8');
+    },
+  })
+);
 
 // 1. Register API Routes
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/kyc', kycRoutes);
 app.use('/rental', rentalRoutes);
+app.use('/payments', paymentRoutes);
 
 // Admin API endpoints
 app.use('/admin/api', adminRoutes);

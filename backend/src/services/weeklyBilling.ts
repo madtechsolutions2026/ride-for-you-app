@@ -1,5 +1,6 @@
 import { prisma } from '../utils/prisma';
 import { sendRentDueWhatsApp, sendRentOverdueWhatsApp } from '../utils/whatsapp';
+import { notify } from '../utils/notifications';
 
 /**
  * Weekly rental billing — the recurring cycle behind every active rental.
@@ -160,10 +161,18 @@ async function safeSend(fn: () => Promise<boolean>): Promise<boolean> {
   }
 }
 
-/** Start the sweep loop. Every 6h is plenty for a weekly cadence. */
+/**
+ * Two loops, because they run on completely different clocks.
+ *
+ *   billing   weekly cadence — 6h is plenty
+ *   holds     a 30-minute booking hold needs minute-level policing, or a
+ *             rider who abandons checkout parks a bike for hours
+ */
 export function startWeeklyBilling() {
   const SIX_HOURS = 6 * HOUR_MS;
-  const tick = () =>
+  const TWO_MINUTES = 2 * 60 * 1000;
+
+  const billingTick = () =>
     runWeeklyBillingSweep()
       .then((r) => {
         if (r.overdue || r.raised || r.dueNotices || r.lateNotices) {
@@ -175,6 +184,82 @@ export function startWeeklyBilling() {
       })
       .catch((e) => console.error('[billing] sweep error:', e));
 
-  tick();
-  return setInterval(tick, SIX_HOURS);
+  const holdsTick = () =>
+    runBookingExpirySweep()
+      .then((h) => {
+        if (h.expired || h.warned) {
+          console.log(`[holds] ${h.expired} expired · ${h.warned} warned`);
+        }
+      })
+      .catch((e) => console.error('[holds] sweep error:', e));
+
+  billingTick();
+  holdsTick();
+
+  const billingTimer = setInterval(billingTick, SIX_HOURS);
+  const holdsTimer = setInterval(holdsTick, TWO_MINUTES);
+  return { billingTimer, holdsTimer };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Booking holds                                                               */
+/*                                                                            */
+/* A PENDING booking parks a real bike. If the rider never pays, that bike is  */
+/* invisible to everyone else forever — so the hold has to expire and put the  */
+/* unit back. Runs on the same interval as billing.                            */
+/* -------------------------------------------------------------------------- */
+
+/** Warn the rider once when this little of the hold is left. */
+const EXPIRY_WARN_MS = 10 * 60 * 1000;
+
+export async function runBookingExpirySweep(): Promise<{ expired: number; warned: number }> {
+  const now = new Date();
+
+  const stale = await prisma.booking.findMany({
+    where: { status: 'PENDING', expiresAt: { lt: now } },
+    select: { id: true, userId: true, reservedBikeId: true, reference: true },
+  });
+
+  let expired = 0;
+  for (const b of stale) {
+    try {
+      await prisma.$transaction([
+        prisma.booking.update({
+          where: { id: b.id },
+          data: {
+            status: 'EXPIRED',
+            cancelledAt: now,
+            cancelReason: 'Hold expired — not paid in time',
+            reservedBikeId: null,
+          },
+        }),
+        // Only ever flip a bike we actually still hold.
+        prisma.bike.updateMany({
+          where: { id: b.reservedBikeId ?? '__none__', status: 'RESERVED' },
+          data: { status: 'AVAILABLE' },
+        }),
+      ]);
+      expired++;
+      void notify.bookingExpired(b.userId);
+    } catch (e: any) {
+      console.error('[holds] expiry failed for', b.reference, e?.message);
+    }
+  }
+
+  // One nudge each, shortly before the hold lapses.
+  const expiringSoon = await prisma.booking.findMany({
+    where: {
+      status: 'PENDING',
+      expiresAt: { gt: now, lt: new Date(now.getTime() + EXPIRY_WARN_MS) },
+    },
+    select: { id: true, userId: true, expiresAt: true },
+  });
+
+  let warned = 0;
+  for (const b of expiringSoon) {
+    const minsLeft = Math.max(1, Math.round((b.expiresAt!.getTime() - now.getTime()) / 60000));
+    if (await notify.bookingExpiring(b.userId, b.id, minsLeft)) warned++;
+  }
+
+  return { expired, warned };
 }

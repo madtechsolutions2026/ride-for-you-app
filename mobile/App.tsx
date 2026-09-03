@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -18,6 +18,7 @@ import {
 import { RootStackParamList } from './src/navigation/types';
 import { getAccessToken } from './src/api/tokenStore';
 import { setSessionExpiredListener } from './src/api/client';
+import { registerForPush, attachPushHandlers } from './src/api/push';
 
 import RequestOtpScreen from './src/screens/RequestOtpScreen';
 import VerifyOtpScreen from './src/screens/VerifyOtpScreen';
@@ -45,6 +46,7 @@ export default function App() {
 
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const navRef = useNavigationContainerRef<RootStackParamList>();
 
   useEffect(() => {
     const checkAuthStatus = async () => {
@@ -62,6 +64,22 @@ export default function App() {
     });
   }, []);
 
+  // Push registration needs a session, so it waits for auth. Tapping a
+  // notification deep-links to whatever screen the payload names.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    void registerForPush();
+    return attachPushHandlers((data) => {
+      const screen = data?.screen as keyof RootStackParamList | undefined;
+      if (screen && navRef.isReady()) {
+        // Params vary per screen and the payload is server-authored, so the
+        // route name can't be proved at compile time here.
+        const go = navRef.navigate as unknown as (s: string, p?: object) => void;
+        go(screen, data?.params);
+      }
+    });
+  }, [isAuthenticated]);
+
   const appIsReady = fontsLoaded && authChecked;
 
   const onLayoutRootView = useCallback(async () => {
@@ -77,7 +95,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-        <NavigationContainer>
+        <NavigationContainer ref={navRef}>
           <StatusBar style="dark" />
           <Stack.Navigator
             screenOptions={{

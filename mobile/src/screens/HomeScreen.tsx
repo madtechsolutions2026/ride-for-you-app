@@ -16,6 +16,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { clearTokens } from '../api/tokenStore';
+import { unregisterPush } from '../api/push';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
 import {
@@ -106,6 +107,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
 
   const handleConfirmLogout = async () => {
     setLogoutModalVisible(false);
+    await unregisterPush();
     await clearTokens();
     onLogout();
   };

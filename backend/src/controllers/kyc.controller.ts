@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
+import { notify } from '../utils/notifications';
 import { r2, R2_BUCKET, isR2Configured, presignGet, PRESIGNED_URL_TTL_SECONDS } from '../utils/r2';
 import { getCache, setCache, delCache } from '../utils/cache';
 
@@ -412,6 +413,14 @@ export async function reviewKyc(req: AuthRequest, res: Response) {
     ]);
 
     console.log(`[KYC] ${verification.user.phone} verification ${verification.id} -> ${newStatus}`);
+
+    // Push the outcome. Rejection carries the reason — a bare "rejected" just
+    // sends the rider back to support with nothing to act on.
+    if (newStatus === 'APPROVED') {
+      void notify.kycApproved(verification.userId);
+    } else {
+      void notify.kycRejected(verification.userId, reason ? String(reason) : null);
+    }
 
     return res.json({
       message: `KYC ${newStatus.toLowerCase()} for ${verification.user.phone}`,
