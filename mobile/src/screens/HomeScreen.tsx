@@ -360,6 +360,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
         userPhone={profile?.phone || undefined}
         kycStatus={profile?.kycStatus || undefined}
         onNavigateProfile={() => navigation.navigate('Profile')}
+        onNavigateRental={() => navigation.navigate('MyRental')}
         onNavigateBookings={() => navigation.navigate('MyBookings')}
         onLogout={() => setLogoutModalVisible(true)}
       />

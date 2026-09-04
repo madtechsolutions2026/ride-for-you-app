@@ -20,6 +20,7 @@ type Props = {
   kycStatus?: string;
   onNavigateProfile: () => void;
   onNavigateBookings?: () => void;
+  onNavigateRental?: () => void;
   onNavigateWallet?: () => void;
   onLogout: () => void;
 };
@@ -32,6 +33,7 @@ export function SideDrawer({
   kycStatus = 'PENDING',
   onNavigateProfile,
   onNavigateBookings,
+  onNavigateRental,
   onNavigateWallet,
   onLogout,
 }: Props) {
@@ -101,6 +103,20 @@ export function SideDrawer({
                 <Ionicons name="person-outline" size={20} color={colors.brand.primary} />
               </View>
               <Text style={styles.menuLabel}>My Profile & KYC</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
+            </Pressable>
+
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                onClose();
+                onNavigateRental && onNavigateRental();
+              }}
+            >
+              <View style={styles.menuIconWrapper}>
+                <Ionicons name="speedometer-outline" size={20} color={colors.brand.primary} />
+              </View>
+              <Text style={styles.menuLabel}>My Active Rental & Ledger</Text>
               <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
             </Pressable>
 
