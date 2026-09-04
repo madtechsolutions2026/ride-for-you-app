@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getAdminStats,
   getAllUsers,
+  getUserDetail,
   updateUserStatus,
   getFleet,
   createBike,
@@ -62,6 +63,8 @@ router.get('/stats', getAdminStats);
 
 /* -------- Riders & users -------- */
 router.get('/users', getAllUsers);
+router.get('/users/:id/detail', getUserDetail);
+router.get('/users/:id', getUserDetail);
 router.put('/users/:id/status', adminOnly, updateUserStatus);
 
 /* -------- Employees / staff (ADMIN only) -------- */

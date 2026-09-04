@@ -158,6 +158,12 @@ export async function getAllUsers(req: Request, res: Response) {
           accountStatus: true,
           kycStatus: true,
           createdAt: true,
+          _count: {
+            select: {
+              bookings: true,
+              rentals: true,
+            },
+          },
         },
       }),
     ]);
@@ -174,6 +180,130 @@ export async function getAllUsers(req: Request, res: Response) {
     return res.json(payload);
   } catch (error: any) {
     console.error('Error in getAllUsers:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// 2b. GET /admin/users/:id/detail - Full 360-degree Rider Profile, Bookings, Deposits, Damages & Payments
+export async function getUserDetail(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        kycVerifications: {
+          orderBy: { submittedAt: 'desc' },
+          take: 3,
+        },
+        bookings: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            model: { select: { id: true, name: true, category: true, topSpeedKmph: true, rangeKm: true } },
+            hub: { select: { id: true, name: true, city: true, address: true } },
+            plan: { select: { id: true, duration: true, price: true, deposit: true } },
+            payments: {
+              orderBy: { createdAt: 'desc' },
+            },
+            rental: {
+              include: {
+                bike: { select: { id: true, registrationNumber: true, batteryPercent: true, odometerKm: true } },
+                hub: { select: { id: true, name: true } },
+                weeklyInvoices: { orderBy: { weekNumber: 'asc' } },
+                damageReports: true,
+              },
+            },
+          },
+        },
+        rentals: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            bike: { select: { id: true, registrationNumber: true, model: { select: { name: true } } } },
+            hub: { select: { id: true, name: true } },
+            weeklyInvoices: { orderBy: { weekNumber: 'asc' } },
+            damageReports: true,
+          },
+        },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Presign KYC document images if available
+    const latestKyc = user.kycVerifications[0] || null;
+    let kycWithUrls: any = null;
+    if (latestKyc) {
+      const [aadhaarFrontUrl, aadhaarBackUrl, selfieUrl, addressProofUrl] = await Promise.all([
+        presignGet(latestKyc.aadhaarFrontKey),
+        presignGet(latestKyc.aadhaarBackKey),
+        presignGet(latestKyc.selfieKey),
+        presignGet(latestKyc.addressProofKey),
+      ]);
+      kycWithUrls = {
+        ...latestKyc,
+        aadhaarFrontUrl,
+        aadhaarBackUrl,
+        selfieUrl,
+        addressProofUrl,
+      };
+    }
+
+    // Financial aggregates
+    const totalPaid = user.payments
+      .filter((p: any) => p.status === 'SUCCESS' && p.purpose !== 'REFUND')
+      .reduce((sum: number, p: any) => sum + p.amount, 0);
+
+    const totalRefunded = user.payments
+      .filter((p: any) => p.status === 'SUCCESS' && p.purpose === 'REFUND')
+      .reduce((sum: number, p: any) => sum + Math.abs(p.amount), 0);
+
+    const totalDepositHeld = user.bookings
+      .filter((b: any) => b.status === 'CONFIRMED' || b.status === 'READY' || b.status === 'HANDED_OVER')
+      .reduce((sum: number, b: any) => sum + (b.depositAmount || 0), 0);
+
+    const totalDamages = user.rentals
+      .flatMap((r: any) => r.damageReports || [])
+      .reduce((sum: number, d: any) => sum + (d.estimatedCost || 0), 0);
+
+    // Outstanding unpaid invoices
+    const overdueInvoices = user.rentals
+      .flatMap((r: any) => r.weeklyInvoices || [])
+      .filter((inv: any) => inv.status === 'OVERDUE' || (inv.status === 'PENDING' && new Date(inv.dueAt) < new Date()))
+      .reduce((sum: number, inv: any) => sum + inv.amount, 0);
+
+    return res.json({
+      user: {
+        id: user.id,
+        phone: user.phone,
+        fullName: user.fullName,
+        email: user.email,
+        city: user.city,
+        avatarUrl: user.avatarUrl,
+        role: user.role,
+        accountStatus: user.accountStatus,
+        kycStatus: user.kycStatus,
+        createdAt: user.createdAt,
+      },
+      stats: {
+        totalBookings: user.bookings.length,
+        totalRentals: user.rentals.length,
+        totalPaid,
+        totalRefunded,
+        totalDepositHeld,
+        totalDamages,
+        overdueInvoices,
+      },
+      kyc: kycWithUrls,
+      bookings: user.bookings,
+      rentals: user.rentals,
+      payments: user.payments,
+    });
+  } catch (error: any) {
+    console.error('Error in getUserDetail:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
