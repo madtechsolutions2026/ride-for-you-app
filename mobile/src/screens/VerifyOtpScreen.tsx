@@ -15,7 +15,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
-import { setTokens } from '../api/tokenStore';
+import { setStoredUser, setTokens } from '../api/tokenStore';
 import { colors, fontFamily, radius, screenPadding, spacing, textStyles } from '../theme';
 import {
   CurvedCardTop,
@@ -76,6 +76,9 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
     try {
       const res = await apiClient.post('/auth/otp/verify', { challengeId, otp: finalOtp });
       await setTokens(res.data.tokens.accessToken, res.data.tokens.refreshToken);
+      if (res.data.user) {
+        await setStoredUser(res.data.user);
+      }
       onLoginSuccess();
     } catch (e: any) {
       setError(e?.response?.data?.error || 'Verification failed. Check the code and try again.');

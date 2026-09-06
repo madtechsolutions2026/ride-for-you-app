@@ -15,7 +15,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
-import { clearTokens } from '../api/tokenStore';
+import { clearTokens, getStoredUser, setStoredUser } from '../api/tokenStore';
 import { unregisterPush } from '../api/push';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
@@ -90,12 +90,23 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
       .then((r) => {
         // /auth/me returns { user: {...} }; tolerate a bare object too.
         const u = r.data?.user ?? r.data;
-        if (u) setProfile(u);
+        if (u) {
+          setProfile(u);
+          setStoredUser(u);
+        }
       })
       .catch(() => {});
   };
 
   useEffect(() => {
+    // 1. Instant hydration from local device cache (< 1ms)
+    getStoredUser().then((cached) => {
+      if (cached) {
+        setProfile((prev) => prev ?? (cached as UserProfile));
+      }
+    });
+
+    // 2. Fetch fresh network updates
     fetchProfile();
     fetchActiveRental();
     const unsubscribe = navigation.addListener('focus', () => {

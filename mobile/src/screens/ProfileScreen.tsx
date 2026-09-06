@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
+import { getStoredUser, setStoredUser } from '../api/tokenStore';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
 import { NeoSurface, PrimaryButton, PrivacyPolicyModal } from '../components';
@@ -69,6 +70,20 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
 
   // Fetch profile & KYC from backend
   const loadProfile = () => {
+    // 1. Instant hydration from local storage
+    getStoredUser().then((u) => {
+      if (!u) return;
+      if (u.fullName) setFullName((prev) => prev || u.fullName || '');
+      if (u.phone) setPhone((prev) => prev || u.phone || '');
+      if (u.email) setEmail((prev) => prev || u.email || '');
+      if (u.city) {
+        setCity((prev) => prev || u.city || '');
+        setAddressText((prev) => prev || u.city || '');
+      }
+      if (u.avatarUrl) setAvatarUri((prev) => prev || u.avatarUrl || null);
+    });
+
+    // 2. Fetch fresh profile from backend
     apiClient
       .get('/user/profile')
       .then((res) => {
@@ -88,6 +103,8 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         else if (u.kycStatus === 'SUBMITTED') setKycStatus('Submitted');
         else if (u.kycStatus === 'REJECTED') setKycStatus('Rejected');
         else setKycStatus('Pending');
+
+        setStoredUser(u);
       })
       .catch(() => {});
 
@@ -234,10 +251,12 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         setFullName(u.fullName || tempName.trim());
         setEmail(u.email || tempEmail.trim());
         setCity(u.city || tempCity.trim());
+        setStoredUser(u);
       } else {
         setFullName(tempName.trim());
         setEmail(tempEmail.trim());
         setCity(tempCity.trim());
+        setStoredUser({ fullName: tempName.trim(), email: tempEmail.trim(), city: tempCity.trim() });
       }
       setActiveDocModal(null);
       Alert.alert('Profile Saved ✓', 'Your details have been updated.');
