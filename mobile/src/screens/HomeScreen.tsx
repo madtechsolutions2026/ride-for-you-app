@@ -35,6 +35,7 @@ import {
   type CategoryHub,
   type MapStation,
 } from '../components';
+import { DEFAULT_EV_LOCATIONS } from '../components/StylizedMap';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'> & {
   onLogout: () => void;
@@ -49,12 +50,6 @@ type UserProfile = {
   kycStatus?: string;
 };
 
-const STATIONS: MapStation[] = [
-  { id: 's1', x: 0.2, y: 0.35, available: 14, name: 'Hitech Metro Hub' },
-  { id: 's2', x: 0.68, y: 0.28, available: 9, name: 'Cyber Towers Hub' },
-  { id: 's3', x: 0.45, y: 0.72, available: 6, name: 'Bio-Diversity Hub' },
-];
-
 const TABS = [
   { key: 'home', icon: 'home', label: 'Home' },
   { key: 'bookings', icon: 'receipt-outline', label: 'Bookings' },
@@ -66,6 +61,7 @@ const TABS = [
 export default function HomeScreen({ navigation, onLogout }: Props) {
   const { width } = useWindowDimensions();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [mapStations, setMapStations] = useState<MapStation[]>(DEFAULT_EV_LOCATIONS);
 
   // Modal & Sheet States
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -98,6 +94,44 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
       .catch(() => {});
   };
 
+  const fetchMapStations = async () => {
+    try {
+      const [hubsRes, swapRes] = await Promise.all([
+        apiClient.get('/rental/hubs').catch(() => null),
+        apiClient.get('/rental/swap-stations').catch(() => null),
+      ]);
+
+      const fetchedHubs: MapStation[] = (hubsRes?.data?.hubs || []).map((h: any) => ({
+        id: h.id,
+        type: 'HUB' as const,
+        name: h.name,
+        address: h.address,
+        lat: Number(h.lat),
+        lng: Number(h.lng),
+        available: h.totalAvailable ?? 12,
+        openTime: h.openTime,
+        closeTime: h.closeTime,
+      }));
+
+      const fetchedSwaps: MapStation[] = (swapRes?.data?.stations || []).map((s: any) => ({
+        id: s.id,
+        type: 'SWAP' as const,
+        name: s.name,
+        address: s.address,
+        lat: Number(s.lat),
+        lng: Number(s.lng),
+        openTime: s.openTime,
+        closeTime: s.closeTime,
+      }));
+
+      if (fetchedHubs.length > 0 || fetchedSwaps.length > 0) {
+        setMapStations([...fetchedHubs, ...fetchedSwaps]);
+      }
+    } catch {
+      // Keep DEFAULT_EV_LOCATIONS on network fallback
+    }
+  };
+
   useEffect(() => {
     // 1. Instant hydration from local device cache (< 1ms)
     getStoredUser().then((cached) => {
@@ -109,9 +143,11 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
     // 2. Fetch fresh network updates
     fetchProfile();
     fetchActiveRental();
+    fetchMapStations();
     const unsubscribe = navigation.addListener('focus', () => {
       fetchProfile();
       fetchActiveRental();
+      fetchMapStations();
     });
     return unsubscribe;
   }, [navigation]);
@@ -191,7 +227,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
 
         {/* ---------------- ENLARGED MAP + QUICK ACTIONS ---------------- */}
         <NeoSurface borderRadius={radius.lg} style={styles.mapCard}>
-          <StylizedMap width={cardInner} height={250} stations={STATIONS} />
+          <StylizedMap width={cardInner} height={250} stations={mapStations} />
 
           <View style={styles.actionsRow}>
             <QuickAction
