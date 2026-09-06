@@ -179,6 +179,19 @@ export async function handoverBike(req: AuthRequest, res: Response) {
       },
     });
 
+    // Record in physical deployment audit log
+    await prisma.bikeDeploymentLog.create({
+      data: {
+        bikeId: bike.id,
+        hubId: booking.hubId,
+        riderId: booking.userId,
+        bookingId: booking.id,
+        deployedAt: new Date(),
+        conditionNotesOnDeploy: req.body?.conditionNotesOnDeploy || 'Inspected and handed over',
+        odometerStart: typeof odometerStart === 'number' ? odometerStart : bike.odometerKm,
+      },
+    }).catch((err) => console.warn('[DEPLOYMENT_LOG] Could not create log:', err?.message));
+
     void notify.handedOver(
       booking.userId,
       bike.registrationNumber,
@@ -260,6 +273,19 @@ export async function returnRental(req: AuthRequest, res: Response) {
         },
       }),
     ]);
+
+    // Update deployment log
+    await prisma.bikeDeploymentLog.updateMany({
+      where: {
+        bookingId: rental.bookingId,
+        returnedAt: null,
+      },
+      data: {
+        returnedAt: new Date(),
+        odometerEnd: typeof odometerEnd === 'number' ? odometerEnd : rental.bike.odometerKm,
+        conditionNotesOnReturn: req.body?.conditionNotesOnReturn || 'Returned to hub rack',
+      },
+    }).catch((err) => console.warn('[DEPLOYMENT_LOG] Could not update log:', err?.message));
 
     return res.json({ message: 'Bike returned. Log any damage, then close.', rental: updated });
   } catch (e: any) {

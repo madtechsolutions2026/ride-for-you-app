@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import { Sidebar, ActiveTab } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -12,6 +12,7 @@ import { Infrastructure } from './pages/Infrastructure';
 import { Finance } from './pages/Finance';
 import { ServiceRecovery } from './pages/ServiceRecovery';
 import { Employees } from './pages/Employees';
+import { SupportTickets } from './pages/SupportTickets';
 import { apiClient } from './api/client';
 
 const META: Record<ActiveTab, { title: string; subtitle: string }> = {
@@ -21,10 +22,11 @@ const META: Record<ActiveTab, { title: string; subtitle: string }> = {
   fleet: { title: 'Vehicles & Physical Fleet', subtitle: 'Models, pricing plans, physical bikes and battery levels' },
   kyc: { title: 'KYC Document Approvals', subtitle: 'Inspect Aadhaar, address proofs and selfies; approve or reject' },
   infrastructure: { title: 'EV Hubs & Swap Stations', subtitle: 'Pick-up points and battery-swap docks' },
-  finance: { title: 'Payments & Weekly Billing', subtitle: 'Weekly rental invoices, collections and the payments ledger' },
-  service: { title: 'Damage & Parts', subtitle: 'Damage logged at return, charges and waivers' },
+  finance: { title: 'P&L, Earnings & Expenses', subtitle: 'Net financial summary, operating expenses, and weekly billing' },
+  service: { title: 'Service & Maintenance', subtitle: 'Technicians, service tickets, parts tracking, and damage' },
   recovery: { title: 'Roadside & Police Recovery', subtitle: 'Breakdown dispatch, theft and police-hold jobs' },
-  employees: { title: 'Employees & Roles', subtitle: 'Add staff, set their role, home hub and screen access' },
+  support: { title: 'Rider Support Helpdesk', subtitle: 'Manage incoming rider issues, bike complaints, and resolutions' },
+  employees: { title: 'Employees & Payroll', subtitle: 'Organization hierarchy, attendance calendar, and payroll sheets' },
   reports: { title: 'Reports & MRR', subtitle: 'Recurring revenue and operational trends' },
   settings: { title: 'Pricing & System', subtitle: 'Master data and integrations' },
 };
@@ -104,6 +106,7 @@ export const App: React.FC = () => {
               {activeTab === 'finance' && <Finance />}
               {activeTab === 'service' && <ServiceRecovery />}
               {activeTab === 'recovery' && <ServiceRecovery />}
+              {activeTab === 'support' && <SupportTickets />}
               {activeTab === 'employees' && <Employees />}
               {activeTab === 'reports' && <Overview stats={stats} setActiveTab={setActiveTab} />}
               {activeTab === 'settings' && <Infrastructure />}

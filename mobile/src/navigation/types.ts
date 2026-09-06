@@ -1,4 +1,4 @@
-export type RootStackParamList = {
+﻿export type RootStackParamList = {
   RequestOtp: undefined;
   VerifyOtp: { challengeId: string; phone: string };
   Home: undefined;
@@ -15,4 +15,6 @@ export type RootStackParamList = {
   BookingConfirmed: { bookingId: string };
   MyBookings: undefined;
   MyRental: { payInvoiceId?: string } | undefined;
+  Support: undefined;
+  RaiseTicket: { bookingId?: string } | undefined;
 };

@@ -29,6 +29,8 @@ import BookingPaymentScreen from './src/screens/BookingPaymentScreen';
 import BookingConfirmedScreen from './src/screens/BookingConfirmedScreen';
 import MyBookingsScreen from './src/screens/MyBookingsScreen';
 import MyRentalScreen from './src/screens/MyRentalScreen';
+import SupportScreen from './src/screens/SupportScreen';
+import RaiseTicketScreen from './src/screens/RaiseTicketScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -124,6 +126,8 @@ export default function App() {
                 />
                 <Stack.Screen name="MyBookings" component={MyBookingsScreen} />
                 <Stack.Screen name="MyRental" component={MyRentalScreen} />
+                <Stack.Screen name="Support" component={SupportScreen} />
+                <Stack.Screen name="RaiseTicket" component={RaiseTicketScreen} />
               </>
             ) : (
               <>

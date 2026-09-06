@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -12,6 +12,7 @@ import {
   MapPin,
   Settings,
   UserCog,
+  Headphones,
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +26,7 @@ export type ActiveTab =
   | 'finance'
   | 'service'
   | 'recovery'
+  | 'support'
   | 'infrastructure'
   | 'employees'
   | 'reports'
@@ -37,9 +39,12 @@ interface SidebarProps {
 }
 
 const ROLE_LABEL: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin',
   ADMIN: 'Super Admin',
+  HUB_MANAGER: 'Hub Manager',
   EXECUTIVE: 'Hub Executive',
   SUPPORT: 'Support Manager',
+  STAFF: 'Staff Executive',
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendingKycCount }) => {
@@ -68,19 +73,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, pendi
     },
     {
       title: 'FINANCE & BILLING',
-      items: [{ id: 'finance', label: 'Payments & Revenue', icon: Receipt }],
+      items: [{ id: 'finance', label: 'P&L & Expenses', icon: Receipt }],
     },
     {
-      title: 'SERVICE & RECOVERY',
+      title: 'SERVICE & HELPDESK',
       items: [
-        { id: 'service', label: 'Damage & Parts', icon: Wrench },
+        { id: 'service', label: 'Service & Damage', icon: Wrench },
         { id: 'recovery', label: 'Roadside & Police', icon: Truck },
+        { id: 'support', label: 'Support Helpdesk', icon: Headphones },
       ],
     },
     {
       title: 'ORGANISATION',
       items: [
-        { id: 'employees', label: 'Employees & Roles', icon: UserCog },
+        { id: 'employees', label: 'Employees & Payroll', icon: UserCog },
         { id: 'reports', label: 'Reports & MRR', icon: BarChart3 },
         { id: 'settings', label: 'Pricing & System', icon: Settings },
       ],

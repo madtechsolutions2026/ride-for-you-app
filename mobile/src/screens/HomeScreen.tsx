@@ -53,7 +53,7 @@ type UserProfile = {
 const TABS = [
   { key: 'home', icon: 'home', label: 'Home' },
   { key: 'bookings', icon: 'receipt-outline', label: 'Bookings' },
-  { key: 'wallet', icon: 'wallet-outline', label: 'Wallet' },
+  { key: 'support', icon: 'headset-outline', label: 'Support' },
   { key: 'inbox', icon: 'chatbubble-outline', label: 'Inbox', badge: '2' },
   { key: 'profile', icon: 'person-outline', label: 'Profile' },
 ] as const;
@@ -246,7 +246,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
             <QuickAction
               icon="headset-outline"
               label={'Support\n24/7'}
-              onPress={() => setDrawerVisible(true)}
+              onPress={() => navigation.navigate('Support')}
             />
             <QuickActionDivider />
             <QuickAction
@@ -377,7 +377,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
                 if (t.key === 'profile') navigation.navigate('Profile');
                 else if (t.key === 'inbox') setNotifVisible(true);
                 else if (t.key === 'bookings') navigation.navigate('MyBookings');
-                else if (t.key === 'wallet') setDrawerVisible(true);
+                else if (t.key === 'support') navigation.navigate('Support');
               }}
             >
               <View>
@@ -409,6 +409,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
         onNavigateProfile={() => navigation.navigate('Profile')}
         onNavigateRental={() => navigation.navigate('MyRental')}
         onNavigateBookings={() => navigation.navigate('MyBookings')}
+        onNavigateSupport={() => navigation.navigate('Support')}
         onLogout={() => setLogoutModalVisible(true)}
       />
 

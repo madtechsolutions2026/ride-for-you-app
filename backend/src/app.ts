@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+﻿import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -8,6 +8,7 @@ import userRoutes from './routes/user.routes';
 import kycRoutes from './routes/kyc.routes';
 import rentalRoutes from './routes/rental.routes';
 import paymentRoutes from './routes/payment.routes';
+import supportRoutes from './routes/support.routes';
 import adminRoutes from './routes/admin.routes';
 import { startWeeklyBilling } from './services/weeklyBilling';
 import { prisma } from './utils/prisma';
@@ -29,9 +30,6 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 });
 
 // Parse JSON request bodies
-// Keep the exact bytes of every request body. Gateway webhooks sign the raw
-// payload, and re-serialising the parsed JSON changes it enough to break the
-// signature — so capture it here, before anything reformats it.
 app.use(
   express.json({
     verify: (req, _res, buf) => {
@@ -46,6 +44,7 @@ app.use('/user', userRoutes);
 app.use('/kyc', kycRoutes);
 app.use('/rental', rentalRoutes);
 app.use('/payments', paymentRoutes);
+app.use('/support', supportRoutes);
 
 // Admin API endpoints
 app.use('/admin/api', adminRoutes);

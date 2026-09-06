@@ -588,16 +588,29 @@ export async function createBooking(req: AuthRequest, res: Response) {
       (await prisma.hub.findFirst({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } }));
     if (!hub) return res.status(409).json({ error: 'No active pickup hub is configured' });
 
-    // One open booking per rider at a time keeps V1 simple.
-    const openBooking = await prisma.booking.findFirst({
-      where: { userId, status: { in: OPEN_BOOKING_STATES } },
-      include: BOOKING_INCLUDE,
-    });
-    if (openBooking) {
+    // Strict Single Active Booking / Rental Constraint:
+    // A rider can have only ONE active booking or live rental at a time.
+    const [openBooking, activeRental] = await Promise.all([
+      prisma.booking.findFirst({
+        where: { userId, status: { in: ['PENDING', 'CONFIRMED', 'READY', 'ACTIVE', 'HANDED_OVER', 'RETURN_REQUESTED'] } },
+        include: BOOKING_INCLUDE,
+      }),
+      prisma.rental.findFirst({
+        where: { userId, status: { in: ['ACTIVE', 'OVERDUE', 'RETURN_REQUESTED'] } },
+        include: { bike: true, hub: true },
+      }),
+    ]);
+
+    if (openBooking || activeRental) {
       return res.status(409).json({
-        error: 'You already have a booking in progress. Finish or cancel it first.',
-        code: 'BOOKING_EXISTS',
-        booking: serializeBooking(openBooking),
+        error: 'You already have an active booking or ongoing rental. Please return your current bike before booking another.',
+        code: 'ACTIVE_BOOKING_EXISTS',
+        activeBooking: openBooking ? serializeBooking(openBooking) : null,
+        activeRental: activeRental ? {
+          id: activeRental.id,
+          bikeRegistration: activeRental.bike?.registrationNumber,
+          status: activeRental.status,
+        } : null,
       });
     }
 

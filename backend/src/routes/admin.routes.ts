@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import {
   getAdminStats,
   getAllUsers,
@@ -47,12 +47,46 @@ import {
   updateRecovery,
 } from '../controllers/ops.controller';
 import { listStaff, createStaff, updateStaff, revokeStaff } from '../controllers/staff.controller';
+import {
+  listEmployees,
+  createEmployee,
+  updateEmployee,
+  getHierarchy,
+  listDeployments,
+  getAttendance,
+  markAttendance,
+  listSalaries,
+  generateSalaries,
+  markSalaryPaid,
+  exportSalariesCsv,
+} from '../controllers/employee.controller';
+import {
+  getFinancialSummary,
+  listExpenses,
+  createExpense,
+  deleteExpense,
+} from '../controllers/finance.controller';
+import {
+  listServicePersons,
+  createServicePerson,
+  updateServicePerson,
+  listServiceTickets,
+  getServiceTicket,
+  createServiceTicket,
+  addServicePart,
+  addServiceNote,
+  updateServiceTicket,
+} from '../controllers/service.controller';
+import {
+  listAllTickets,
+  getAdminTicketDetail,
+  updateAdminTicket,
+} from '../controllers/support.controller';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
 const router = Router();
 
-// Any staff role may reach the dashboard; the sensitive actions below add an
-// extra ADMIN-only guard inline.
+// Staff roles
 const staff = requireRole('ADMIN', 'EXECUTIVE', 'SUPPORT');
 const adminOnly = requireRole('ADMIN');
 
@@ -67,11 +101,46 @@ router.get('/users/:id/detail', getUserDetail);
 router.get('/users/:id', getUserDetail);
 router.put('/users/:id/status', adminOnly, updateUserStatus);
 
-/* -------- Employees / staff (ADMIN only) -------- */
+/* -------- Legacy Staff -------- */
 router.get('/staff', adminOnly, listStaff);
 router.post('/staff', adminOnly, createStaff);
 router.put('/staff/:id', adminOnly, updateStaff);
 router.delete('/staff/:id', adminOnly, revokeStaff);
+
+/* -------- Employees, Attendance, Hierarchy & Salaries -------- */
+router.get('/employees', listEmployees);
+router.post('/employees', adminOnly, createEmployee);
+router.put('/employees/:id', adminOnly, updateEmployee);
+router.get('/employees/hierarchy', getHierarchy);
+router.get('/employees/deployments', listDeployments);
+router.get('/employees/attendance', getAttendance);
+router.post('/employees/attendance', markAttendance);
+router.get('/employees/salaries', listSalaries);
+router.post('/employees/salaries/generate', adminOnly, generateSalaries);
+router.post('/employees/salaries/:id/pay', adminOnly, markSalaryPaid);
+router.get('/employees/salaries/export', exportSalariesCsv);
+
+/* -------- Finance & Expenses -------- */
+router.get('/finance/summary', getFinancialSummary);
+router.get('/finance/expenses', listExpenses);
+router.post('/finance/expenses', createExpense);
+router.delete('/finance/expenses/:id', adminOnly, deleteExpense);
+
+/* -------- Service & Maintenance -------- */
+router.get('/service/technicians', listServicePersons);
+router.post('/service/technicians', createServicePerson);
+router.put('/service/technicians/:id', updateServicePerson);
+router.get('/service/tickets', listServiceTickets);
+router.get('/service/tickets/:id', getServiceTicket);
+router.post('/service/tickets', createServiceTicket);
+router.put('/service/tickets/:id', updateServiceTicket);
+router.post('/service/tickets/:id/parts', addServicePart);
+router.post('/service/tickets/:id/notes', addServiceNote);
+
+/* -------- Rider Support Tickets / Helpdesk -------- */
+router.get('/support/tickets', listAllTickets);
+router.get('/support/tickets/:id', getAdminTicketDetail);
+router.put('/support/tickets/:id', updateAdminTicket);
 
 /* -------- Fleet: models, plans, physical bikes, live map -------- */
 router.get('/fleet', getFleet);

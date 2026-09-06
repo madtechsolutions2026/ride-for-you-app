@@ -49,6 +49,8 @@ model User {
   payments        Payment[]
   damageReports   DamageReport[] @relation("DamageReporter")
   recoveryJobs    RecoveryJob[]  @relation("RecoveryAssignee")
+  deploymentLogs  BikeDeploymentLog[]
+  supportTickets  SupportTicket[]
 
   @@index([role])
   @@index([assignedHubId])
@@ -132,13 +134,21 @@ model Hub {
   openTime     String? // "09:00" (Asia/Kolkata)
   closeTime    String? // "20:00"
   contactPhone String?
+
+  managerId    String?
+  manager      Employee? @relation("HubManager", fields: [managerId], references: [id], onDelete: SetNull)
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  bikes    Bike[]
-  bookings Booking[]
-  rentals  Rental[]
-  staff    User[]    @relation("HubStaff")
+  bikes          Bike[]
+  bookings       Booking[]
+  rentals        Rental[]
+  staff          User[]              @relation("HubStaff")
+  employees      Employee[]          @relation("HubEmployees")
+  deploymentLogs BikeDeploymentLog[]
+  expenses       Expense[]
+  servicePersons ServicePerson[]
 
   @@index([status])
 }
@@ -204,7 +214,9 @@ model Bike {
   rentals        Rental[]
   damageReports  DamageReport[]
   recoveryJobs   RecoveryJob[]
-  reservations   Booking[]     @relation("BikeReservation")
+  reservations   Booking[]           @relation("BikeReservation")
+  deploymentLogs BikeDeploymentLog[]
+  serviceTickets ServiceTicket[]
 
   @@index([modelId])
   @@index([hubId])
@@ -291,8 +303,10 @@ model Booking {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  payments Payment[]
-  rental   Rental?
+  payments       Payment[]
+  rental         Rental?
+  deploymentLogs BikeDeploymentLog[]
+  supportTickets SupportTicket[]
 
   @@index([userId])
   @@index([status])
@@ -474,3 +488,201 @@ model RecoveryJob {
   @@index([status])
   @@index([type])
 }
+
+// ===========================================================================
+// Phase 2 Enterprise Operations:
+// Hierarchy, Deployment Audit, Attendance, Payroll, Finance, Service & Support
+// ===========================================================================
+
+model Employee {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  email     String?
+  role      String   @default("STAFF") // HUB_MANAGER, STAFF, SERVICE_PERSON
+  hubId     String?
+  hub       Hub?     @relation("HubEmployees", fields: [hubId], references: [id], onDelete: SetNull)
+  joinDate  DateTime @default(now())
+  status    String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  managedHubs    Hub[]               @relation("HubManager")
+  deploymentLogs BikeDeploymentLog[]
+  attendances    Attendance[]
+  salaries       Salary[]
+  expensesAdded  Expense[]
+
+  @@index([role])
+  @@index([hubId])
+  @@index([status])
+}
+
+model BikeDeploymentLog {
+  id                     String    @id @default(uuid())
+  bikeId                 String
+  bike                   Bike      @relation(fields: [bikeId], references: [id], onDelete: Cascade)
+  hubId                  String
+  hub                    Hub       @relation(fields: [hubId], references: [id], onDelete: Cascade)
+  deployedByEmployeeId   String?
+  deployedByEmployee     Employee? @relation(fields: [deployedByEmployeeId], references: [id], onDelete: SetNull)
+  riderId                String
+  rider                  User      @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  bookingId              String?
+  booking                Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  deployedAt             DateTime  @default(now())
+  returnedAt             DateTime?
+  conditionNotesOnDeploy String?
+  conditionNotesOnReturn String?
+  odometerStart          Int?
+  odometerEnd            Int?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([bikeId])
+  @@index([hubId])
+  @@index([riderId])
+  @@index([deployedByEmployeeId])
+}
+
+model Attendance {
+  id           String    @id @default(uuid())
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date         DateTime
+  checkInTime  DateTime?
+  checkOutTime DateTime?
+  status       String    @default("PRESENT") // PRESENT, ABSENT, HALF_DAY, LEAVE
+  note         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+}
+
+model Salary {
+  id         String    @id @default(uuid())
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  month      Int       // 1-12
+  year       Int       // e.g. 2026
+  baseSalary Int
+  deductions Int       @default(0)
+  bonuses    Int       @default(0)
+  netPaid    Int
+  paidOn     DateTime?
+  status     String    @default("PENDING") // PENDING, PAID
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([employeeId, month, year])
+  @@index([employeeId])
+  @@index([status])
+}
+
+model Expense {
+  id                String    @id @default(uuid())
+  hubId             String?
+  hub               Hub?      @relation(fields: [hubId], references: [id], onDelete: SetNull)
+  category          String    // RENT, SALARY, SERVICE, MISC
+  amount            Int
+  date              DateTime  @default(now())
+  note              String?
+  addedByEmployeeId String?
+  addedByEmployee   Employee? @relation(fields: [addedByEmployeeId], references: [id], onDelete: SetNull)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([hubId])
+  @@index([category])
+  @@index([date])
+}
+
+model ServicePerson {
+  id             String   @id @default(uuid())
+  name           String
+  phone          String   @unique
+  specialization String?  // e.g. "Battery & Motor", "Brakes & Body", "General"
+  status         String   @default("AVAILABLE") // AVAILABLE, BUSY, INACTIVE
+  hubId          String?
+  hub            Hub?     @relation(fields: [hubId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tickets ServiceTicket[]
+
+  @@index([status])
+  @@index([hubId])
+}
+
+model ServiceTicket {
+  id                      String         @id @default(uuid())
+  bikeId                  String
+  bike                    Bike           @relation(fields: [bikeId], references: [id], onDelete: Cascade)
+  reportedIssue           String
+  assignedServicePersonId String?
+  assignedServicePerson   ServicePerson? @relation(fields: [assignedServicePersonId], references: [id], onDelete: SetNull)
+  assignedAt              DateTime       @default(now())
+  scheduledTime           DateTime?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  totalTimeTakenMinutes   Int?
+  status                  String         @default("ASSIGNED") // ASSIGNED, IN_PROGRESS, COMPLETED, CANCELLED
+  totalCost               Int            @default(0)
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  parts ServicePart[]
+  notes ServiceNote[]
+
+  @@index([bikeId])
+  @@index([status])
+  @@index([assignedServicePersonId])
+}
+
+model ServicePart {
+  id              String        @id @default(uuid())
+  serviceTicketId String
+  serviceTicket   ServiceTicket @relation(fields: [serviceTicketId], references: [id], onDelete: Cascade)
+  partName        String
+  cost            Int
+  quantity        Int           @default(1)
+  createdAt       DateTime      @default(now())
+
+  @@index([serviceTicketId])
+}
+
+model ServiceNote {
+  id              String        @id @default(uuid())
+  serviceTicketId String
+  serviceTicket   ServiceTicket @relation(fields: [serviceTicketId], references: [id], onDelete: Cascade)
+  note            String
+  addedAt         DateTime      @default(now())
+
+  @@index([serviceTicketId])
+}
+
+model SupportTicket {
+  id            String    @id @default(uuid())
+  ticketNumber  String    @unique // e.g. TKT-1042
+  riderId       String
+  rider         User      @relation(fields: [riderId], references: [id], onDelete: Cascade)
+  bookingId     String?
+  booking       Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  category      String    // BIKE_ISSUE, PAYMENT, BOOKING, OTHER
+  subject       String?
+  description   String
+  attachmentUrl String?
+  status        String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  adminNotes    String?
+  resolvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([riderId])
+  @@index([status])
+  @@index([category])
+}
+

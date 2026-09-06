@@ -22,6 +22,7 @@ type Props = {
   onNavigateBookings?: () => void;
   onNavigateRental?: () => void;
   onNavigateWallet?: () => void;
+  onNavigateSupport?: () => void;
   onLogout: () => void;
 };
 
@@ -35,6 +36,7 @@ export function SideDrawer({
   onNavigateBookings,
   onNavigateRental,
   onNavigateWallet,
+  onNavigateSupport,
   onLogout,
 }: Props) {
   const { width } = useWindowDimensions();
@@ -172,7 +174,10 @@ export function SideDrawer({
 
             <Pressable
               style={styles.menuItem}
-              onPress={onClose}
+              onPress={() => {
+                onClose();
+                onNavigateSupport && onNavigateSupport();
+              }}
             >
               <View style={styles.menuIconWrapper}>
                 <Ionicons name="headset-outline" size={20} color={colors.brand.primary} />

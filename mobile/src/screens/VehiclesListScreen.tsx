@@ -198,6 +198,9 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
   const [selectedBike, setSelectedBike] = useState<VehicleItem | null>(null);
   const [activeBookingBike, setActiveBookingBike] = useState<VehicleItem | null>(null);
 
+  // Single active booking constraint
+  const [activeBooking, setActiveBooking] = useState<{ type: 'RENTAL' | 'BOOKING'; reference?: string } | null>(null);
+
   // KYC gate — a rider can only book once KYC is APPROVED.
   const [kycStatus, setKycStatus] = useState<string | null>(null);
   const [kycBlock, setKycBlock] = useState<string | null>(null);
@@ -212,10 +215,43 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
       .get('/user/profile')
       .then((res) => setKycStatus(res.data?.user?.kycStatus ?? null))
       .catch(() => {});
+
+    // Check for active rental or open booking
+    apiClient
+      .get('/rental/rentals/active')
+      .then((r) => {
+        if (r.data?.rental) {
+          setActiveBooking({
+            type: 'RENTAL',
+            reference: r.data.rental.booking?.reference,
+          });
+        } else {
+          apiClient.get('/rental/bookings').then((bRes) => {
+            const open = bRes.data?.bookings?.find((b: any) =>
+              ['PENDING', 'CONFIRMED', 'READY', 'ACTIVE', 'HANDED_OVER'].includes(b.status)
+            );
+            if (open) {
+              setActiveBooking({
+                type: 'BOOKING',
+                reference: open.reference,
+              });
+            }
+          }).catch(() => {});
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleBookingConfirm = async () => {
     if (creating || !activeBookingBike) return;
+
+    if (activeBooking) {
+      setActiveBookingBike(null);
+      setKycBlock(
+        `Active Booking in Progress (${activeBooking.reference || 'Active'}). You can only book a new bike once your current vehicle is returned.`
+      );
+      return;
+    }
 
     if (!kycApproved) {
       setActiveBookingBike(null);
@@ -241,16 +277,13 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
     } catch (e: any) {
       const data = e?.response?.data;
       setActiveBookingBike(null);
-      if (data?.code === 'KYC_REQUIRED') {
+      if (data?.code === 'ACTIVE_BOOKING_EXISTS' || data?.code === 'BOOKING_EXISTS') {
+        setKycBlock(
+          data?.error || 'You already have an active booking or rental. Please return your current vehicle before booking another.'
+        );
+      } else if (data?.code === 'KYC_REQUIRED') {
         setKycStatus(data.kycStatus ?? kycStatus);
         setKycBlock(data.error || 'Complete your KYC verification to book a bike.');
-      } else if (data?.code === 'BOOKING_EXISTS' && data.booking) {
-        const b = data.booking;
-        if (b.status === 'PENDING') {
-          navigation.navigate('BookingPayment', { bookingId: b.id });
-        } else {
-          navigation.navigate('MyBookings');
-        }
       } else {
         setKycBlock(data?.error || 'Could not create the booking. Please try again.');
       }
@@ -357,6 +390,25 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
           </Text>
         </View>
       </View>
+
+      {/* ---------------- ACTIVE BOOKING BANNER ---------------- */}
+      {activeBooking && (
+        <View style={styles.activeBookingBanner}>
+          <Ionicons name="alert-circle" size={20} color="#D97706" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.activeBookingTitle}>Active Booking in Progress</Text>
+            <Text style={styles.activeBookingText}>
+              You have an active {activeBooking.type === 'RENTAL' ? 'rental' : 'booking'} ({activeBooking.reference || 'Active'}). Return this bike before booking another.
+            </Text>
+          </View>
+          <Pressable
+            style={styles.activeBookingBtn}
+            onPress={() => navigation.navigate(activeBooking.type === 'RENTAL' ? 'MyRental' : 'MyBookings')}
+          >
+            <Text style={styles.activeBookingBtnText}>View</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* ---------------- FILTER PILLS (MATCHING SCREENSHOT) ---------------- */}
       <View style={styles.filterBar}>
@@ -579,17 +631,32 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
                   <Text style={styles.sheetFooterTotalVal}>₹{selectedBike.totalDueToday}/-</Text>
                 </View>
 
-                <Pressable
-                  style={styles.sheetBookBtn}
-                  onPress={() => {
-                    const bikeToBook = selectedBike;
-                    setSelectedBike(null);
-                    setActiveBookingBike(bikeToBook);
-                  }}
-                >
-                  <Text style={styles.sheetBookBtnText}>Proceed to Book</Text>
-                  <Ionicons name="arrow-forward" size={16} color={colors.common.white} />
-                </Pressable>
+                {activeBooking ? (
+                  <Pressable
+                    style={[styles.sheetBookBtn, { backgroundColor: '#F59E0B' }]}
+                    onPress={() => {
+                      setSelectedBike(null);
+                      setKycBlock(
+                        `Active Booking in Progress (${activeBooking.reference || 'Active'}). Riders can only have 1 active bike at a time. Return your current bike before booking another.`
+                      );
+                    }}
+                  >
+                    <Text style={styles.sheetBookBtnText}>Active Ride Live</Text>
+                    <Ionicons name="lock-closed" size={15} color={colors.common.white} />
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={styles.sheetBookBtn}
+                    onPress={() => {
+                      const bikeToBook = selectedBike;
+                      setSelectedBike(null);
+                      setActiveBookingBike(bikeToBook);
+                    }}
+                  >
+                    <Text style={styles.sheetBookBtnText}>Proceed to Book</Text>
+                    <Ionicons name="arrow-forward" size={16} color={colors.common.white} />
+                  </Pressable>
+                )}
               </View>
             </View>
           </View>
@@ -618,15 +685,20 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
       {kycBlock && (
         <ThemedModal
           visible={Boolean(kycBlock)}
-          title={kycApproved ? 'Booking not possible' : 'KYC verification needed'}
+          title={activeBooking ? 'Single Active Booking' : kycApproved ? 'Booking not possible' : 'KYC verification needed'}
           message={kycBlock}
           icon="shield-checkmark-outline"
-          confirmLabel={kycApproved ? 'OK' : 'Complete KYC'}
+          confirmLabel={activeBooking ? 'View Active Booking' : kycApproved ? 'OK' : 'Complete KYC'}
           cancelLabel={kycApproved ? undefined : 'Later'}
           onConfirm={() => {
-            const goProfile = !kycApproved;
-            setKycBlock(null);
-            if (goProfile) navigation.navigate('Profile');
+            if (activeBooking) {
+              setKycBlock(null);
+              navigation.navigate(activeBooking.type === 'RENTAL' ? 'MyRental' : 'MyBookings');
+            } else {
+              const goProfile = !kycApproved;
+              setKycBlock(null);
+              if (goProfile) navigation.navigate('Profile');
+            }
           }}
           onCancel={() => setKycBlock(null)}
         />
@@ -670,6 +742,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.text.secondary,
     marginTop: 1,
+  },
+
+  activeBookingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: screenPadding,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FDE68A',
+  },
+  activeBookingTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: 12.5,
+    color: '#92400E',
+  },
+  activeBookingText: {
+    fontFamily: fontFamily.regular,
+    fontSize: 11,
+    color: '#B45309',
+    marginTop: 1,
+    lineHeight: 15,
+  },
+  activeBookingBtn: {
+    backgroundColor: '#D97706',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
+  activeBookingBtnText: {
+    fontFamily: fontFamily.bold,
+    fontSize: 11,
+    color: colors.common.white,
   },
 
   /* Filter Pills */
