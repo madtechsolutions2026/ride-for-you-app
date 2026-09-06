@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -51,15 +52,45 @@ export default function RequestOtpScreen({ navigation }: Props) {
   const cardWidth = width - cardMargin * 2;
   const heroHeight = Math.round(u(DESIGN.cardTop));
 
+  const scrollRef = useRef<ScrollView>(null);
+  const [keyboardShown, setKeyboardShown] = useState(false);
+
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
 
+  const scrollToInput = () => {
+    setTimeout(() => {
+      // Smoothly scroll the card up so the welcome text, input box, and Continue CTA are fully in view
+      const targetY = Math.max(0, heroHeight - insets.top - 20);
+      scrollRef.current?.scrollTo({ y: targetY, animated: true });
+    }, 100);
+  };
+
   useEffect(() => {
     // Eagerly wake up the backend if it was sleeping
     apiClient.get('/health').catch(() => {});
-  }, []);
+
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setKeyboardShown(true);
+        scrollToInput();
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardShown(false);
+      }
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [heroHeight, insets.top]);
 
   const handleRequestOtp = async () => {
     setError('');
@@ -96,7 +127,8 @@ export default function RequestOtpScreen({ navigation }: Props) {
       */}
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        ref={scrollRef}
+        contentContainerStyle={[styles.scroll, keyboardShown && { paddingBottom: 380 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -203,6 +235,7 @@ export default function RequestOtpScreen({ navigation }: Props) {
                 keyboardType="number-pad"
                 maxLength={10}
                 value={phone}
+                onFocus={scrollToInput}
                 onChangeText={(t) => {
                   setPhone(t.replace(/[^0-9]/g, ''));
                   if (error) setError('');

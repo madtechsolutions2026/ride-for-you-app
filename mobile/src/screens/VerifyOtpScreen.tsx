@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -58,8 +59,38 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
   const [resendTimer, setResendTimer] = useState(30);
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
+  const [keyboardShown, setKeyboardShown] = useState(false);
 
   const inputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const scrollToInput = () => {
+    setTimeout(() => {
+      const targetY = Math.max(0, heroHeight - 40);
+      scrollRef.current?.scrollTo({ y: targetY, animated: true });
+    }, 100);
+  };
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setKeyboardShown(true);
+        scrollToInput();
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardShown(false);
+      }
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [heroHeight]);
 
   useEffect(() => {
     if (resendTimer <= 0) return;
@@ -109,7 +140,8 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
       <StatusBar style="dark" />
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        ref={scrollRef}
+        contentContainerStyle={[styles.scroll, keyboardShown && { paddingBottom: 380 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
