@@ -227,10 +227,10 @@ export default function RequestOtpScreen({ navigation }: Props) {
             <View style={styles.fieldDivider} />
 
             <View style={styles.phoneField}>
-              <Ionicons name="call-outline" size={17} color={colors.brand.primary} />
+              <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
               <TextInput
                 style={styles.phoneInput}
-                placeholder="Enter mobile number"
+                placeholder="Enter WhatsApp number"
                 placeholderTextColor={colors.text.secondary}
                 keyboardType="number-pad"
                 maxLength={10}
@@ -415,11 +415,18 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
-    paddingLeft: spacing.md,
+    gap: 6,
+    paddingLeft: spacing.sm,
   },
   fieldDivider: { width: 1, height: 22, backgroundColor: colors.border },
-  phoneInput: { flex: 1, fontFamily: fontFamily.medium, fontSize: 15, color: colors.text.primary },
+  phoneInput: {
+    flex: 1,
+    fontFamily: fontFamily.medium,
+    fontSize: 14.5,
+    color: colors.text.primary,
+    paddingVertical: 0,
+    paddingLeft: 0,
+  },
 
   error: { ...textStyles.bodySmall, color: colors.status.error, marginTop: spacing.sm, textAlign: 'center' },
 
