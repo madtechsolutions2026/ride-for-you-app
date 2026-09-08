@@ -185,16 +185,32 @@ export async function listDeployments(req: AuthRequest, res: Response) {
 
 export async function getAttendance(req: AuthRequest, res: Response) {
   try {
-    const { employeeId, hubId, month, year } = req.query;
-    const m = month ? parseInt(String(month), 10) : new Date().getMonth() + 1;
-    const y = year ? parseInt(String(year), 10) : new Date().getFullYear();
+    const { employeeId, hubId, date, month, year } = req.query;
 
-    const startDate = new Date(y, m - 1, 1);
-    const endDate = new Date(y, m, 0, 23, 59, 59);
+    // `date` -> a single calendar day (what the dashboard's date picker sends).
+    // Falls back to a whole-month window when only month/year are given.
+    let dateFilter: { gte: Date; lt: Date };
+    let meta: Record<string, any>;
 
-    const where: any = {
-      date: { gte: startDate, lte: endDate },
-    };
+    if (date) {
+      const day = new Date(String(date));
+      if (isNaN(day.getTime())) {
+        return res.status(400).json({ success: false, error: 'Invalid date' });
+      }
+      // Mirror markAttendance: rows are stored at local midnight of the day.
+      day.setHours(0, 0, 0, 0);
+      const nextDay = new Date(day);
+      nextDay.setDate(day.getDate() + 1);
+      dateFilter = { gte: day, lt: nextDay };
+      meta = { date: day.toISOString().slice(0, 10) };
+    } else {
+      const m = month ? parseInt(String(month), 10) : new Date().getMonth() + 1;
+      const y = year ? parseInt(String(year), 10) : new Date().getFullYear();
+      dateFilter = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
+      meta = { month: m, year: y };
+    }
+
+    const where: any = { date: dateFilter };
     if (employeeId) where.employeeId = String(employeeId);
     if (hubId) where.employee = { hubId: String(hubId) };
 
@@ -209,7 +225,7 @@ export async function getAttendance(req: AuthRequest, res: Response) {
     return res.json({
       success: true,
       data: records,
-      meta: { month: m, year: y, count: records.length },
+      meta: { ...meta, count: records.length },
     });
   } catch (error: any) {
     console.error('Error in getAttendance:', error);
