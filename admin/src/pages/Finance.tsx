@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Stat, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptyState } from '../components/ui';
+import { errMsg } from '../api/errors';
 
 type Tab = 'overview' | 'expenses' | 'invoices' | 'payments';
 
@@ -72,7 +73,7 @@ export const Finance: React.FC = () => {
       setIsExpenseModalOpen(false);
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to add expense');
+      alert(errMsg(err, 'Failed to add expense'));
     } finally {
       setBusy(false);
     }
@@ -85,7 +86,7 @@ export const Finance: React.FC = () => {
       await apiClient.delete(`/admin/api/finance/expenses/${id}`);
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete expense');
+      alert(errMsg(err, 'Failed to delete expense'));
     } finally {
       setBusy(false);
     }

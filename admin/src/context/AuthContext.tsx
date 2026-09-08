@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { apiClient } from '../api/client';
+import { errMsg } from '../api/errors';
 
 export type StaffRole = 'ADMIN' | 'EXECUTIVE' | 'SUPPORT';
 
@@ -109,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       return {
         success: false,
-        error: err.response?.data?.error || 'Failed to send OTP. Check the phone number.',
+        error: errMsg(err, 'Failed to send OTP. Check the phone number.'),
       };
     }
   };
@@ -143,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       return {
         success: false,
-        error: err.response?.data?.error || 'Invalid OTP code. Please try again.',
+        error: errMsg(err, 'Invalid OTP code. Please try again.'),
       };
     }
   };

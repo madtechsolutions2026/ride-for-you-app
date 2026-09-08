@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptyState } from '../components/ui';
+import { errMsg } from '../api/errors';
 
 type Tab = 'team' | 'hierarchy' | 'attendance' | 'salaries' | 'deployments';
 
@@ -86,7 +87,7 @@ export const Employees: React.FC = () => {
       setModal(null);
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Save failed');
+      alert(errMsg(err, 'Save failed'));
     } finally {
       setBusy(false);
     }
@@ -103,7 +104,7 @@ export const Employees: React.FC = () => {
       });
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Attendance update failed');
+      alert(errMsg(err, 'Attendance update failed'));
     } finally {
       setBusy(false);
     }
@@ -119,7 +120,7 @@ export const Employees: React.FC = () => {
       });
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Salary generation failed');
+      alert(errMsg(err, 'Salary generation failed'));
     } finally {
       setBusy(false);
     }
@@ -132,7 +133,7 @@ export const Employees: React.FC = () => {
       await apiClient.post(`/admin/api/employees/salaries/${salaryId}/pay`);
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Payment mark failed');
+      alert(errMsg(err, 'Payment mark failed'));
     } finally {
       setBusy(false);
     }

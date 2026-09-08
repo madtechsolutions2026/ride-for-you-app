@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ClipboardList, ArrowRight, Eye, X } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptyState } from '../components/ui';
+import { errMsg } from '../api/errors';
 
 type View = 'bookings' | 'rentals';
 
@@ -60,7 +61,7 @@ export const Bookings: React.FC = () => {
     apiClient
       .get(`/admin/api/bookings/${detailId}`)
       .then((r) => setDetail(r.data))
-      .catch((e) => alert(e.response?.data?.error || 'Failed to load booking'))
+      .catch((e) => alert(errMsg(e, 'Failed to load booking')))
       .finally(() => setDetailLoading(false));
   }, [detailId]);
 
@@ -75,7 +76,7 @@ export const Bookings: React.FC = () => {
         setDetail(r.data);
       }
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Action failed');
+      alert(errMsg(e, 'Action failed'));
     } finally {
       setBusy(false);
     }

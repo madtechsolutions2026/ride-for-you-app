@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Bike, Plus, BatteryCharging } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptyState } from '../components/ui';
+import { errMsg } from '../api/errors';
 
 type Tab = 'models' | 'units';
 
@@ -55,7 +56,7 @@ export const Fleet: React.FC = () => {
       setModal(null);
       load();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Save failed');
+      alert(errMsg(err, 'Save failed'));
     } finally {
       setBusy(false);
     }
@@ -88,7 +89,7 @@ export const Fleet: React.FC = () => {
       setModal(null);
       load();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Save failed');
+      alert(errMsg(err, 'Save failed'));
     } finally {
       setBusy(false);
     }

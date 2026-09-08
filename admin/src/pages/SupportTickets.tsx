@@ -2,6 +2,7 @@
 import { Headphones, CheckCircle2, Clock, AlertCircle, MessageSquare, ExternalLink, Search } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Pill, toneFor, Btn, Modal, Field, input, Loader, EmptyState } from '../components/ui';
+import { errMsg } from '../api/errors';
 
 export const SupportTickets: React.FC = () => {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -44,7 +45,7 @@ export const SupportTickets: React.FC = () => {
       setSelectedTicket(null);
       await load();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update ticket');
+      alert(errMsg(err, 'Failed to update ticket'));
     } finally {
       setBusy(false);
     }

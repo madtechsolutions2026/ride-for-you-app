@@ -10,6 +10,7 @@ import {
   Search,
 } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { errMsg } from '../api/errors';
 
 export const KycReview: React.FC = () => {
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -58,7 +59,7 @@ export const KycReview: React.FC = () => {
       setRejectReason('');
       await fetchSubmissions();
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Failed to submit review');
+      alert(errMsg(e, 'Failed to submit review'));
     } finally {
       setProcessing(false);
     }

@@ -2,6 +2,7 @@
 import { Wrench, Truck, Plus, ShieldAlert, UserCog, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptyState } from '../components/ui';
+import { errMsg } from '../api/errors';
 
 type Tab = 'tickets' | 'technicians' | 'damage' | 'recovery';
 
@@ -67,7 +68,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       setIsNewTicketOpen(false);
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create service ticket');
+      alert(errMsg(err, 'Failed to create service ticket'));
     } finally {
       setBusy(false);
     }
@@ -89,7 +90,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       setIsNewTechOpen(false);
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to add technician');
+      alert(errMsg(err, 'Failed to add technician'));
     } finally {
       setBusy(false);
     }
@@ -113,7 +114,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       await loadData();
       (e.target as HTMLFormElement).reset();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to add part');
+      alert(errMsg(err, 'Failed to add part'));
     } finally {
       setBusy(false);
     }
@@ -133,7 +134,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       await loadData();
       (e.target as HTMLFormElement).reset();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to add note');
+      alert(errMsg(err, 'Failed to add note'));
     } finally {
       setBusy(false);
     }
@@ -151,7 +152,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       setSelectedTicket(null);
       await loadData();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update ticket');
+      alert(errMsg(err, 'Failed to update ticket'));
     } finally {
       setBusy(false);
     }
@@ -169,7 +170,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       await apiClient.post(`/admin/api/damage/${id}/resolve`, { action, finalCost });
       await loadData();
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Failed');
+      alert(errMsg(e, 'Failed'));
     } finally {
       setBusyId(null);
     }
@@ -181,7 +182,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       await apiClient.post(`/admin/api/recovery/${id}/update`, body);
       await loadData();
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Failed');
+      alert(errMsg(e, 'Failed'));
     } finally {
       setBusyId(null);
     }
@@ -202,7 +203,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       setNewRecovery(false);
       await loadData();
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Failed');
+      alert(errMsg(e, 'Failed'));
     } finally {
       setBusyId(null);
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { errMsg } from '../api/errors';
 import {
   Card, SectionHeader, Btn, Modal, Field, input, Table, TH, TD, TR,
   Pill, EmptyState, Loader,
@@ -60,7 +61,7 @@ export const Infrastructure: React.FC<{ tab?: 'hubs' | 'stations' }> = ({ tab = 
       setHubAddress('');
       fetchInfra();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to add hub');
+      alert(errMsg(err, 'Failed to add hub'));
     }
   };
 
@@ -78,7 +79,7 @@ export const Infrastructure: React.FC<{ tab?: 'hubs' | 'stations' }> = ({ tab = 
       setStAddress('');
       fetchInfra();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to add swap station');
+      alert(errMsg(err, 'Failed to add swap station'));
     }
   };
 
