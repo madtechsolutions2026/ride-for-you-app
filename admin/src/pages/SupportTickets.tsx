@@ -73,60 +73,60 @@ export const SupportTickets: React.FC = () => {
     <div className="space-y-6">
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4 bg-white border border-[#EDF2F1] shadow-neo-sm">
+        <Card className="p-4 bg-white border border-[#E5E2DB] shadow-neo-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF8F1] flex items-center justify-center text-[#62CE90]">
+            <div className="w-10 h-10 rounded-2xl bg-[#EDF3EF] flex items-center justify-center text-[#1F6F43]">
               <Headphones className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-[#8A97A0] uppercase tracking-wide">Total Tickets</p>
-              <h3 className="text-xl font-black text-[#172B3A]">{tickets.length}</h3>
+              <p className="text-xs font-extrabold text-[#7A756B] uppercase tracking-wide">Total Tickets</p>
+              <h3 className="text-xl font-black text-[#16150F]">{tickets.length}</h3>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-white border border-[#EDF2F1] shadow-neo-sm">
+        <Card className="p-4 bg-white border border-[#E5E2DB] shadow-neo-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FEF2F2] flex items-center justify-center text-[#EF4444]">
+            <div className="w-10 h-10 rounded-2xl bg-[#FBEDEC] flex items-center justify-center text-[#A02724]">
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-[#8A97A0] uppercase tracking-wide">Needs Action</p>
-              <h3 className="text-xl font-black text-[#EF4444]">{openCount}</h3>
+              <p className="text-xs font-extrabold text-[#7A756B] uppercase tracking-wide">Needs Action</p>
+              <h3 className="text-xl font-black text-[#A02724]">{openCount}</h3>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-white border border-[#EDF2F1] shadow-neo-sm">
+        <Card className="p-4 bg-white border border-[#E5E2DB] shadow-neo-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#FEF3C7] flex items-center justify-center text-[#D97706]">
+            <div className="w-10 h-10 rounded-2xl bg-[#FBF3E2] flex items-center justify-center text-[#8A5A00]">
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-[#8A97A0] uppercase tracking-wide">In Progress</p>
-              <h3 className="text-xl font-black text-[#D97706]">{inProgressCount}</h3>
+              <p className="text-xs font-extrabold text-[#7A756B] uppercase tracking-wide">In Progress</p>
+              <h3 className="text-xl font-black text-[#8A5A00]">{inProgressCount}</h3>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-white border border-[#EDF2F1] shadow-neo-sm">
+        <Card className="p-4 bg-white border border-[#E5E2DB] shadow-neo-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#EAF8F1] flex items-center justify-center text-[#38A169]">
+            <div className="w-10 h-10 rounded-2xl bg-[#EDF3EF] flex items-center justify-center text-[#1F6F43]">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-extrabold text-[#8A97A0] uppercase tracking-wide">Resolved</p>
-              <h3 className="text-xl font-black text-[#38A169]">{resolvedCount}</h3>
+              <p className="text-xs font-extrabold text-[#7A756B] uppercase tracking-wide">Resolved</p>
+              <h3 className="text-xl font-black text-[#1F6F43]">{resolvedCount}</h3>
             </div>
           </div>
         </Card>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#EDF2F1] shadow-neo-sm">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-neo-sm">
         <div className="flex items-center gap-2 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8A97A0]" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7A756B]" />
             <input
               type="text"
               placeholder="Search ticket #, rider, subject…"
@@ -168,7 +168,7 @@ export const SupportTickets: React.FC = () => {
       <Card>
         {filteredTickets.length === 0 ? (
           <EmptyState
-            icon={<Headphones className="w-8 h-8 mx-auto text-[#CBD5E1]" />}
+            icon={<Headphones className="w-8 h-8 mx-auto text-[#D6D2C8]" />}
             title="No support tickets found"
             hint="Riders submit tickets directly from the mobile app helpdesk."
           />
@@ -176,7 +176,7 @@ export const SupportTickets: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide border-b border-[#EDF2F1]">
+                <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
                   <th className="px-5 py-3">Ticket ID</th>
                   <th className="px-5 py-3">Rider</th>
                   <th className="px-5 py-3">Category</th>
@@ -188,15 +188,15 @@ export const SupportTickets: React.FC = () => {
               </thead>
               <tbody>
                 {filteredTickets.map((t) => (
-                  <tr key={t.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC] transition">
-                    <td className="px-5 py-3 font-extrabold text-[#172B3A]">
-                      <span className="font-mono text-xs bg-[#F1F5F9] px-2 py-1 rounded-lg">
+                  <tr key={t.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7] transition">
+                    <td className="px-5 py-3 font-extrabold text-[#16150F]">
+                      <span className="font-mono text-xs bg-[#EFEDE8] px-2 py-1 rounded-lg">
                         {t.ticketNumber}
                       </span>
                     </td>
                     <td className="px-5 py-3">
-                      <div className="font-extrabold text-[#172B3A]">{t.rider?.fullName || 'Rider'}</div>
-                      <div className="text-xs text-[#8A97A0]">{t.rider?.phone}</div>
+                      <div className="font-extrabold text-[#16150F]">{t.rider?.fullName || 'Rider'}</div>
+                      <div className="text-xs text-[#7A756B]">{t.rider?.phone}</div>
                     </td>
                     <td className="px-5 py-3">
                       <Pill tone={t.category === 'BIKE_ISSUE' ? 'red' : t.category === 'PAYMENT' ? 'amber' : 'slate'}>
@@ -204,10 +204,10 @@ export const SupportTickets: React.FC = () => {
                       </Pill>
                     </td>
                     <td className="px-5 py-3 max-w-sm">
-                      <div className="font-bold text-[#172B3A] truncate">{t.subject || 'Support Request'}</div>
-                      <div className="text-xs text-[#64748B] line-clamp-1">{t.description}</div>
+                      <div className="font-bold text-[#16150F] truncate">{t.subject || 'Support Request'}</div>
+                      <div className="text-xs text-[#5C584F] line-clamp-1">{t.description}</div>
                       {t.booking && (
-                        <div className="text-[10px] text-[#8A97A0] mt-0.5">
+                        <div className="text-[10px] text-[#7A756B] mt-0.5">
                           Ref: {t.booking.reference} ({t.booking.model?.name})
                         </div>
                       )}
@@ -217,7 +217,7 @@ export const SupportTickets: React.FC = () => {
                         {t.status}
                       </Pill>
                     </td>
-                    <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                    <td className="px-5 py-3 text-xs text-[#7A756B]">
                       {new Date(t.createdAt).toLocaleDateString('en-IN', {
                         day: '2-digit',
                         month: 'short',
@@ -246,45 +246,45 @@ export const SupportTickets: React.FC = () => {
           wide
         >
           <form onSubmit={handleUpdateTicket} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 bg-[#F8FAFC] p-4 rounded-2xl border border-[#EDF2F1]">
+            <div className="grid grid-cols-2 gap-4 bg-[#FAF9F7] p-4 rounded-2xl border border-[#E5E2DB]">
               <div>
-                <p className="text-[10px] font-extrabold text-[#8A97A0] uppercase">Rider</p>
-                <p className="text-sm font-extrabold text-[#172B3A]">{selectedTicket.rider?.fullName || 'Rider'}</p>
-                <p className="text-xs text-[#64748B]">{selectedTicket.rider?.phone} · {selectedTicket.rider?.email || 'No email'}</p>
+                <p className="text-[10px] font-extrabold text-[#7A756B] uppercase">Rider</p>
+                <p className="text-sm font-extrabold text-[#16150F]">{selectedTicket.rider?.fullName || 'Rider'}</p>
+                <p className="text-xs text-[#5C584F]">{selectedTicket.rider?.phone} · {selectedTicket.rider?.email || 'No email'}</p>
               </div>
 
               <div>
-                <p className="text-[10px] font-extrabold text-[#8A97A0] uppercase">Category & Booking</p>
-                <p className="text-sm font-extrabold text-[#172B3A]">{selectedTicket.category}</p>
-                <p className="text-xs text-[#64748B]">
+                <p className="text-[10px] font-extrabold text-[#7A756B] uppercase">Category & Booking</p>
+                <p className="text-sm font-extrabold text-[#16150F]">{selectedTicket.category}</p>
+                <p className="text-xs text-[#5C584F]">
                   {selectedTicket.booking ? `Booking ${selectedTicket.booking.reference} (${selectedTicket.booking.model?.name})` : 'No booking attached'}
                 </p>
               </div>
             </div>
 
             <div>
-              <p className="text-xs font-extrabold text-[#172B3A] mb-1">Subject</p>
-              <div className="p-3 bg-white border border-[#EDF2F1] rounded-xl text-sm font-medium text-[#172B3A]">
+              <p className="text-xs font-extrabold text-[#16150F] mb-1">Subject</p>
+              <div className="p-3 bg-white border border-[#E5E2DB] rounded-xl text-sm font-medium text-[#16150F]">
                 {selectedTicket.subject || 'Support Ticket'}
               </div>
             </div>
 
             <div>
-              <p className="text-xs font-extrabold text-[#172B3A] mb-1">Rider Description</p>
-              <div className="p-3 bg-white border border-[#EDF2F1] rounded-xl text-sm text-[#475569] leading-relaxed whitespace-pre-wrap">
+              <p className="text-xs font-extrabold text-[#16150F] mb-1">Rider Description</p>
+              <div className="p-3 bg-white border border-[#E5E2DB] rounded-xl text-sm text-[#4A4740] leading-relaxed whitespace-pre-wrap">
                 {selectedTicket.description}
               </div>
             </div>
 
             {selectedTicket.attachmentUrl && (
               <div>
-                <p className="text-xs font-extrabold text-[#172B3A] mb-1">Attachment</p>
+                <p className="text-xs font-extrabold text-[#16150F] mb-1">Attachment</p>
                 <div className="flex items-center gap-2">
                   <a
                     href={selectedTicket.attachmentUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#EAF8F1] text-[#38A169] text-xs font-extrabold rounded-xl hover:bg-[#D4F4E4] transition"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#EDF3EF] text-[#1F6F43] text-xs font-extrabold rounded-xl hover:bg-[#D3E4DA] transition"
                   >
                     <ExternalLink className="w-3.5 h-3.5" /> View Uploaded Photo / Document
                   </a>
@@ -304,7 +304,7 @@ export const SupportTickets: React.FC = () => {
 
               <div className="flex items-center pt-5">
                 {selectedTicket.resolvedAt && (
-                  <p className="text-xs text-[#38A169] font-bold">
+                  <p className="text-xs text-[#1F6F43] font-bold">
                     Resolved on {new Date(selectedTicket.resolvedAt).toLocaleDateString('en-IN')}
                   </p>
                 )}
@@ -321,7 +321,7 @@ export const SupportTickets: React.FC = () => {
               />
             </Field>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#EDF2F1]">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#E5E2DB]">
               <Btn type="button" onClick={() => setSelectedTicket(null)}>
                 Cancel
               </Btn>

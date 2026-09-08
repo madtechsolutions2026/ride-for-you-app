@@ -82,10 +82,10 @@ export const KycReview: React.FC = () => {
       {/* Header & Sub Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-base font-extrabold text-[#172B3A] tracking-tight">
+          <h3 className="text-base font-extrabold text-[#16150F] tracking-tight">
             KYC Verification Vault
           </h3>
-          <p className="text-xs text-[#8A97A0] font-medium">
+          <p className="text-xs text-[#7A756B] font-medium">
             Review uploaded rider government ID documents and approve high-speed rental access.
           </p>
         </div>
@@ -94,25 +94,25 @@ export const KycReview: React.FC = () => {
           <button
             onClick={fetchSubmissions}
             disabled={loading}
-            className="p-2.5 rounded-2xl bg-white border border-[#EDF2F1] text-[#8A97A0] hover:text-[#172B3A] shadow-sm transition"
+            className="p-2.5 rounded-2xl bg-white border border-[#E5E2DB] text-[#7A756B] hover:text-[#16150F] shadow-sm transition"
             title="Refresh submissions"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#18B878]' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#1F6F43]' : ''}`} />
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Submissions List (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-3xl p-4 border border-[#EDF2F1] shadow-xl shadow-slate-200/40 flex flex-col h-[740px]">
+        <div className="lg:col-span-4 bg-white rounded-3xl p-4 border border-[#E5E2DB] shadow-xl shadow-slate-200/40 flex flex-col h-[740px]">
           {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 p-1 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1] mb-3">
+          <div className="flex items-center gap-1.5 p-1 bg-[#FAF9F7] rounded-2xl border border-[#E5E2DB] mb-3">
             <button
               onClick={() => setFilterTab('ALL')}
               className={`flex-1 py-1.5 rounded-xl text-[11px] font-extrabold transition ${
                 filterTab === 'ALL'
-                  ? 'bg-white text-[#172B3A] shadow-sm'
-                  : 'text-[#8A97A0] hover:text-[#172B3A]'
+                  ? 'bg-white text-[#16150F] shadow-sm'
+                  : 'text-[#7A756B] hover:text-[#16150F]'
               }`}
             >
               All ({submissions.length})
@@ -121,8 +121,8 @@ export const KycReview: React.FC = () => {
               onClick={() => setFilterTab('SUBMITTED')}
               className={`flex-1 py-1.5 rounded-xl text-[11px] font-extrabold transition ${
                 filterTab === 'SUBMITTED'
-                  ? 'bg-[#FEF3C7] text-[#D97706] shadow-sm'
-                  : 'text-[#8A97A0] hover:text-[#172B3A]'
+                  ? 'bg-[#FBF3E2] text-[#8A5A00] shadow-sm'
+                  : 'text-[#7A756B] hover:text-[#16150F]'
               }`}
             >
               Pending ({submissions.filter((s) => s.status === 'SUBMITTED').length})
@@ -131,8 +131,8 @@ export const KycReview: React.FC = () => {
               onClick={() => setFilterTab('APPROVED')}
               className={`flex-1 py-1.5 rounded-xl text-[11px] font-extrabold transition ${
                 filterTab === 'APPROVED'
-                  ? 'bg-[#E9F7F1] text-[#129461] shadow-sm'
-                  : 'text-[#8A97A0] hover:text-[#172B3A]'
+                  ? 'bg-[#EDF3EF] text-[#155232] shadow-sm'
+                  : 'text-[#7A756B] hover:text-[#16150F]'
               }`}
             >
               Approved
@@ -141,25 +141,25 @@ export const KycReview: React.FC = () => {
 
           {/* Search bar */}
           <div className="relative mb-3">
-            <Search className="w-3.5 h-3.5 text-[#8A97A0] absolute left-3 top-2.5" />
+            <Search className="w-3.5 h-3.5 text-[#7A756B] absolute left-3 top-2.5" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search rider name or phone..."
-              className="w-full bg-[#FBFBFD] border border-[#EDF2F1] rounded-2xl pl-9 pr-3 py-2 text-xs font-semibold text-[#172B3A] focus:outline-none focus:border-[#18B878]"
+              className="w-full bg-[#FAF9F7] border border-[#E5E2DB] rounded-2xl pl-9 pr-3 py-2 text-xs font-semibold text-[#16150F] focus:outline-none focus:border-[#1F6F43]"
             />
           </div>
 
           {/* Queue List */}
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
             {loading ? (
-              <p className="text-center py-12 text-xs text-[#8A97A0]">Loading verification records...</p>
+              <p className="text-center py-12 text-xs text-[#7A756B]">Loading verification records...</p>
             ) : filteredList.length === 0 ? (
               <div className="text-center py-16 px-4">
-                <CheckCircle2 className="w-10 h-10 text-[#18B878] mx-auto mb-2" />
-                <p className="text-xs font-extrabold text-[#172B3A]">No submissions in this filter</p>
-                <p className="text-[11px] text-[#8A97A0] mt-1">All rider verifications are up to date.</p>
+                <CheckCircle2 className="w-10 h-10 text-[#1F6F43] mx-auto mb-2" />
+                <p className="text-xs font-extrabold text-[#16150F]">No submissions in this filter</p>
+                <p className="text-[11px] text-[#7A756B] mt-1">All rider verifications are up to date.</p>
               </div>
             ) : (
               filteredList.map((s) => {
@@ -170,28 +170,28 @@ export const KycReview: React.FC = () => {
                     onClick={() => setSelectedSub(s)}
                     className={`p-3.5 rounded-2xl border transition cursor-pointer text-left ${
                       isSelected
-                        ? 'bg-[#E9F7F1] border-[#18B878] shadow-sm'
-                        : 'bg-[#FBFBFD] border-[#EDF2F1] hover:bg-[#F3FAF6]'
+                        ? 'bg-[#EDF3EF] border-[#1F6F43] shadow-sm'
+                        : 'bg-[#FAF9F7] border-[#E5E2DB] hover:bg-[#F1F6F3]'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-extrabold text-xs text-[#172B3A] truncate">
+                      <span className="font-extrabold text-xs text-[#16150F] truncate">
                         {s.fullName || 'Rider Applicant'}
                       </span>
                       <span
                         className={`text-[9.5px] font-extrabold px-2 py-0.5 rounded-full ${
                           s.status === 'SUBMITTED'
-                            ? 'bg-[#FEF3C7] text-[#D97706]'
+                            ? 'bg-[#FBF3E2] text-[#8A5A00]'
                             : s.status === 'APPROVED'
-                            ? 'bg-[#DCF0E6] text-[#129461]'
-                            : 'bg-[#FEE2E2] text-[#EF4444]'
+                            ? 'bg-[#D3E4DA] text-[#155232]'
+                            : 'bg-[#FBEDEC] text-[#A02724]'
                         }`}
                       >
                         {s.status}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#8A97A0] font-mono">{s.phone}</p>
-                    <div className="mt-2 flex items-center justify-between text-[10px] text-[#8A97A0]">
+                    <p className="text-[11px] text-[#7A756B] font-mono">{s.phone}</p>
+                    <div className="mt-2 flex items-center justify-between text-[10px] text-[#7A756B]">
                       <span>{s.city || 'Hyderabad'}</span>
                       <span>{new Date(s.submittedAt).toLocaleDateString()}</span>
                     </div>
@@ -203,18 +203,18 @@ export const KycReview: React.FC = () => {
         </div>
 
         {/* Right Detail & Document Inspector (8 cols) */}
-        <div className="lg:col-span-8 bg-white rounded-3xl p-6 border border-[#EDF2F1] shadow-xl shadow-slate-200/40 flex flex-col h-[740px] overflow-y-auto">
+        <div className="lg:col-span-8 bg-white rounded-3xl p-6 border border-[#E5E2DB] shadow-xl shadow-slate-200/40 flex flex-col h-[740px] overflow-y-auto">
           {selectedSub ? (
             <div className="space-y-6">
               {/* Applicant Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EDF2F1]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E5E2DB]">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1FAE72] to-[#129461] text-white flex items-center justify-center font-extrabold text-lg shadow-md">
+                  <div className="w-12 h-12 rounded-2xl bg-accent text-white flex items-center justify-center font-extrabold text-lg shadow-md">
                     {selectedSub.fullName ? selectedSub.fullName.charAt(0).toUpperCase() : 'R'}
                   </div>
                   <div>
-                    <h3 className="text-base font-extrabold text-[#172B3A]">{selectedSub.fullName}</h3>
-                    <p className="text-xs text-[#8A97A0] font-mono">{selectedSub.phone} • {selectedSub.email || 'No email'}</p>
+                    <h3 className="text-base font-extrabold text-[#16150F]">{selectedSub.fullName}</h3>
+                    <p className="text-xs text-[#7A756B] font-mono">{selectedSub.phone} • {selectedSub.email || 'No email'}</p>
                   </div>
                 </div>
 
@@ -222,10 +222,10 @@ export const KycReview: React.FC = () => {
                   <span
                     className={`px-3 py-1.5 rounded-full text-xs font-extrabold ${
                       selectedSub.status === 'SUBMITTED'
-                        ? 'bg-[#FEF3C7] text-[#D97706] border border-[#FDE68A]'
+                        ? 'bg-[#FBF3E2] text-[#8A5A00] border border-[#EEDCB4]'
                         : selectedSub.status === 'APPROVED'
-                        ? 'bg-[#E9F7F1] text-[#129461] border border-[#DCF0E6]'
-                        : 'bg-[#FEE2E2] text-[#EF4444] border border-[#FCA5A5]'
+                        ? 'bg-[#EDF3EF] text-[#155232] border border-[#D3E4DA]'
+                        : 'bg-[#FBEDEC] text-[#A02724] border border-[#EFD2D0]'
                     }`}
                   >
                     Status: {selectedSub.status}
@@ -235,21 +235,21 @@ export const KycReview: React.FC = () => {
 
               {/* Data Summary Chips */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-semibold">
-                <div className="p-3.5 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1]">
-                  <span className="text-[10px] font-bold text-[#8A97A0] uppercase">Aadhaar Number</span>
-                  <p className="font-extrabold text-[#172B3A] font-mono mt-0.5">
+                <div className="p-3.5 bg-[#FAF9F7] rounded-2xl border border-[#E5E2DB]">
+                  <span className="text-[10px] font-bold text-[#7A756B] uppercase">Aadhaar Number</span>
+                  <p className="font-extrabold text-[#16150F] font-mono mt-0.5">
                     {selectedSub.aadhaarNumber || '5544 3322 1100'}
                   </p>
                 </div>
-                <div className="p-3.5 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1]">
-                  <span className="text-[10px] font-bold text-[#8A97A0] uppercase">Address</span>
-                  <p className="font-extrabold text-[#172B3A] mt-0.5 truncate">
+                <div className="p-3.5 bg-[#FAF9F7] rounded-2xl border border-[#E5E2DB]">
+                  <span className="text-[10px] font-bold text-[#7A756B] uppercase">Address</span>
+                  <p className="font-extrabold text-[#16150F] mt-0.5 truncate">
                     {selectedSub.address || selectedSub.city || 'Hyderabad'}
                   </p>
                 </div>
-                <div className="p-3.5 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1]">
-                  <span className="text-[10px] font-bold text-[#8A97A0] uppercase">Submitted Time</span>
-                  <p className="font-extrabold text-[#172B3A] mt-0.5">
+                <div className="p-3.5 bg-[#FAF9F7] rounded-2xl border border-[#E5E2DB]">
+                  <span className="text-[10px] font-bold text-[#7A756B] uppercase">Submitted Time</span>
+                  <p className="font-extrabold text-[#16150F] mt-0.5">
                     {new Date(selectedSub.submittedAt).toLocaleString()}
                   </p>
                 </div>
@@ -257,19 +257,19 @@ export const KycReview: React.FC = () => {
 
               {/* Document Images Grid */}
               <div>
-                <h4 className="text-xs font-extrabold text-[#172B3A] mb-3 uppercase tracking-wider">
+                <h4 className="text-xs font-extrabold text-[#16150F] mb-3 uppercase tracking-wider">
                   Uploaded Identity Documents
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {/* Aadhaar Front */}
-                  <div className="p-3 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1] flex flex-col items-center text-center">
-                    <span className="text-[11px] font-extrabold text-[#172B3A] mb-2">Aadhaar Front</span>
+                  <div className="p-3 bg-[#FAF9F7] rounded-2xl border border-[#E5E2DB] flex flex-col items-center text-center">
+                    <span className="text-[11px] font-extrabold text-[#16150F] mb-2">Aadhaar Front</span>
                     {selectedSub.aadhaarFrontUrl ? (
                       <a
                         href={selectedSub.aadhaarFrontUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="group relative w-full h-40 rounded-xl overflow-hidden border border-[#EDF2F1] block bg-slate-100"
+                        className="group relative w-full h-40 rounded-xl overflow-hidden border border-[#E5E2DB] block bg-slate-100"
                       >
                         <img
                           src={selectedSub.aadhaarFrontUrl}
@@ -281,7 +281,7 @@ export const KycReview: React.FC = () => {
                         </div>
                       </a>
                     ) : (
-                      <div className="w-full h-40 rounded-xl bg-[#F3FAF6] border border-[#DCF0E6] flex flex-col items-center justify-center text-[#18B878] text-xs font-bold gap-1 p-2">
+                      <div className="w-full h-40 rounded-xl bg-[#F1F6F3] border border-[#D3E4DA] flex flex-col items-center justify-center text-[#1F6F43] text-xs font-bold gap-1 p-2">
                         <FileCheck2 className="w-6 h-6" />
                         <span>Attached ✓</span>
                       </div>
@@ -289,14 +289,14 @@ export const KycReview: React.FC = () => {
                   </div>
 
                   {/* Aadhaar Back */}
-                  <div className="p-3 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1] flex flex-col items-center text-center">
-                    <span className="text-[11px] font-extrabold text-[#172B3A] mb-2">Aadhaar Back</span>
+                  <div className="p-3 bg-[#FAF9F7] rounded-2xl border border-[#E5E2DB] flex flex-col items-center text-center">
+                    <span className="text-[11px] font-extrabold text-[#16150F] mb-2">Aadhaar Back</span>
                     {selectedSub.aadhaarBackUrl ? (
                       <a
                         href={selectedSub.aadhaarBackUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="group relative w-full h-40 rounded-xl overflow-hidden border border-[#EDF2F1] block bg-slate-100"
+                        className="group relative w-full h-40 rounded-xl overflow-hidden border border-[#E5E2DB] block bg-slate-100"
                       >
                         <img
                           src={selectedSub.aadhaarBackUrl}
@@ -308,7 +308,7 @@ export const KycReview: React.FC = () => {
                         </div>
                       </a>
                     ) : (
-                      <div className="w-full h-40 rounded-xl bg-[#F3FAF6] border border-[#DCF0E6] flex flex-col items-center justify-center text-[#18B878] text-xs font-bold gap-1 p-2">
+                      <div className="w-full h-40 rounded-xl bg-[#F1F6F3] border border-[#D3E4DA] flex flex-col items-center justify-center text-[#1F6F43] text-xs font-bold gap-1 p-2">
                         <FileCheck2 className="w-6 h-6" />
                         <span>Attached ✓</span>
                       </div>
@@ -316,14 +316,14 @@ export const KycReview: React.FC = () => {
                   </div>
 
                   {/* Live Selfie */}
-                  <div className="p-3 bg-[#FBFBFD] rounded-2xl border border-[#EDF2F1] flex flex-col items-center text-center">
-                    <span className="text-[11px] font-extrabold text-[#172B3A] mb-2">Live Camera Selfie</span>
+                  <div className="p-3 bg-[#FAF9F7] rounded-2xl border border-[#E5E2DB] flex flex-col items-center text-center">
+                    <span className="text-[11px] font-extrabold text-[#16150F] mb-2">Live Camera Selfie</span>
                     {selectedSub.selfieUrl ? (
                       <a
                         href={selectedSub.selfieUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="group relative w-full h-40 rounded-xl overflow-hidden border border-[#EDF2F1] block bg-slate-100"
+                        className="group relative w-full h-40 rounded-xl overflow-hidden border border-[#E5E2DB] block bg-slate-100"
                       >
                         <img
                           src={selectedSub.selfieUrl}
@@ -335,7 +335,7 @@ export const KycReview: React.FC = () => {
                         </div>
                       </a>
                     ) : (
-                      <div className="w-full h-40 rounded-xl bg-[#F3FAF6] border border-[#DCF0E6] flex flex-col items-center justify-center text-[#18B878] text-xs font-bold gap-1 p-2">
+                      <div className="w-full h-40 rounded-xl bg-[#F1F6F3] border border-[#D3E4DA] flex flex-col items-center justify-center text-[#1F6F43] text-xs font-bold gap-1 p-2">
                         <FileCheck2 className="w-6 h-6" />
                         <span>Attached ✓</span>
                       </div>
@@ -346,9 +346,9 @@ export const KycReview: React.FC = () => {
 
               {/* Action Controls */}
               {selectedSub.status === 'SUBMITTED' ? (
-                <div className="pt-4 border-t border-[#EDF2F1] space-y-4">
+                <div className="pt-4 border-t border-[#E5E2DB] space-y-4">
                   <div>
-                    <label className="block text-xs font-extrabold text-[#172B3A] mb-1.5">
+                    <label className="block text-xs font-extrabold text-[#16150F] mb-1.5">
                       Rejection Reason (Required only when rejecting)
                     </label>
                     <input
@@ -356,7 +356,7 @@ export const KycReview: React.FC = () => {
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       placeholder="e.g. Document is blurry, please take a clear camera photo."
-                      className="w-full bg-[#FBFBFD] border border-[#EDF2F1] rounded-2xl px-4 py-2.5 text-xs text-[#172B3A] font-semibold focus:outline-none focus:border-[#18B878]"
+                      className="w-full bg-[#FAF9F7] border border-[#E5E2DB] rounded-2xl px-4 py-2.5 text-xs text-[#16150F] font-semibold focus:outline-none focus:border-[#1F6F43]"
                     />
                   </div>
 
@@ -364,24 +364,24 @@ export const KycReview: React.FC = () => {
                     <button
                       onClick={() => handleReview('REJECT')}
                       disabled={processing}
-                      className="flex-1 py-3.5 rounded-2xl bg-[#FEE2E2] text-[#EF4444] font-extrabold text-xs hover:bg-[#FCA5A5]/30 transition disabled:opacity-50"
+                      className="flex-1 py-3.5 rounded-2xl bg-[#FBEDEC] text-[#A02724] font-extrabold text-xs hover:bg-[#EFD2D0]/30 transition disabled:opacity-50"
                     >
                       Reject Submission
                     </button>
                     <button
                       onClick={() => handleReview('APPROVE')}
                       disabled={processing}
-                      className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-[#1FAE72] via-[#5FD9A4] to-[#9EE7C4] text-white font-extrabold text-xs hover:opacity-95 transition shadow-lg shadow-emerald-500/25 disabled:opacity-50"
+                      className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-[#1F6F43] via-[#3F8760] to-[#A9C9B7] text-white font-extrabold text-xs hover:opacity-95 transition shadow-lg shadow-emerald-500/25 disabled:opacity-50"
                     >
                       Approve & Grant High-Speed Access ✓
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="pt-4 border-t border-[#EDF2F1] flex items-center justify-between text-xs font-bold text-[#8A97A0]">
+                <div className="pt-4 border-t border-[#E5E2DB] flex items-center justify-between text-xs font-bold text-[#7A756B]">
                   <span>Reviewed at: {selectedSub.reviewedAt ? new Date(selectedSub.reviewedAt).toLocaleString() : 'Done'}</span>
                   {selectedSub.status === 'APPROVED' && (
-                    <span className="text-[#129461] bg-[#E9F7F1] px-3 py-1 rounded-full">
+                    <span className="text-[#155232] bg-[#EDF3EF] px-3 py-1 rounded-full">
                       ✓ Approved for Rentals
                     </span>
                   )}
@@ -389,7 +389,7 @@ export const KycReview: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-[#8A97A0] text-xs font-bold">
+            <div className="flex-1 flex items-center justify-center text-[#7A756B] text-xs font-bold">
               Select a verification record from the left queue to inspect.
             </div>
           )}

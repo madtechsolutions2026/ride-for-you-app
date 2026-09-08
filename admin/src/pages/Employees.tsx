@@ -165,8 +165,8 @@ export const Employees: React.FC = () => {
                 onClick={() => setTab(t.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold capitalize transition ${
                   tab === t.id
-                    ? 'bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white shadow-neo-btn'
-                    : 'bg-white text-[#8A97A0] border border-[#EDF2F1] shadow-neo-sm'
+                    ? 'bg-accent text-white shadow-neo-btn'
+                    : 'bg-white text-[#7A756B] border border-[#E5E2DB] shadow-neo-sm'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -193,7 +193,7 @@ export const Employees: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide border-b border-[#EDF2F1]">
+                    <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
                       <th className="px-5 py-3">Employee</th>
                       <th className="px-5 py-3">Role</th>
                       <th className="px-5 py-3">Hub</th>
@@ -204,10 +204,10 @@ export const Employees: React.FC = () => {
                   </thead>
                   <tbody>
                     {employees.map((row) => (
-                      <tr key={row.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC] transition">
+                      <tr key={row.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7] transition">
                         <td className="px-5 py-3">
-                          <div className="font-extrabold text-[#172B3A]">{row.name}</div>
-                          <div className="text-xs text-[#8A97A0]">{row.phone} · {row.email || 'No email'}</div>
+                          <div className="font-extrabold text-[#16150F]">{row.name}</div>
+                          <div className="text-xs text-[#7A756B]">{row.phone} · {row.email || 'No email'}</div>
                         </td>
                         <td className="px-5 py-3">
                           <Pill
@@ -224,16 +224,16 @@ export const Employees: React.FC = () => {
                             {row.role}
                           </Pill>
                         </td>
-                        <td className="px-5 py-3 text-xs text-[#475569]">
+                        <td className="px-5 py-3 text-xs text-[#4A4740]">
                           {row.hub ? (
                             <span className="inline-flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-[#62CE90]" /> {row.hub.name}
+                              <MapPin className="w-3 h-3 text-[#1F6F43]" /> {row.hub.name}
                             </span>
                           ) : (
                             'Headquarters / All'
                           )}
                         </td>
-                        <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                        <td className="px-5 py-3 text-xs text-[#7A756B]">
                           {new Date(row.joinDate).toLocaleDateString('en-IN')}
                         </td>
                         <td className="px-5 py-3">
@@ -256,8 +256,8 @@ export const Employees: React.FC = () => {
       {tab === 'hierarchy' && (
         <div className="space-y-6">
           <Card className="p-6">
-            <h3 className="text-base font-extrabold text-[#172B3A] mb-4 flex items-center gap-2">
-              <GitBranch className="w-5 h-5 text-[#62CE90]" /> Operational Organization Tree
+            <h3 className="text-base font-extrabold text-[#16150F] mb-4 flex items-center gap-2">
+              <GitBranch className="w-5 h-5 text-[#1F6F43]" /> Operational Organization Tree
             </h3>
 
             {hierarchy.length === 0 ? (
@@ -265,52 +265,52 @@ export const Employees: React.FC = () => {
             ) : (
               <div className="space-y-6">
                 {hierarchy.map((hubItem) => (
-                  <div key={hubItem.hubId} className="border border-[#EDF2F1] rounded-2xl p-5 bg-[#F8FAFC]">
-                    <div className="flex items-center justify-between pb-3 border-b border-[#EDF2F1]">
+                  <div key={hubItem.hubId} className="border border-[#E5E2DB] rounded-2xl p-5 bg-[#FAF9F7]">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#E5E2DB]">
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-5 h-5 text-[#62CE90]" />
-                        <span className="font-extrabold text-[#172B3A] text-base">{hubItem.hubName}</span>
-                        <span className="text-xs text-[#8A97A0]">({hubItem.city})</span>
+                        <MapPin className="w-5 h-5 text-[#1F6F43]" />
+                        <span className="font-extrabold text-[#16150F] text-base">{hubItem.hubName}</span>
+                        <span className="text-xs text-[#7A756B]">({hubItem.city})</span>
                       </div>
                       <Pill tone="blue">Hub Floor</Pill>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                       {/* Manager */}
-                      <div className="bg-white p-4 rounded-xl border border-[#E2E8F0]">
-                        <p className="text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide mb-1">
+                      <div className="bg-white p-4 rounded-xl border border-[#E5E2DB]">
+                        <p className="text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide mb-1">
                           Hub Manager
                         </p>
                         {hubItem.manager ? (
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-[#EAF8F1] text-[#38A169] flex items-center justify-center font-bold text-xs">
+                            <div className="w-8 h-8 rounded-full bg-[#EDF3EF] text-[#1F6F43] flex items-center justify-center font-bold text-xs">
                               {hubItem.manager.name.slice(0, 2).toUpperCase()}
                             </div>
                             <div>
-                              <p className="text-sm font-extrabold text-[#172B3A]">{hubItem.manager.name}</p>
-                              <p className="text-xs text-[#8A97A0]">{hubItem.manager.phone}</p>
+                              <p className="text-sm font-extrabold text-[#16150F]">{hubItem.manager.name}</p>
+                              <p className="text-xs text-[#7A756B]">{hubItem.manager.phone}</p>
                             </div>
                           </div>
                         ) : (
-                          <p className="text-xs text-[#94A3B8] italic">No manager assigned</p>
+                          <p className="text-xs text-[#A39D91] italic">No manager assigned</p>
                         )}
                       </div>
 
                       {/* Staff & Technicians */}
-                      <div className="bg-white p-4 rounded-xl border border-[#E2E8F0]">
-                        <p className="text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide mb-1">
+                      <div className="bg-white p-4 rounded-xl border border-[#E5E2DB]">
+                        <p className="text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide mb-1">
                           Assigned Staff & Technicians ({hubItem.employees?.length || 0})
                         </p>
                         <div className="space-y-2 mt-2">
                           {hubItem.employees && hubItem.employees.length > 0 ? (
                             hubItem.employees.map((emp: any) => (
-                              <div key={emp.id} className="flex items-center justify-between text-xs py-1 border-b border-[#F1F5F9] last:border-0">
-                                <span className="font-bold text-[#172B3A]">{emp.name}</span>
+                              <div key={emp.id} className="flex items-center justify-between text-xs py-1 border-b border-[#EFEDE8] last:border-0">
+                                <span className="font-bold text-[#16150F]">{emp.name}</span>
                                 <Pill tone={emp.role === 'SERVICE_PERSON' ? 'amber' : 'slate'}>{emp.role}</Pill>
                               </div>
                             ))
                           ) : (
-                            <p className="text-xs text-[#94A3B8] italic">No staff assigned yet</p>
+                            <p className="text-xs text-[#A39D91] italic">No staff assigned yet</p>
                           )}
                         </div>
                       </div>
@@ -326,10 +326,10 @@ export const Employees: React.FC = () => {
       {/* 3. ATTENDANCE TAB */}
       {tab === 'attendance' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#EDF2F1] shadow-neo-sm">
+          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-neo-sm">
             <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-[#62CE90]" />
-              <span className="text-sm font-extrabold text-[#172B3A]">Select Attendance Date:</span>
+              <Calendar className="w-5 h-5 text-[#1F6F43]" />
+              <span className="text-sm font-extrabold text-[#16150F]">Select Attendance Date:</span>
               <input
                 type="date"
                 value={selectedDate}
@@ -337,8 +337,8 @@ export const Employees: React.FC = () => {
                 className={`${input} py-1.5 px-3 text-xs w-auto`}
               />
             </div>
-            <div className="text-xs text-[#8A97A0]">
-              Showing records for <span className="font-bold text-[#172B3A]">{selectedDate}</span>
+            <div className="text-xs text-[#7A756B]">
+              Showing records for <span className="font-bold text-[#16150F]">{selectedDate}</span>
             </div>
           </div>
 
@@ -346,7 +346,7 @@ export const Employees: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide border-b border-[#EDF2F1]">
+                  <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
                     <th className="px-5 py-3">Employee</th>
                     <th className="px-5 py-3">Role & Hub</th>
                     <th className="px-5 py-3">Check-in</th>
@@ -361,15 +361,15 @@ export const Employees: React.FC = () => {
                     const currentStatus = att ? att.status : 'UNMARKED';
 
                     return (
-                      <tr key={emp.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]">
-                        <td className="px-5 py-3 font-extrabold text-[#172B3A]">{emp.name}</td>
-                        <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                      <tr key={emp.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7]">
+                        <td className="px-5 py-3 font-extrabold text-[#16150F]">{emp.name}</td>
+                        <td className="px-5 py-3 text-xs text-[#7A756B]">
                           {emp.role} · {emp.hub?.name || 'HQ'}
                         </td>
-                        <td className="px-5 py-3 text-xs text-[#475569]">
+                        <td className="px-5 py-3 text-xs text-[#4A4740]">
                           {att?.checkInTime ? new Date(att.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}
                         </td>
-                        <td className="px-5 py-3 text-xs text-[#475569]">
+                        <td className="px-5 py-3 text-xs text-[#4A4740]">
                           {att?.checkOutTime ? new Date(att.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}
                         </td>
                         <td className="px-5 py-3">
@@ -405,10 +405,10 @@ export const Employees: React.FC = () => {
       {/* 4. SALARY & PAYROLL TAB */}
       {tab === 'salaries' && (
         <div className="space-y-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#EDF2F1] shadow-neo-sm">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-neo-sm">
             <div className="flex items-center gap-3">
-              <DollarSign className="w-5 h-5 text-[#62CE90]" />
-              <span className="text-sm font-extrabold text-[#172B3A]">Payroll Period:</span>
+              <DollarSign className="w-5 h-5 text-[#1F6F43]" />
+              <span className="text-sm font-extrabold text-[#16150F]">Payroll Period:</span>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
@@ -444,7 +444,7 @@ export const Employees: React.FC = () => {
           <Card>
             {salaries.length === 0 ? (
               <EmptyState
-                icon={<FileSpreadsheet className="w-8 h-8 mx-auto text-[#CBD5E1]" />}
+                icon={<FileSpreadsheet className="w-8 h-8 mx-auto text-[#D6D2C8]" />}
                 title="No payroll generated for this period"
                 hint="Click 'Generate Payroll' to automatically compute monthly pay."
               />
@@ -452,7 +452,7 @@ export const Employees: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide border-b border-[#EDF2F1]">
+                    <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
                       <th className="px-5 py-3">Employee</th>
                       <th className="px-5 py-3">Base Salary</th>
                       <th className="px-5 py-3">Deductions</th>
@@ -464,15 +464,15 @@ export const Employees: React.FC = () => {
                   </thead>
                   <tbody>
                     {salaries.map((s) => (
-                      <tr key={s.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]">
+                      <tr key={s.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7]">
                         <td className="px-5 py-3">
-                          <div className="font-extrabold text-[#172B3A]">{s.employee?.name}</div>
-                          <div className="text-xs text-[#8A97A0]">{s.employee?.role} · {s.employee?.phone}</div>
+                          <div className="font-extrabold text-[#16150F]">{s.employee?.name}</div>
+                          <div className="text-xs text-[#7A756B]">{s.employee?.role} · {s.employee?.phone}</div>
                         </td>
-                        <td className="px-5 py-3 font-semibold text-[#172B3A]">{rupees(s.baseSalary)}</td>
-                        <td className="px-5 py-3 text-xs text-[#EF4444]">- {rupees(s.deductions)}</td>
-                        <td className="px-5 py-3 text-xs text-[#38A169]">+ {rupees(s.bonuses)}</td>
-                        <td className="px-5 py-3 font-black text-[#172B3A]">{rupees(s.netPaid)}</td>
+                        <td className="px-5 py-3 font-semibold text-[#16150F]">{rupees(s.baseSalary)}</td>
+                        <td className="px-5 py-3 text-xs text-[#A02724]">- {rupees(s.deductions)}</td>
+                        <td className="px-5 py-3 text-xs text-[#1F6F43]">+ {rupees(s.bonuses)}</td>
+                        <td className="px-5 py-3 font-black text-[#16150F]">{rupees(s.netPaid)}</td>
                         <td className="px-5 py-3">
                           <Pill tone={s.status === 'PAID' ? 'green' : 'amber'}>{s.status}</Pill>
                         </td>
@@ -498,7 +498,7 @@ export const Employees: React.FC = () => {
         <Card>
           {deployments.length === 0 ? (
             <EmptyState
-              icon={<Bike className="w-8 h-8 mx-auto text-[#CBD5E1]" />}
+              icon={<Bike className="w-8 h-8 mx-auto text-[#D6D2C8]" />}
               title="No deployment logs yet"
               hint="Logs are created automatically whenever an employee hands over or receives a bike."
             />
@@ -506,7 +506,7 @@ export const Employees: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide border-b border-[#EDF2F1]">
+                  <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
                     <th className="px-5 py-3">Bike · Hub</th>
                     <th className="px-5 py-3">Deployed By</th>
                     <th className="px-5 py-3">Rider</th>
@@ -518,30 +518,30 @@ export const Employees: React.FC = () => {
                 </thead>
                 <tbody>
                   {deployments.map((d) => (
-                    <tr key={d.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]">
+                    <tr key={d.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7]">
                       <td className="px-5 py-3">
-                        <div className="font-extrabold text-[#172B3A]">{d.bike?.registrationNumber}</div>
-                        <div className="text-xs text-[#8A97A0]">{d.hub?.name}</div>
+                        <div className="font-extrabold text-[#16150F]">{d.bike?.registrationNumber}</div>
+                        <div className="text-xs text-[#7A756B]">{d.hub?.name}</div>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#475569]">
+                      <td className="px-5 py-3 text-xs text-[#4A4740]">
                         {d.deployedByEmployee?.name || 'Staff Executive'}
                       </td>
                       <td className="px-5 py-3">
-                        <div className="font-bold text-[#172B3A]">{d.rider?.fullName || 'Rider'}</div>
-                        <div className="text-xs text-[#8A97A0]">{d.rider?.phone}</div>
+                        <div className="font-bold text-[#16150F]">{d.rider?.fullName || 'Rider'}</div>
+                        <div className="text-xs text-[#7A756B]">{d.rider?.phone}</div>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                      <td className="px-5 py-3 text-xs text-[#7A756B]">
                         {new Date(d.deployedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                      <td className="px-5 py-3 text-xs text-[#7A756B]">
                         {d.returnedAt ? new Date(d.returnedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : (
                           <Pill tone="blue">ONGOING</Pill>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#475569]">
+                      <td className="px-5 py-3 text-xs text-[#4A4740]">
                         {d.odometerStart || 0} km → {d.odometerEnd !== null ? `${d.odometerEnd} km` : 'Active'}
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#64748B] max-w-xs truncate">
+                      <td className="px-5 py-3 text-xs text-[#5C584F] max-w-xs truncate">
                         {d.conditionNotesOnDeploy || 'Good condition'}
                         {d.conditionNotesOnReturn ? ` | Return: ${d.conditionNotesOnReturn}` : ''}
                       </td>
@@ -624,7 +624,7 @@ export const Employees: React.FC = () => {
               </Field>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#EDF2F1]">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#E5E2DB]">
               <Btn type="button" onClick={() => setModal(null)}>
                 Cancel
               </Btn>

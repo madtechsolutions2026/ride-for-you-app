@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Plus, Clock, Phone, Zap } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { apiClient } from '../api/client';
+import {
+  Card, SectionHeader, Btn, Modal, Field, input, Table, TH, TD, TR,
+  Pill, EmptyState, Loader,
+} from '../components/ui';
 
-export const Infrastructure: React.FC = () => {
+export const Infrastructure: React.FC<{ tab?: 'hubs' | 'stations' }> = ({ tab = 'hubs' }) => {
   const [data, setData] = useState<{ hubs: any[]; swapStations: any[] }>({ hubs: [], swapStations: [] });
   const [loading, setLoading] = useState(true);
   const [hubModalOpen, setHubModalOpen] = useState(false);
   const [stationModalOpen, setStationModalOpen] = useState(false);
 
-  // New Hub State
   const [hubName, setHubName] = useState('');
   const [hubAddress, setHubAddress] = useState('');
   const [hubLat, setHubLat] = useState(17.45);
@@ -18,7 +21,6 @@ export const Infrastructure: React.FC = () => {
   const [hubOpen, setHubOpen] = useState('09:00');
   const [hubClose, setHubClose] = useState('21:00');
 
-  // New Swap Station State
   const [stName, setStName] = useState('');
   const [stAddress, setStAddress] = useState('');
   const [stLat, setStLat] = useState(17.44);
@@ -57,7 +59,6 @@ export const Infrastructure: React.FC = () => {
       setHubName('');
       setHubAddress('');
       fetchInfra();
-      alert('Hub added successfully!');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to add hub');
     }
@@ -76,262 +77,206 @@ export const Infrastructure: React.FC = () => {
       setStName('');
       setStAddress('');
       fetchInfra();
-      alert('Swap Station added successfully!');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to add swap station');
     }
   };
 
+  if (loading) return <Loader />;
+
+  const totalBikes = data.hubs.reduce((sum, h) => sum + (h._count?.bikes || 0), 0);
+
   return (
-    <div className="space-y-8">
-      {/* 1. Hubs Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">EV Main Hubs</h3>
-            <p className="text-xs text-slate-500">Pick-up, drop-off, maintenance, and rider onboarding centers</p>
-          </div>
+    <>
+      {tab === 'hubs' && (
+        <Card className="p-5">
+          <SectionHeader
+            title="EV Main Hubs"
+            hint={`${data.hubs.length} hubs · ${totalBikes} bikes stationed · pick-up, drop-off, maintenance and onboarding`}
+            actions={
+              <Btn variant="primary" onClick={() => setHubModalOpen(true)}>
+                <Plus className="w-3.5 h-3.5" strokeWidth={2} /> Add Hub
+              </Btn>
+            }
+          />
 
-          <button
-            onClick={() => setHubModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-700 text-white rounded-xl text-xs font-bold hover:bg-emerald-800 transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add EV Hub</span>
-          </button>
-        </div>
+          {data.hubs.length === 0 ? (
+            <EmptyState title="No hubs yet" hint="Add your first pick-up and drop-off centre." />
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <TH>Hub</TH>
+                  <TH>City</TH>
+                  <TH>Address</TH>
+                  <TH align="right">Bikes</TH>
+                  <TH>Hours</TH>
+                  <TH>Contact</TH>
+                </tr>
+              </thead>
+              <tbody>
+                {data.hubs.map((h) => (
+                  <TR key={h.id}>
+                    <TD className="font-medium text-ink whitespace-nowrap">{h.name}</TD>
+                    <TD className="text-ink-muted whitespace-nowrap">{h.city}</TD>
+                    <TD className="text-ink-soft max-w-[26rem]">{h.address}</TD>
+                    <TD align="right" className="u-num text-ink">{h._count?.bikes || 0}</TD>
+                    <TD className="u-num text-ink-muted whitespace-nowrap">
+                      {h.openTime}–{h.closeTime}
+                    </TD>
+                    <TD className="u-num text-ink-soft whitespace-nowrap">{h.contactPhone}</TD>
+                  </TR>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {data.hubs.map((h) => (
-            <div key={h.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                    {h.city}
-                  </span>
-                  <span className="text-xs font-bold text-slate-700">{h._count?.bikes || 0} Bikes</span>
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 mb-1">{h.name}</h4>
-                <p className="text-xs text-slate-500 flex items-start gap-1.5 mb-3">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                  <span>{h.address}</span>
-                </p>
-              </div>
+      {tab === 'stations' && (
+        <Card className="p-5">
+          <SectionHeader
+            title="Battery Swap Stations"
+            hint={`${data.swapStations.length} stations · automated 2-minute battery replacement points`}
+            actions={
+              <Btn variant="primary" onClick={() => setStationModalOpen(true)}>
+                <Plus className="w-3.5 h-3.5" strokeWidth={2} /> Add Station
+              </Btn>
+            }
+          />
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-slate-400" />
-                  <span>{h.openTime} - {h.closeTime}</span>
-                </span>
-                <span className="flex items-center gap-1 font-mono">
-                  <Phone className="w-3 h-3 text-slate-400" />
-                  <span>{h.contactPhone}</span>
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+          {data.swapStations.length === 0 ? (
+            <EmptyState title="No swap stations yet" hint="Deploy your first battery swap dock." />
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <TH>Station</TH>
+                  <TH>Address</TH>
+                  <TH>Hours</TH>
+                  <TH>Coordinates</TH>
+                  <TH align="right">Status</TH>
+                </tr>
+              </thead>
+              <tbody>
+                {data.swapStations.map((s) => (
+                  <TR key={s.id}>
+                    <TD className="font-medium text-ink whitespace-nowrap">{s.name}</TD>
+                    <TD className="text-ink-soft max-w-[26rem]">{s.address}</TD>
+                    <TD className="u-num text-ink-muted whitespace-nowrap">
+                      {s.openTime}–{s.closeTime}
+                    </TD>
+                    <TD className="u-num text-ink-soft whitespace-nowrap">
+                      {s.lat.toFixed(4)}, {s.lng.toFixed(4)}
+                    </TD>
+                    <TD align="right">
+                      <Pill tone="green">Online</Pill>
+                    </TD>
+                  </TR>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      )}
 
-      {/* 2. Swap Stations Section */}
-      <div className="space-y-4 pt-4 border-t border-slate-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">2-Minute Battery Swap Stations</h3>
-            <p className="text-xs text-slate-500">Automated fast battery replacement points across city arteries</p>
-          </div>
-
-          <button
-            onClick={() => setStationModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-xl text-xs font-bold hover:bg-blue-800 transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Swap Station</span>
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {data.swapStations.map((s) => (
-            <div key={s.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-blue-600" />
-                    <span>Active Swap Point</span>
-                  </span>
-                  <span className="text-xs font-bold text-emerald-700">Online</span>
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 mb-1">{s.name}</h4>
-                <p className="text-xs text-slate-500 flex items-start gap-1.5 mb-3">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                  <span>{s.address}</span>
-                </p>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-slate-400" />
-                  <span>{s.openTime} - {s.closeTime}</span>
-                </span>
-                <span className="text-[10px] font-mono text-slate-400">
-                  {s.lat.toFixed(3)}, {s.lng.toFixed(3)}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Add Hub Modal */}
       {hubModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-200">
-            <h3 className="text-base font-bold text-slate-900 mb-1">Create New EV Hub</h3>
-            <p className="text-xs text-slate-500 mb-4">Add a new operational hub for bike collection and service.</p>
-
-            <form onSubmit={handleCreateHub} className="space-y-3 text-xs font-semibold text-slate-700">
-              <div>
-                <label className="block mb-1">Hub Name</label>
+        <Modal title="Create EV Hub" onClose={() => setHubModalOpen(false)}>
+          <form onSubmit={handleCreateHub} className="space-y-3.5">
+            <Field label="Hub name">
+              <input
+                className={input}
+                value={hubName}
+                onChange={(e) => setHubName(e.target.value)}
+                placeholder="Madhapur Tech Hub"
+                required
+              />
+            </Field>
+            <Field label="Full street address">
+              <input
+                className={input}
+                value={hubAddress}
+                onChange={(e) => setHubAddress(e.target.value)}
+                placeholder="Near Metro Station, Madhapur, Hyderabad"
+                required
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="City">
+                <input className={input} value={hubCity} onChange={(e) => setHubCity(e.target.value)} />
+              </Field>
+              <Field label="Contact phone">
+                <input className={input} value={hubPhone} onChange={(e) => setHubPhone(e.target.value)} />
+              </Field>
+              <Field label="Opens">
+                <input className={input} type="time" value={hubOpen} onChange={(e) => setHubOpen(e.target.value)} />
+              </Field>
+              <Field label="Closes">
+                <input className={input} type="time" value={hubClose} onChange={(e) => setHubClose(e.target.value)} />
+              </Field>
+              <Field label="Latitude">
                 <input
-                  type="text"
-                  value={hubName}
-                  onChange={(e) => setHubName(e.target.value)}
-                  placeholder="e.g. Madhapur Tech Hub"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                  className={input} type="number" step="0.0001" value={hubLat}
+                  onChange={(e) => setHubLat(Number(e.target.value))}
                 />
-              </div>
-
-              <div>
-                <label className="block mb-1">Full Street Address</label>
+              </Field>
+              <Field label="Longitude">
                 <input
-                  type="text"
-                  value={hubAddress}
-                  onChange={(e) => setHubAddress(e.target.value)}
-                  placeholder="e.g. Near Metro Station, Madhapur, Hyderabad"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                  className={input} type="number" step="0.0001" value={hubLng}
+                  onChange={(e) => setHubLng(Number(e.target.value))}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1">Latitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={hubLat}
-                    onChange={(e) => setHubLat(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Longitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={hubLng}
-                    onChange={(e) => setHubLng(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setHubModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-700 text-white font-bold hover:bg-emerald-800 transition"
-                >
-                  Create Hub
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+              </Field>
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-rule">
+              <Btn type="button" onClick={() => setHubModalOpen(false)}>Cancel</Btn>
+              <Btn type="submit" variant="primary">Create hub</Btn>
+            </div>
+          </form>
+        </Modal>
       )}
 
-      {/* Add Swap Station Modal */}
       {stationModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-200">
-            <h3 className="text-base font-bold text-slate-900 mb-1">Create Swap Station</h3>
-            <p className="text-xs text-slate-500 mb-4">Deploy an automated battery swapping point.</p>
-
-            <form onSubmit={handleCreateStation} className="space-y-3 text-xs font-semibold text-slate-700">
-              <div>
-                <label className="block mb-1">Station Name</label>
+        <Modal title="Create Swap Station" onClose={() => setStationModalOpen(false)}>
+          <form onSubmit={handleCreateStation} className="space-y-3.5">
+            <Field label="Station name">
+              <input
+                className={input}
+                value={stName}
+                onChange={(e) => setStName(e.target.value)}
+                placeholder="Mindspace Swap Dock"
+                required
+              />
+            </Field>
+            <Field label="Address / landmark">
+              <input
+                className={input}
+                value={stAddress}
+                onChange={(e) => setStAddress(e.target.value)}
+                placeholder="Mindspace Circle, Hitech City"
+                required
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Latitude">
                 <input
-                  type="text"
-                  value={stName}
-                  onChange={(e) => setStName(e.target.value)}
-                  placeholder="e.g. Mindspace Swap Dock"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                  className={input} type="number" step="0.0001" value={stLat}
+                  onChange={(e) => setStLat(Number(e.target.value))}
                 />
-              </div>
-
-              <div>
-                <label className="block mb-1">Address / Landmark</label>
+              </Field>
+              <Field label="Longitude">
                 <input
-                  type="text"
-                  value={stAddress}
-                  onChange={(e) => setStAddress(e.target.value)}
-                  placeholder="e.g. Mindspace Circle, Hitech City"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                  className={input} type="number" step="0.0001" value={stLng}
+                  onChange={(e) => setStLng(Number(e.target.value))}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block mb-1">Latitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={stLat}
-                    onChange={(e) => setStLat(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Longitude</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={stLng}
-                    onChange={(e) => setStLng(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setStationModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-blue-700 text-white font-bold hover:bg-blue-800 transition"
-                >
-                  Create Station
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+              </Field>
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-rule">
+              <Btn type="button" onClick={() => setStationModalOpen(false)}>Cancel</Btn>
+              <Btn type="submit" variant="primary">Create station</Btn>
+            </div>
+          </form>
+        </Modal>
       )}
-    </div>
+    </>
   );
 };
-

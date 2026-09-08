@@ -134,8 +134,8 @@ export const Bookings: React.FC = () => {
             onClick={() => setView(v)}
             className={`px-4 py-2 rounded-xl text-xs font-extrabold capitalize transition ${
               view === v
-                ? 'bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white shadow-neo-btn'
-                : 'bg-white text-[#8A97A0] border border-[#EDF2F1] shadow-neo-sm'
+                ? 'bg-accent text-white shadow-neo-btn'
+                : 'bg-white text-[#7A756B] border border-[#E5E2DB] shadow-neo-sm'
             }`}
           >
             {v} ({v === 'bookings' ? bookings.length : rentals.length})
@@ -147,7 +147,7 @@ export const Bookings: React.FC = () => {
         <Card>
           {bookings.length === 0 ? (
             <EmptyState
-              icon={<ClipboardList className="w-8 h-8 mx-auto text-[#CBD5E1]" />}
+              icon={<ClipboardList className="w-8 h-8 mx-auto text-[#D6D2C8]" />}
               title="No bookings yet"
               hint="Riders create bookings from the app once their KYC is approved. They appear here for confirmation and handover."
             />
@@ -155,7 +155,7 @@ export const Bookings: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                  <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase border-b border-[#E5E2DB]">
                     <th className="px-5 py-3">Ref / Rider</th>
                     <th className="px-5 py-3">Model · Plan</th>
                     <th className="px-5 py-3">Hub</th>
@@ -172,12 +172,12 @@ export const Bookings: React.FC = () => {
                     return (
                       <tr
                         key={b.id}
-                        className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFB] cursor-pointer"
+                        className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7] cursor-pointer"
                         onClick={() => setDetailId(b.id)}
                       >
                         <td className="px-5 py-3">
-                          <div className="font-extrabold text-[#172B3A]">{b.reference}</div>
-                          <div className="text-xs text-[#8A97A0]">
+                          <div className="font-extrabold text-[#16150F]">{b.reference}</div>
+                          <div className="text-xs text-[#7A756B]">
                             {b.user?.fullName || '—'} · {b.user?.phone}
                           </div>
                           <div className="mt-0.5">
@@ -186,25 +186,25 @@ export const Bookings: React.FC = () => {
                             </Pill>
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-xs text-[#475569]">
+                        <td className="px-5 py-3 text-xs text-[#4A4740]">
                           {b.model?.name}
                           <br />
-                          <span className="text-[#8A97A0]">
+                          <span className="text-[#7A756B]">
                             {b.plan?.duration} · {rupees(b.plan?.price)}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-xs text-[#475569]">{b.hub?.name}</td>
-                        <td className="px-5 py-3 font-extrabold text-[#172B3A]">{rupees(b.totalAmount)}</td>
+                        <td className="px-5 py-3 text-xs text-[#4A4740]">{b.hub?.name}</td>
+                        <td className="px-5 py-3 font-extrabold text-[#16150F]">{rupees(b.totalAmount)}</td>
                         <td className="px-5 py-3">
                           <Pill tone={ps.tone}>{ps.label}</Pill>
                           {ps.paid > 0 && (
-                            <div className="text-[10px] text-[#8A97A0] mt-0.5">{rupees(ps.paid)} recd</div>
+                            <div className="text-[10px] text-[#7A756B] mt-0.5">{rupees(ps.paid)} recd</div>
                           )}
                         </td>
                         <td className="px-5 py-3">
                           <Pill tone={toneFor(b.status)}>{b.status}</Pill>
                         </td>
-                        <td className="px-5 py-3 text-xs text-[#8A97A0]">{d(b.createdAt)}</td>
+                        <td className="px-5 py-3 text-xs text-[#7A756B]">{d(b.createdAt)}</td>
                         <td
                           className="px-5 py-3 text-right space-x-1.5 whitespace-nowrap"
                           onClick={(e) => e.stopPropagation()}
@@ -229,7 +229,7 @@ export const Bookings: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                  <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase border-b border-[#E5E2DB]">
                     <th className="px-5 py-3">Rider</th>
                     <th className="px-5 py-3">Bike</th>
                     <th className="px-5 py-3">Weekly invoices</th>
@@ -240,15 +240,15 @@ export const Bookings: React.FC = () => {
                 </thead>
                 <tbody>
                   {rentals.map((r) => (
-                    <tr key={r.id} className="border-b border-[#F1F5F9] last:border-0">
+                    <tr key={r.id} className="border-b border-[#EFEDE8] last:border-0">
                       <td className="px-5 py-3">
-                        <div className="font-extrabold text-[#172B3A]">{r.user?.fullName || '—'}</div>
-                        <div className="text-xs text-[#8A97A0]">{r.user?.phone}</div>
+                        <div className="font-extrabold text-[#16150F]">{r.user?.fullName || '—'}</div>
+                        <div className="text-xs text-[#7A756B]">{r.user?.phone}</div>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#475569]">
+                      <td className="px-5 py-3 text-xs text-[#4A4740]">
                         {r.bike?.registrationNumber}
                         <br />
-                        <span className="text-[#8A97A0]">{r.bike?.model?.name}</span>
+                        <span className="text-[#7A756B]">{r.bike?.model?.name}</span>
                       </td>
                       <td className="px-5 py-3 text-xs">
                         {(r.weeklyInvoices || []).map((w: any) => (
@@ -259,7 +259,7 @@ export const Bookings: React.FC = () => {
                           </span>
                         ))}
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#475569]">{d(r.expectedReturnAt)}</td>
+                      <td className="px-5 py-3 text-xs text-[#4A4740]">{d(r.expectedReturnAt)}</td>
                       <td className="px-5 py-3">
                         <Pill tone={r.isOverdue ? 'red' : toneFor(r.status)}>
                           {r.isOverdue ? 'OVERDUE' : r.status}
@@ -307,7 +307,7 @@ export const Bookings: React.FC = () => {
       {handoverFor && (
         <Modal title={`Handover · ${handoverFor.reference}`} onClose={() => setHandoverFor(null)}>
           <form onSubmit={doHandover} className="space-y-4">
-            <p className="text-xs text-[#8A97A0]">
+            <p className="text-xs text-[#7A756B]">
               Assign a physical bike to {handoverFor.user?.fullName}. The rental clock and week-1
               invoice start now.
             </p>
@@ -356,16 +356,16 @@ export const Bookings: React.FC = () => {
 /* ---------------------------------------------------------------------------- */
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="rounded-2xl border border-[#EDF2F1] bg-[#F8FAFB] p-4">
-    <h4 className="text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide mb-2.5">{title}</h4>
+  <div className="rounded-2xl border border-[#E5E2DB] bg-[#FAF9F7] p-4">
+    <h4 className="text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide mb-2.5">{title}</h4>
     {children}
   </div>
 );
 
 const KV: React.FC<{ k: string; v: React.ReactNode }> = ({ k, v }) => (
   <div className="flex justify-between gap-4 py-1 text-sm">
-    <span className="text-[#8A97A0] font-semibold">{k}</span>
-    <span className="text-[#172B3A] font-bold text-right">{v ?? '—'}</span>
+    <span className="text-[#7A756B] font-semibold">{k}</span>
+    <span className="text-[#16150F] font-bold text-right">{v ?? '—'}</span>
   </div>
 );
 
@@ -387,7 +387,7 @@ const BookingDetail: React.FC<{
         <Pill tone={toneFor(b.status)}>{b.status}</Pill>
         <Pill tone={toneFor(u.kycStatus || 'PENDING')}>KYC {u.kycStatus || 'PENDING'}</Pill>
         {u.accountStatus && u.accountStatus !== 'ACTIVE' && <Pill tone="red">{u.accountStatus}</Pill>}
-        <span className="text-xs text-[#8A97A0]">created {dt(b.createdAt)}</span>
+        <span className="text-xs text-[#7A756B]">created {dt(b.createdAt)}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -418,13 +418,13 @@ const BookingDetail: React.FC<{
           <KV k="Weekly rent" v={rupees(b.rentAmount)} />
           <KV k="Refundable deposit" v={rupees(b.depositAmount)} />
           <KV k="Platform fee" v={rupees(b.platformFee)} />
-          <div className="border-t border-[#E3EAEA] my-1" />
-          <KV k="Total billed" v={<span className="text-[#172B3A]">{rupees(fin.billed ?? b.totalAmount)}</span>} />
-          <KV k="Paid" v={<span className="text-[#38A169]">{rupees(fin.paid)}</span>} />
+          <div className="border-t border-[#E5E2DB] my-1" />
+          <KV k="Total billed" v={<span className="text-[#16150F]">{rupees(fin.billed ?? b.totalAmount)}</span>} />
+          <KV k="Paid" v={<span className="text-[#1F6F43]">{rupees(fin.paid)}</span>} />
           {fin.refunded > 0 && <KV k="Refunded" v={rupees(fin.refunded)} />}
           <KV
             k="Balance"
-            v={<span className={fin.balance > 0 ? 'text-[#DC2626]' : 'text-[#38A169]'}>{rupees(fin.balance)}</span>}
+            v={<span className={fin.balance > 0 ? 'text-[#A02724]' : 'text-[#1F6F43]'}>{rupees(fin.balance)}</span>}
           />
         </Section>
 
@@ -440,7 +440,7 @@ const BookingDetail: React.FC<{
         <Section title="Consent">
           <KV
             k="T&C accepted"
-            v={b.consentAcceptedAt ? dt(b.consentAcceptedAt) : <span className="text-[#DC2626]">not accepted</span>}
+            v={b.consentAcceptedAt ? dt(b.consentAcceptedAt) : <span className="text-[#A02724]">not accepted</span>}
           />
           <KV k="Language" v={b.consentLanguage} />
           <KV k="E-signature" v={b.consentSignatureKey ? 'captured' : '—'} />
@@ -449,12 +449,12 @@ const BookingDetail: React.FC<{
 
       <Section title={`Payments (${(b.payments || []).length})`}>
         {(b.payments || []).length === 0 ? (
-          <p className="text-xs text-[#8A97A0]">No payments recorded yet.</p>
+          <p className="text-xs text-[#7A756B]">No payments recorded yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase">
+                <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase">
                   <th className="py-1.5 pr-3">Purpose</th>
                   <th className="py-1.5 pr-3">Amount</th>
                   <th className="py-1.5 pr-3">Method</th>
@@ -465,17 +465,17 @@ const BookingDetail: React.FC<{
               </thead>
               <tbody>
                 {b.payments.map((p: any) => (
-                  <tr key={p.id} className="border-t border-[#E3EAEA]">
-                    <td className="py-1.5 pr-3 font-bold text-[#172B3A]">{p.purpose}</td>
-                    <td className={`py-1.5 pr-3 font-bold ${p.amount < 0 ? 'text-[#DC2626]' : 'text-[#172B3A]'}`}>
+                  <tr key={p.id} className="border-t border-[#E5E2DB]">
+                    <td className="py-1.5 pr-3 font-bold text-[#16150F]">{p.purpose}</td>
+                    <td className={`py-1.5 pr-3 font-bold ${p.amount < 0 ? 'text-[#A02724]' : 'text-[#16150F]'}`}>
                       {rupees(p.amount)}
                     </td>
-                    <td className="py-1.5 pr-3 text-[#475569]">{p.provider}</td>
-                    <td className="py-1.5 pr-3 text-[#8A97A0]">{p.providerPaymentId || '—'}</td>
+                    <td className="py-1.5 pr-3 text-[#4A4740]">{p.provider}</td>
+                    <td className="py-1.5 pr-3 text-[#7A756B]">{p.providerPaymentId || '—'}</td>
                     <td className="py-1.5 pr-3">
                       <Pill tone={toneFor(p.status)}>{p.status}</Pill>
                     </td>
-                    <td className="py-1.5 text-[#8A97A0]">{dt(p.createdAt)}</td>
+                    <td className="py-1.5 text-[#7A756B]">{dt(p.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -507,8 +507,8 @@ const BookingDetail: React.FC<{
           <ol className="space-y-2">
             {data.timeline.map((t: any, i: number) => (
               <li key={i} className="flex gap-3 text-sm">
-                <span className="text-[10px] text-[#8A97A0] font-bold w-32 shrink-0 pt-0.5">{dt(t.at)}</span>
-                <span className="text-[#172B3A] font-semibold">{t.label}</span>
+                <span className="text-[10px] text-[#7A756B] font-bold w-32 shrink-0 pt-0.5">{dt(t.at)}</span>
+                <span className="text-[#16150F] font-semibold">{t.label}</span>
               </li>
             ))}
           </ol>

@@ -1,7 +1,9 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import { Sidebar, ActiveTab } from './components/Sidebar';
+import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { itemForPath, pathForScreen } from './nav';
 import { Login } from './pages/Login';
 import { Overview } from './pages/Overview';
 import { Riders } from './pages/Riders';
@@ -13,27 +15,21 @@ import { Finance } from './pages/Finance';
 import { ServiceRecovery } from './pages/ServiceRecovery';
 import { Employees } from './pages/Employees';
 import { SupportTickets } from './pages/SupportTickets';
+import { Settings } from './pages/Settings';
+import { Reports } from './pages/Reports';
 import { apiClient } from './api/client';
 
-const META: Record<ActiveTab, { title: string; subtitle: string }> = {
-  overview: { title: 'Operational Overview', subtitle: 'Live fleet, rentals, billing and verification at a glance' },
-  riders: { title: 'Riders Directory', subtitle: 'Onboarding accounts, active riders and account status' },
-  bookings: { title: 'Bookings & Rentals', subtitle: 'Confirm bookings, hand over bikes, take returns' },
-  fleet: { title: 'Vehicles & Physical Fleet', subtitle: 'Models, pricing plans, physical bikes and battery levels' },
-  kyc: { title: 'KYC Document Approvals', subtitle: 'Inspect Aadhaar, address proofs and selfies; approve or reject' },
-  infrastructure: { title: 'EV Hubs & Swap Stations', subtitle: 'Pick-up points and battery-swap docks' },
-  finance: { title: 'P&L, Earnings & Expenses', subtitle: 'Net financial summary, operating expenses, and weekly billing' },
-  service: { title: 'Service & Maintenance', subtitle: 'Technicians, service tickets, parts tracking, and damage' },
-  recovery: { title: 'Roadside & Police Recovery', subtitle: 'Breakdown dispatch, theft and police-hold jobs' },
-  support: { title: 'Rider Support Helpdesk', subtitle: 'Manage incoming rider issues, bike complaints, and resolutions' },
-  employees: { title: 'Employees & Payroll', subtitle: 'Organization hierarchy, attendance calendar, and payroll sheets' },
-  reports: { title: 'Reports & MRR', subtitle: 'Recurring revenue and operational trends' },
-  settings: { title: 'Pricing & System', subtitle: 'Master data and integrations' },
+/** Redirects instead of rendering a screen this role can't open. */
+const Guard: React.FC<{ screen: string; children: React.ReactNode }> = ({ screen, children }) => {
+  const { can } = useAuth();
+  if (!can(screen)) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
 };
 
 export const App: React.FC = () => {
-  const { user, isLoading, can } = useAuth();
-  const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -53,17 +49,12 @@ export const App: React.FC = () => {
     if (user) fetchStats();
   }, [user]);
 
-  // If the current tab isn't allowed for this role, fall back to overview.
-  useEffect(() => {
-    if (user && !can(activeTab)) setActiveTab('overview');
-  }, [user, activeTab]); // eslint-disable-line
-
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-[#F8FAFC] flex items-center justify-center text-[#38A169] font-semibold text-sm">
+      <div className="min-h-screen w-full bg-paper flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#62CE90] border-t-transparent rounded-full animate-spin" />
-          <span>Loading Operations Hub…</span>
+          <div className="w-5 h-5 border border-rule-strong border-t-accent rounded-full animate-spin" />
+          <span className="text-[12px] text-ink-soft">Loading Operations…</span>
         </div>
       </div>
     );
@@ -71,47 +62,85 @@ export const App: React.FC = () => {
 
   if (!user) return <Login />;
 
-  const meta = META[activeTab] || META.overview;
-  const allowed = can(activeTab);
+  const item = itemForPath(location.pathname);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex">
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        pendingKycCount={stats?.riders?.pendingKyc || 0}
-      />
+    <div className="min-h-screen bg-paper flex">
+      <Sidebar pendingKycCount={stats?.riders?.pendingKyc || 0} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          title={meta.title}
-          subtitle={meta.subtitle}
+          title={item?.title || 'Dashboard'}
+          subtitle={item?.subtitle || ''}
+          tabs={item?.tabs}
           onRefresh={fetchStats}
           isRefreshing={isRefreshing}
         />
 
-        <main className="flex-1 p-8 overflow-y-auto max-w-7xl w-full mx-auto">
-          {!allowed ? (
-            <div className="py-24 text-center text-sm font-bold text-[#8A97A0]">
-              Your role doesn’t have access to this screen.
-            </div>
-          ) : (
-            <>
-              {activeTab === 'overview' && <Overview stats={stats} setActiveTab={setActiveTab} />}
-              {activeTab === 'riders' && <Riders />}
-              {activeTab === 'bookings' && <Bookings />}
-              {activeTab === 'fleet' && <Fleet />}
-              {activeTab === 'kyc' && <KycReview />}
-              {activeTab === 'infrastructure' && <Infrastructure />}
-              {activeTab === 'finance' && <Finance />}
-              {activeTab === 'service' && <ServiceRecovery />}
-              {activeTab === 'recovery' && <ServiceRecovery />}
-              {activeTab === 'support' && <SupportTickets />}
-              {activeTab === 'employees' && <Employees />}
-              {activeTab === 'reports' && <Overview stats={stats} setActiveTab={setActiveTab} />}
-              {activeTab === 'settings' && <Infrastructure />}
-            </>
-          )}
+        <main className="flex-1 px-7 py-6 min-w-0">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+            <Route
+              path="/dashboard"
+              element={
+                <Guard screen="overview">
+                  <Overview stats={stats} setActiveTab={(s) => navigate(pathForScreen(s))} />
+                </Guard>
+              }
+            />
+
+            <Route path="/riders/*" element={<Guard screen="riders"><Riders /></Guard>} />
+            <Route path="/bookings/*" element={<Guard screen="bookings"><Bookings /></Guard>} />
+            <Route path="/fleet/*" element={<Guard screen="fleet"><Fleet /></Guard>} />
+            <Route path="/kyc/*" element={<Guard screen="kyc"><KycReview /></Guard>} />
+
+            <Route path="/network" element={<Navigate to="/network/hubs" replace />} />
+            <Route
+              path="/network/hubs"
+              element={<Guard screen="infrastructure"><Infrastructure tab="hubs" /></Guard>}
+            />
+            <Route
+              path="/network/swap-stations"
+              element={<Guard screen="infrastructure"><Infrastructure tab="stations" /></Guard>}
+            />
+
+            <Route path="/finance/*" element={<Guard screen="finance"><Finance /></Guard>} />
+
+            <Route path="/service" element={<Navigate to="/service/tickets" replace />} />
+            <Route
+              path="/service/tickets"
+              element={<Guard screen="service"><ServiceRecovery tab="tickets" /></Guard>}
+            />
+            <Route
+              path="/service/technicians"
+              element={<Guard screen="service"><ServiceRecovery tab="technicians" /></Guard>}
+            />
+            <Route
+              path="/service/damage"
+              element={<Guard screen="service"><ServiceRecovery tab="damage" /></Guard>}
+            />
+            <Route
+              path="/recovery"
+              element={<Guard screen="recovery"><ServiceRecovery tab="recovery" /></Guard>}
+            />
+
+            <Route path="/support/*" element={<Guard screen="support"><SupportTickets /></Guard>} />
+            <Route path="/people/*" element={<Guard screen="employees"><Employees /></Guard>} />
+            <Route path="/reports" element={<Guard screen="reports"><Reports /></Guard>} />
+
+            <Route path="/settings" element={<Navigate to="/settings/pricing" replace />} />
+            <Route
+              path="/settings/pricing"
+              element={<Guard screen="settings"><Settings tab="pricing" /></Guard>}
+            />
+            <Route
+              path="/settings/integrations"
+              element={<Guard screen="settings"><Settings tab="integrations" /></Guard>}
+            />
+
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </main>
       </div>
     </div>

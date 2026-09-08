@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Bike, ShieldCheck, ArrowRight, Lock, Phone, KeyRound, AlertCircle } from 'lucide-react';
+import { ArrowRight, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Btn, Field, input } from '../components/ui';
+
+const IS_DEV = import.meta.env.DEV;
 
 export const Login: React.FC = () => {
   const { requestOtp, loginWithOtp } = useAuth();
 
-  const [phone, setPhone] = useState('+917095682464');
+  const [phone, setPhone] = useState(IS_DEV ? '+917095682464' : '');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [loading, setLoading] = useState(false);
@@ -28,7 +31,7 @@ export const Login: React.FC = () => {
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone.trim() || phone.length < 10) {
-      setError('Please enter a valid phone number (e.g. +91 7095682464 or 7095682464)');
+      setError('Enter a valid phone number, e.g. +91 7095682464');
       return;
     }
 
@@ -48,7 +51,7 @@ export const Login: React.FC = () => {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp.trim() || otp.length < 4) {
-      setError('Please enter the 6-digit OTP sent to your phone');
+      setError('Enter the 6-digit code sent to your phone');
       return;
     }
 
@@ -63,146 +66,97 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F8F7FD] flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      {/* Background Soft Blurs */}
-      <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#62CE90]/15 blur-[90px] pointer-events-none" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#62CE90]/10 blur-[90px] pointer-events-none" />
-
-      {/* Floating Neumorphic Card */}
-      <div className="w-full max-w-md bg-white border border-[#EDF2F1] rounded-3xl p-8 sm:p-10 shadow-neo relative z-10">
-        {/* Brand Icon & Heading */}
-        <div className="flex flex-col items-center text-center mb-8">
-          <div className="w-18 h-18 rounded-3xl bg-white p-2 border border-[#EAF8F1] shadow-neo mb-4 flex items-center justify-center">
-            <img src="/assets/icon.png" alt="Ride For You" className="w-14 h-14 rounded-2xl object-contain" />
-          </div>
-
-          <h1 className="text-2xl font-extrabold text-[#172B3A] tracking-tight">
-            RIDE FOR <span className="text-[#62CE90]">YOU</span>
-          </h1>
-          <p className="text-xs font-extrabold text-[#8A97A0] tracking-wider uppercase mt-1">
-            Enterprise Fleet Admin Portal
-          </p>
-
-          <div className="mt-3 flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#EAF8F1] border border-[#C8F0DC] text-[11px] text-[#38A169] font-bold shadow-neo-sm">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#62CE90]" />
-            <span>2FA OTP Secure Gateway</span>
+    <div className="min-h-screen w-full bg-paper flex items-center justify-center p-6">
+      <div className="w-full max-w-[380px]">
+        <div className="flex items-center gap-2.5 mb-7">
+          <img src="/assets/icon.png" alt="" className="w-8 h-8 object-contain" />
+          <div>
+            <h1 className="u-title text-[19px] text-ink leading-none">Ride For You</h1>
+            <span className="u-label text-[9.5px]">Operations</span>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-6 p-3.5 rounded-2xl bg-[#FEE2E2] border border-[#FCA5A5]/60 flex items-start gap-2.5 text-[#EF4444] text-xs font-semibold">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
+        <div className="bg-surface border border-rule rounded-md p-6">
+          <h2 className="u-title text-[16px] text-ink">Sign in</h2>
+          <p className="text-[12.5px] text-ink-soft mt-0.5 mb-5">
+            {step === 'phone'
+              ? 'Staff access is verified by one-time code.'
+              : `Code sent to ${phone}.`}
+          </p>
 
-        {step === 'phone' ? (
-          <form onSubmit={handleRequestOtp} className="space-y-5">
-            <div>
-              <label className="block text-xs font-extrabold text-[#172B3A] mb-2">
-                Administrator Phone Number
-              </label>
-              <div className="relative">
-                <Phone className="w-4 h-4 text-[#8A97A0] absolute left-4 top-3.5" />
+          {error && (
+            <div className="mb-4 px-3 py-2.5 rounded-sm bg-signal-redSoft border border-signal-redLine flex items-start gap-2 text-signal-red text-[12px]">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" strokeWidth={1.75} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {step === 'phone' ? (
+            <form onSubmit={handleRequestOtp} className="space-y-4">
+              <Field label="Phone number">
                 <input
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+91 9876543210"
                   required
-                  className="w-full bg-[#F8F7FD] border border-[#EDF2F1] text-[#172B3A] rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:border-[#62CE90] focus:ring-2 focus:ring-[#62CE90]/20 font-bold transition shadow-neo-inset placeholder:text-[#8A97A0]"
+                  className={`${input} u-num`}
                 />
-              </div>
-              <p className="text-[11px] text-[#8A97A0] mt-2">
-                Super Admin Access: <span className="text-[#62CE90] font-extrabold">+917095682464</span>
-              </p>
-            </div>
+              </Field>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white font-extrabold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.99] transition shadow-neo-btn disabled:opacity-50"
-            >
-              {loading ? (
-                <span>Generating OTP challenge...</span>
-              ) : (
-                <>
-                  <span>Request Login OTP</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} className="space-y-5">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs font-extrabold text-[#172B3A]">
-                  Enter 6-Digit OTP Code
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setStep('phone')}
-                  className="text-[11px] text-[#62CE90] font-bold hover:underline"
-                >
-                  Change phone
-                </button>
-              </div>
-
-              <div className="relative">
-                <KeyRound className="w-4 h-4 text-[#8A97A0] absolute left-4 top-3.5" />
+              <Btn type="submit" variant="primary" disabled={loading} className="w-full justify-center py-2">
+                {loading ? 'Sending code…' : <>Send code <ArrowRight className="w-3.5 h-3.5" strokeWidth={2} /></>}
+              </Btn>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="u-label">One-time code</span>
+                  <button
+                    type="button"
+                    onClick={() => setStep('phone')}
+                    className="text-[11.5px] text-accent hover:underline"
+                  >
+                    Change number
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  placeholder="e.g. 123456"
+                  placeholder="000000"
                   maxLength={6}
                   required
                   autoFocus
-                  className="w-full bg-[#F8F7FD] border border-[#EDF2F1] text-[#172B3A] rounded-2xl pl-11 pr-4 py-3.5 text-base tracking-widest text-center focus:outline-none focus:border-[#62CE90] focus:ring-2 focus:ring-[#62CE90]/20 font-extrabold transition shadow-neo-inset"
+                  className={`${input} u-num text-center text-[18px] tracking-[0.4em] py-2.5`}
                 />
               </div>
-              <p className="text-[11px] text-[#8A97A0] mt-2 text-center">
-                OTP sent to <strong className="text-[#172B3A]">{phone}</strong> (dev master: <span className="text-[#62CE90] font-bold">123456</span>)
-              </p>
-            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white font-extrabold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 hover:opacity-95 active:scale-[0.99] transition shadow-neo-btn disabled:opacity-50"
-            >
-              {loading ? (
-                <span>Authenticating role...</span>
+              <Btn type="submit" variant="primary" disabled={loading} className="w-full justify-center py-2">
+                {loading ? 'Verifying…' : <><Lock className="w-3.5 h-3.5" strokeWidth={2} /> Verify and continue</>}
+              </Btn>
+
+              {countdown > 0 ? (
+                <p className="text-center text-[11.5px] text-ink-soft">Resend in {countdown}s</p>
               ) : (
-                <>
-                  <Lock className="w-4 h-4" />
-                  <span>Verify & Enter Dashboard</span>
-                </>
+                <button
+                  type="button"
+                  onClick={handleRequestOtp}
+                  className="w-full text-center text-[11.5px] text-accent hover:underline"
+                >
+                  Resend code
+                </button>
               )}
-            </button>
-
-            {countdown > 0 ? (
-              <p className="text-center text-[11px] text-[#8A97A0]">
-                Resend code in {countdown}s
-              </p>
-            ) : (
-              <button
-                type="button"
-                onClick={handleRequestOtp}
-                className="w-full text-center text-xs text-[#62CE90] hover:underline font-bold"
-              >
-                Resend OTP
-              </button>
-            )}
-          </form>
-        )}
-
-        <div className="mt-8 pt-6 border-t border-[#EDF2F1] text-center">
-          <p className="text-[11px] text-[#8A97A0] font-semibold">
-            Ride For You Enterprise Fleet Management System • v2.5.0
-          </p>
+            </form>
+          )}
         </div>
+
+        {IS_DEV && (
+          <p className="text-[11px] text-ink-soft mt-3">
+            Dev only — master OTP <span className="u-num text-ink-muted">123456</span>
+          </p>
+        )}
       </div>
     </div>
   );

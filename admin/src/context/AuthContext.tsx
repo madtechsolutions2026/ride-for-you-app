@@ -8,10 +8,10 @@ export type StaffRole = 'ADMIN' | 'EXECUTIVE' | 'SUPPORT';
 export const ROLE_DEFAULT_SCREENS: Record<StaffRole, string[]> = {
   ADMIN: [
     'overview', 'riders', 'fleet', 'bookings', 'kyc', 'infrastructure',
-    'finance', 'service', 'recovery', 'employees', 'reports', 'settings',
+    'finance', 'service', 'recovery', 'support', 'employees', 'reports', 'settings',
   ],
   EXECUTIVE: ['overview', 'fleet', 'bookings', 'kyc', 'infrastructure', 'service', 'recovery'],
-  SUPPORT: ['overview', 'riders', 'bookings', 'finance', 'recovery'],
+  SUPPORT: ['overview', 'riders', 'bookings', 'finance', 'recovery', 'support'],
 };
 
 interface AdminUser {

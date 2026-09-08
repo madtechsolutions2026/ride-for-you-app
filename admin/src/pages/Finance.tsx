@@ -158,8 +158,8 @@ export const Finance: React.FC = () => {
                 onClick={() => setTab(t.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold capitalize transition ${
                   tab === t.id
-                    ? 'bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white shadow-neo-btn'
-                    : 'bg-white text-[#8A97A0] border border-[#EDF2F1] shadow-neo-sm'
+                    ? 'bg-accent text-white shadow-neo-btn'
+                    : 'bg-white text-[#7A756B] border border-[#E5E2DB] shadow-neo-sm'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -181,8 +181,8 @@ export const Finance: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Monthly MoM Trends */}
           <Card className="lg:col-span-2 p-6">
-            <h3 className="text-base font-extrabold text-[#172B3A] mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-[#62CE90]" /> Month-over-Month P&L Performance
+            <h3 className="text-base font-extrabold text-[#16150F] mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#1F6F43]" /> Month-over-Month P&L Performance
             </h3>
 
             <div className="space-y-4">
@@ -192,36 +192,36 @@ export const Finance: React.FC = () => {
                 const expWidth = Math.min(100, Math.round((trend.expenses / maxVal) * 100));
 
                 return (
-                  <div key={idx} className="bg-[#F8FAFC] p-4 rounded-xl border border-[#EDF2F1]">
+                  <div key={idx} className="bg-[#FAF9F7] p-4 rounded-xl border border-[#E5E2DB]">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-extrabold text-sm text-[#172B3A]">
+                      <span className="font-extrabold text-sm text-[#16150F]">
                         {trend.month} {trend.year}
                       </span>
-                      <span className={`text-xs font-black ${trend.profit >= 0 ? 'text-[#38A169]' : 'text-[#EF4444]'}`}>
+                      <span className={`text-xs font-black ${trend.profit >= 0 ? 'text-[#1F6F43]' : 'text-[#A02724]'}`}>
                         Net: {rupees(trend.profit)}
                       </span>
                     </div>
 
                     <div className="space-y-2">
                       <div>
-                        <div className="flex justify-between text-[10px] text-[#64748B] mb-0.5">
+                        <div className="flex justify-between text-[10px] text-[#5C584F] mb-0.5">
                           <span>Revenue: {rupees(trend.revenue)}</span>
                         </div>
-                        <div className="h-2 w-full bg-[#E2E8F0] rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-[#E5E2DB] rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#62CE90] rounded-full"
+                            className="h-full bg-[#1F6F43] rounded-full"
                             style={{ width: `${revWidth}%` }}
                           />
                         </div>
                       </div>
 
                       <div>
-                        <div className="flex justify-between text-[10px] text-[#64748B] mb-0.5">
+                        <div className="flex justify-between text-[10px] text-[#5C584F] mb-0.5">
                           <span>Expenses: {rupees(trend.expenses)}</span>
                         </div>
-                        <div className="h-2 w-full bg-[#E2E8F0] rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-[#E5E2DB] rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#F87171] rounded-full"
+                            className="h-full bg-[#A02724] rounded-full"
                             style={{ width: `${expWidth}%` }}
                           />
                         </div>
@@ -235,20 +235,20 @@ export const Finance: React.FC = () => {
 
           {/* Category Breakdown */}
           <Card className="p-6">
-            <h3 className="text-base font-extrabold text-[#172B3A] mb-4 flex items-center gap-2">
-              <PieChart className="w-5 h-5 text-[#62CE90]" /> Expenses by Category
+            <h3 className="text-base font-extrabold text-[#16150F] mb-4 flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-[#1F6F43]" /> Expenses by Category
             </h3>
 
             <div className="space-y-3">
               {expensesByCategory.map((cat: any) => (
-                <div key={cat.category} className="flex items-center justify-between p-3 rounded-xl bg-[#F8FAFC] border border-[#EDF2F1]">
+                <div key={cat.category} className="flex items-center justify-between p-3 rounded-xl bg-[#FAF9F7] border border-[#E5E2DB]">
                   <div>
                     <Pill tone={cat.category === 'RENT' ? 'blue' : cat.category === 'SALARY' ? 'green' : cat.category === 'SERVICE' ? 'amber' : 'slate'}>
                       {cat.category}
                     </Pill>
-                    <p className="text-[10px] text-[#8A97A0] mt-1">{cat.count} recorded entries</p>
+                    <p className="text-[10px] text-[#7A756B] mt-1">{cat.count} recorded entries</p>
                   </div>
-                  <span className="font-extrabold text-[#172B3A]">{rupees(cat.amount)}</span>
+                  <span className="font-extrabold text-[#16150F]">{rupees(cat.amount)}</span>
                 </div>
               ))}
             </div>
@@ -259,14 +259,14 @@ export const Finance: React.FC = () => {
       {/* 2. EXPENSES LEDGER */}
       {tab === 'expenses' && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 bg-white p-3 rounded-2xl border border-[#EDF2F1]">
-            <span className="text-xs font-bold text-[#8A97A0]">Category Filter:</span>
+          <div className="flex items-center gap-2 bg-white p-3 rounded-2xl border border-[#E5E2DB]">
+            <span className="text-xs font-bold text-[#7A756B]">Category Filter:</span>
             {['ALL', 'RENT', 'SALARY', 'SERVICE', 'MISC'].map((cat) => (
               <button
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-                  categoryFilter === cat ? 'bg-[#172B3A] text-white' : 'bg-[#F1F5F9] text-[#64748B]'
+                  categoryFilter === cat ? 'bg-[#16150F] text-white' : 'bg-[#EFEDE8] text-[#5C584F]'
                 }`}
               >
                 {cat}
@@ -281,7 +281,7 @@ export const Finance: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide border-b border-[#EDF2F1]">
+                    <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
                       <th className="px-5 py-3">Category</th>
                       <th className="px-5 py-3">Note / Description</th>
                       <th className="px-5 py-3">Hub</th>
@@ -292,22 +292,22 @@ export const Finance: React.FC = () => {
                   </thead>
                   <tbody>
                     {filteredExpenses.map((e) => (
-                      <tr key={e.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]">
+                      <tr key={e.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7]">
                         <td className="px-5 py-3">
                           <Pill tone={e.category === 'RENT' ? 'blue' : e.category === 'SALARY' ? 'green' : e.category === 'SERVICE' ? 'amber' : 'slate'}>
                             {e.category}
                           </Pill>
                         </td>
-                        <td className="px-5 py-3 font-medium text-[#172B3A] max-w-sm">
+                        <td className="px-5 py-3 font-medium text-[#16150F] max-w-sm">
                           {e.note}
                         </td>
-                        <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                        <td className="px-5 py-3 text-xs text-[#7A756B]">
                           {e.hub?.name || 'All / General'}
                         </td>
-                        <td className="px-5 py-3 font-extrabold text-[#EF4444]">
+                        <td className="px-5 py-3 font-extrabold text-[#A02724]">
                           - {rupees(e.amount)}
                         </td>
-                        <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                        <td className="px-5 py-3 text-xs text-[#7A756B]">
                           {new Date(e.date).toLocaleDateString('en-IN')}
                         </td>
                         <td className="px-5 py-3 text-right">
@@ -331,7 +331,7 @@ export const Finance: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase border-b border-[#E5E2DB]">
                   <th className="px-5 py-3">Rider · Bike</th>
                   <th className="px-5 py-3">Week</th>
                   <th className="px-5 py-3">Amount</th>
@@ -341,16 +341,16 @@ export const Finance: React.FC = () => {
               </thead>
               <tbody>
                 {invoices.map((i) => (
-                  <tr key={i.id} className="border-b border-[#F1F5F9] last:border-0">
+                  <tr key={i.id} className="border-b border-[#EFEDE8] last:border-0">
                     <td className="px-5 py-3">
-                      <div className="font-extrabold text-[#172B3A]">{i.rental?.user?.fullName || '—'}</div>
-                      <div className="text-xs text-[#8A97A0]">
+                      <div className="font-extrabold text-[#16150F]">{i.rental?.user?.fullName || '—'}</div>
+                      <div className="text-xs text-[#7A756B]">
                         {i.rental?.user?.phone} · {i.rental?.bike?.registrationNumber}
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-xs text-[#475569]">W{i.weekNumber}</td>
-                    <td className="px-5 py-3 font-extrabold text-[#172B3A]">{rupees(i.amount)}</td>
-                    <td className="px-5 py-3 text-xs text-[#475569]">
+                    <td className="px-5 py-3 text-xs text-[#4A4740]">W{i.weekNumber}</td>
+                    <td className="px-5 py-3 font-extrabold text-[#16150F]">{rupees(i.amount)}</td>
+                    <td className="px-5 py-3 text-xs text-[#4A4740]">
                       {new Date(i.dueAt).toLocaleDateString('en-IN')}
                     </td>
                     <td className="px-5 py-3">
@@ -370,7 +370,7 @@ export const Finance: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase border-b border-[#E5E2DB]">
                   <th className="px-5 py-3">Rider</th>
                   <th className="px-5 py-3">Purpose</th>
                   <th className="px-5 py-3">Amount</th>
@@ -381,22 +381,22 @@ export const Finance: React.FC = () => {
               </thead>
               <tbody>
                 {payments.map((p) => (
-                  <tr key={p.id} className="border-b border-[#F1F5F9] last:border-0">
+                  <tr key={p.id} className="border-b border-[#EFEDE8] last:border-0">
                     <td className="px-5 py-3">
-                      <div className="font-extrabold text-[#172B3A]">{p.user?.fullName || '—'}</div>
-                      <div className="text-xs text-[#8A97A0]">{p.user?.phone}</div>
+                      <div className="font-extrabold text-[#16150F]">{p.user?.fullName || '—'}</div>
+                      <div className="text-xs text-[#7A756B]">{p.user?.phone}</div>
                     </td>
                     <td className="px-5 py-3 text-xs">
                       <Pill tone="slate">{p.purpose}</Pill>
                     </td>
-                    <td className={`px-5 py-3 font-extrabold ${p.amount < 0 ? 'text-[#DC2626]' : 'text-[#172B3A]'}`}>
+                    <td className={`px-5 py-3 font-extrabold ${p.amount < 0 ? 'text-[#A02724]' : 'text-[#16150F]'}`}>
                       {rupees(p.amount)}
                     </td>
-                    <td className="px-5 py-3 text-xs text-[#475569]">{p.provider}</td>
+                    <td className="px-5 py-3 text-xs text-[#4A4740]">{p.provider}</td>
                     <td className="px-5 py-3">
                       <Pill tone={toneFor(p.status)}>{p.status}</Pill>
                     </td>
-                    <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                    <td className="px-5 py-3 text-xs text-[#7A756B]">
                       {new Date(p.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                     </td>
                   </tr>
@@ -445,7 +445,7 @@ export const Finance: React.FC = () => {
               <textarea name="note" required rows={3} placeholder="Provide details of this expense…" className={input} />
             </Field>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#EDF2F1]">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#E5E2DB]">
               <Btn type="button" onClick={() => setIsExpenseModalOpen(false)}>
                 Cancel
               </Btn>

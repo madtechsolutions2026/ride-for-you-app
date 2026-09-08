@@ -5,8 +5,7 @@ import { Card, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptySta
 
 type Tab = 'tickets' | 'technicians' | 'damage' | 'recovery';
 
-export const ServiceRecovery: React.FC = () => {
-  const [tab, setTab] = useState<Tab>('tickets');
+export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) => {
   const [serviceTickets, setServiceTickets] = useState<any[]>([]);
   const [technicians, setTechnicians] = useState<any[]>([]);
   const [damage, setDamage] = useState<any[]>([]);
@@ -213,35 +212,8 @@ export const ServiceRecovery: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Tabs */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex gap-2 flex-wrap">
-          {(
-            [
-              { id: 'tickets', label: `Service Tickets (${serviceTickets.length})`, icon: Wrench },
-              { id: 'technicians', label: `Technicians (${technicians.length})`, icon: UserCog },
-              { id: 'damage', label: `Damage Reports (${damage.length})`, icon: AlertCircle },
-              { id: 'recovery', label: `Roadside Recovery (${recovery.length})`, icon: Truck },
-            ] as const
-          ).map((t) => {
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold capitalize transition ${
-                  tab === t.id
-                    ? 'bg-gradient-to-r from-[#62CE90] to-[#48B87A] text-white shadow-neo-btn'
-                    : 'bg-white text-[#8A97A0] border border-[#EDF2F1] shadow-neo-sm'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-
+      {/* Tab selection lives in the URL — see nav.ts. */}
+      <div className="flex items-center justify-end gap-2">
         {tab === 'tickets' && (
           <Btn variant="primary" onClick={() => setIsNewTicketOpen(true)}>
             <Plus className="w-3.5 h-3.5" /> New Service Ticket
@@ -266,7 +238,7 @@ export const ServiceRecovery: React.FC = () => {
         <Card>
           {serviceTickets.length === 0 ? (
             <EmptyState
-              icon={<Wrench className="w-8 h-8 mx-auto text-[#CBD5E1]" />}
+              icon={<Wrench className="w-8 h-8 mx-auto text-[#D6D2C8]" />}
               title="No service tickets"
               hint="Create a service ticket to track bike maintenance, parts used, and repairs."
             />
@@ -274,7 +246,7 @@ export const ServiceRecovery: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide border-b border-[#EDF2F1]">
+                  <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
                     <th className="px-5 py-3">Bike</th>
                     <th className="px-5 py-3">Reported Issue</th>
                     <th className="px-5 py-3">Technician</th>
@@ -286,22 +258,22 @@ export const ServiceRecovery: React.FC = () => {
                 </thead>
                 <tbody>
                   {serviceTickets.map((st) => (
-                    <tr key={st.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]">
+                    <tr key={st.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7]">
                       <td className="px-5 py-3">
-                        <div className="font-extrabold text-[#172B3A]">{st.bike?.registrationNumber}</div>
-                        <div className="text-xs text-[#8A97A0]">{st.bike?.model?.name}</div>
+                        <div className="font-extrabold text-[#16150F]">{st.bike?.registrationNumber}</div>
+                        <div className="text-xs text-[#7A756B]">{st.bike?.model?.name}</div>
                       </td>
-                      <td className="px-5 py-3 font-semibold text-[#172B3A] max-w-xs">{st.reportedIssue}</td>
-                      <td className="px-5 py-3 text-xs text-[#475569]">
+                      <td className="px-5 py-3 font-semibold text-[#16150F] max-w-xs">{st.reportedIssue}</td>
+                      <td className="px-5 py-3 text-xs text-[#4A4740]">
                         {st.assignedServicePerson?.name || 'Unassigned'}
                       </td>
-                      <td className="px-5 py-3 font-bold text-[#172B3A]">{rupees(st.totalCost)}</td>
+                      <td className="px-5 py-3 font-bold text-[#16150F]">{rupees(st.totalCost)}</td>
                       <td className="px-5 py-3">
                         <Pill tone={st.status === 'COMPLETED' ? 'green' : st.status === 'IN_PROGRESS' ? 'amber' : 'blue'}>
                           {st.status}
                         </Pill>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#8A97A0]">
+                      <td className="px-5 py-3 text-xs text-[#7A756B]">
                         {new Date(st.createdAt).toLocaleDateString('en-IN')}
                       </td>
                       <td className="px-5 py-3 text-right">
@@ -327,7 +299,7 @@ export const ServiceRecovery: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase tracking-wide border-b border-[#EDF2F1]">
+                  <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
                     <th className="px-5 py-3">Technician Name</th>
                     <th className="px-5 py-3">Specialization</th>
                     <th className="px-5 py-3">Assigned Hub</th>
@@ -337,13 +309,13 @@ export const ServiceRecovery: React.FC = () => {
                 </thead>
                 <tbody>
                   {technicians.map((tech) => (
-                    <tr key={tech.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]">
+                    <tr key={tech.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7]">
                       <td className="px-5 py-3">
-                        <div className="font-extrabold text-[#172B3A]">{tech.name}</div>
-                        <div className="text-xs text-[#8A97A0]">{tech.phone}</div>
+                        <div className="font-extrabold text-[#16150F]">{tech.name}</div>
+                        <div className="text-xs text-[#7A756B]">{tech.phone}</div>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#475569]">{tech.specialization || 'General Mechanic'}</td>
-                      <td className="px-5 py-3 text-xs text-[#475569]">{tech.hub?.name || 'All Hubs'}</td>
+                      <td className="px-5 py-3 text-xs text-[#4A4740]">{tech.specialization || 'General Mechanic'}</td>
+                      <td className="px-5 py-3 text-xs text-[#4A4740]">{tech.hub?.name || 'All Hubs'}</td>
                       <td className="px-5 py-3">
                         <Pill tone={tech.activeTicketCount > 0 ? 'amber' : 'slate'}>
                           {tech.activeTicketCount || 0} active
@@ -365,12 +337,12 @@ export const ServiceRecovery: React.FC = () => {
       {tab === 'damage' && (
         <Card>
           {damage.length === 0 ? (
-            <EmptyState icon={<Wrench className="w-8 h-8 mx-auto text-[#CBD5E1]" />} title="No damage reports" />
+            <EmptyState icon={<Wrench className="w-8 h-8 mx-auto text-[#D6D2C8]" />} title="No damage reports" />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                  <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase border-b border-[#E5E2DB]">
                     <th className="px-5 py-3">Bike · Rider</th>
                     <th className="px-5 py-3">Severity</th>
                     <th className="px-5 py-3">Description</th>
@@ -381,18 +353,18 @@ export const ServiceRecovery: React.FC = () => {
                 </thead>
                 <tbody>
                   {damage.map((d) => (
-                    <tr key={d.id} className="border-b border-[#F1F5F9] last:border-0">
+                    <tr key={d.id} className="border-b border-[#EFEDE8] last:border-0">
                       <td className="px-5 py-3">
-                        <div className="font-extrabold text-[#172B3A]">{d.bike?.registrationNumber}</div>
-                        <div className="text-xs text-[#8A97A0]">
+                        <div className="font-extrabold text-[#16150F]">{d.bike?.registrationNumber}</div>
+                        <div className="text-xs text-[#7A756B]">
                           {d.rental?.user?.fullName} · {d.rental?.user?.phone}
                         </div>
                       </td>
                       <td className="px-5 py-3">
                         <Pill tone={toneFor(d.severity)}>{d.severity}</Pill>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#475569] max-w-xs">{d.description}</td>
-                      <td className="px-5 py-3 font-bold text-[#172B3A]">{rupees(d.estimatedCost)}</td>
+                      <td className="px-5 py-3 text-xs text-[#4A4740] max-w-xs">{d.description}</td>
+                      <td className="px-5 py-3 font-bold text-[#16150F]">{rupees(d.estimatedCost)}</td>
                       <td className="px-5 py-3">
                         <Pill tone={toneFor(d.chargeStatus)}>{d.chargeStatus}</Pill>
                       </td>
@@ -425,12 +397,12 @@ export const ServiceRecovery: React.FC = () => {
       {tab === 'recovery' && (
         <Card>
           {recovery.length === 0 ? (
-            <EmptyState icon={<Truck className="w-8 h-8 mx-auto text-[#CBD5E1]" />} title="No recovery jobs" />
+            <EmptyState icon={<Truck className="w-8 h-8 mx-auto text-[#D6D2C8]" />} title="No recovery jobs" />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] font-extrabold text-[#8A97A0] uppercase border-b border-[#EDF2F1]">
+                  <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase border-b border-[#E5E2DB]">
                     <th className="px-5 py-3">Ref · Type</th>
                     <th className="px-5 py-3">Bike / Rider</th>
                     <th className="px-5 py-3">Location</th>
@@ -441,21 +413,21 @@ export const ServiceRecovery: React.FC = () => {
                 </thead>
                 <tbody>
                   {recovery.map((j) => (
-                    <tr key={j.id} className="border-b border-[#F1F5F9] last:border-0">
+                    <tr key={j.id} className="border-b border-[#EFEDE8] last:border-0">
                       <td className="px-5 py-3">
-                        <div className="font-extrabold text-[#172B3A]">{j.reference}</div>
+                        <div className="font-extrabold text-[#16150F]">{j.reference}</div>
                         <Pill tone={j.type === 'POLICE_HOLD' || j.type === 'THEFT' ? 'red' : 'slate'}>
                           {j.type}
                         </Pill>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#475569]">
+                      <td className="px-5 py-3 text-xs text-[#4A4740]">
                         {j.bike?.registrationNumber || '—'}
                         <br />
-                        <span className="text-[#8A97A0]">
+                        <span className="text-[#7A756B]">
                           {j.rental?.user?.fullName || j.reportedByPhone || ''}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#475569] max-w-[180px]">{j.locationText || '—'}</td>
+                      <td className="px-5 py-3 text-xs text-[#4A4740] max-w-[180px]">{j.locationText || '—'}</td>
                       <td className="px-5 py-3">
                         <Pill tone={toneFor(j.priority)}>{j.priority}</Pill>
                       </td>
@@ -548,7 +520,7 @@ export const ServiceRecovery: React.FC = () => {
               <textarea name="note" rows={2} placeholder="Condition observations…" className={input} />
             </Field>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#EDF2F1]">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#E5E2DB]">
               <Btn type="button" onClick={() => setIsNewTicketOpen(false)}>
                 Cancel
               </Btn>
@@ -587,7 +559,7 @@ export const ServiceRecovery: React.FC = () => {
               </select>
             </Field>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#EDF2F1]">
+            <div className="flex justify-end gap-2 pt-3 border-t border-[#E5E2DB]">
               <Btn type="button" onClick={() => setIsNewTechOpen(false)}>
                 Cancel
               </Btn>
@@ -608,42 +580,42 @@ export const ServiceRecovery: React.FC = () => {
         >
           <div className="space-y-5">
             {/* Header info */}
-            <div className="grid grid-cols-3 gap-3 bg-[#F8FAFC] p-4 rounded-xl border border-[#EDF2F1]">
+            <div className="grid grid-cols-3 gap-3 bg-[#FAF9F7] p-4 rounded-xl border border-[#E5E2DB]">
               <div>
-                <p className="text-[10px] font-extrabold text-[#8A97A0] uppercase">Issue</p>
-                <p className="text-sm font-extrabold text-[#172B3A]">{selectedTicket.reportedIssue}</p>
+                <p className="text-[10px] font-extrabold text-[#7A756B] uppercase">Issue</p>
+                <p className="text-sm font-extrabold text-[#16150F]">{selectedTicket.reportedIssue}</p>
               </div>
               <div>
-                <p className="text-[10px] font-extrabold text-[#8A97A0] uppercase">Technician</p>
-                <p className="text-sm font-extrabold text-[#172B3A]">{selectedTicket.assignedServicePerson?.name || 'Unassigned'}</p>
+                <p className="text-[10px] font-extrabold text-[#7A756B] uppercase">Technician</p>
+                <p className="text-sm font-extrabold text-[#16150F]">{selectedTicket.assignedServicePerson?.name || 'Unassigned'}</p>
               </div>
               <div>
-                <p className="text-[10px] font-extrabold text-[#8A97A0] uppercase">Status & Total Cost</p>
+                <p className="text-[10px] font-extrabold text-[#7A756B] uppercase">Status & Total Cost</p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <Pill tone={selectedTicket.status === 'COMPLETED' ? 'green' : 'amber'}>{selectedTicket.status}</Pill>
-                  <span className="font-extrabold text-sm text-[#172B3A]">{rupees(selectedTicket.totalCost)}</span>
+                  <span className="font-extrabold text-sm text-[#16150F]">{rupees(selectedTicket.totalCost)}</span>
                 </div>
               </div>
             </div>
 
             {/* Parts Used Section */}
             <div>
-              <h4 className="text-xs font-extrabold text-[#172B3A] uppercase tracking-wide mb-2">Parts Replaced / Used</h4>
+              <h4 className="text-xs font-extrabold text-[#16150F] uppercase tracking-wide mb-2">Parts Replaced / Used</h4>
               {selectedTicket.parts?.length > 0 ? (
                 <div className="space-y-1 mb-3">
                   {selectedTicket.parts.map((p: any) => (
-                    <div key={p.id} className="flex items-center justify-between text-xs p-2 bg-white rounded-lg border border-[#EDF2F1]">
-                      <span className="font-bold text-[#172B3A]">{p.partName} (x{p.quantity})</span>
-                      <span className="font-extrabold text-[#172B3A]">{rupees(p.cost * p.quantity)}</span>
+                    <div key={p.id} className="flex items-center justify-between text-xs p-2 bg-white rounded-lg border border-[#E5E2DB]">
+                      <span className="font-bold text-[#16150F]">{p.partName} (x{p.quantity})</span>
+                      <span className="font-extrabold text-[#16150F]">{rupees(p.cost * p.quantity)}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-[#94A3B8] italic mb-3">No parts recorded yet.</p>
+                <p className="text-xs text-[#A39D91] italic mb-3">No parts recorded yet.</p>
               )}
 
               {selectedTicket.status !== 'COMPLETED' && (
-                <form onSubmit={handleAddPart} className="flex gap-2 bg-[#F8FAFC] p-3 rounded-xl border border-[#EDF2F1]">
+                <form onSubmit={handleAddPart} className="flex gap-2 bg-[#FAF9F7] p-3 rounded-xl border border-[#E5E2DB]">
                   <input name="partName" required placeholder="Part name (e.g. Brake Shoe)" className={`${input} text-xs flex-1`} />
                   <input name="cost" type="number" required placeholder="Unit Cost ₹" className={`${input} text-xs w-28`} />
                   <input name="quantity" type="number" defaultValue="1" min="1" placeholder="Qty" className={`${input} text-xs w-16`} />
@@ -654,18 +626,18 @@ export const ServiceRecovery: React.FC = () => {
 
             {/* Notes Section */}
             <div>
-              <h4 className="text-xs font-extrabold text-[#172B3A] uppercase tracking-wide mb-2">Service Progress Notes</h4>
+              <h4 className="text-xs font-extrabold text-[#16150F] uppercase tracking-wide mb-2">Service Progress Notes</h4>
               {selectedTicket.notes?.length > 0 ? (
                 <div className="space-y-1.5 mb-3">
                   {selectedTicket.notes.map((n: any) => (
-                    <div key={n.id} className="text-xs p-2 bg-[#F8FAFC] rounded-lg border border-[#EDF2F1]">
-                      <p className="text-[#334155]">{n.note}</p>
-                      <span className="text-[10px] text-[#94A3B8]">{new Date(n.addedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <div key={n.id} className="text-xs p-2 bg-[#FAF9F7] rounded-lg border border-[#E5E2DB]">
+                      <p className="text-[#2E2C26]">{n.note}</p>
+                      <span className="text-[10px] text-[#A39D91]">{new Date(n.addedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-[#94A3B8] italic mb-3">No notes added.</p>
+                <p className="text-xs text-[#A39D91] italic mb-3">No notes added.</p>
               )}
 
               {selectedTicket.status !== 'COMPLETED' && (
@@ -677,7 +649,7 @@ export const ServiceRecovery: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-between items-center pt-3 border-t border-[#EDF2F1]">
+            <div className="flex justify-between items-center pt-3 border-t border-[#E5E2DB]">
               <div className="flex gap-2">
                 {selectedTicket.status === 'ASSIGNED' && (
                   <Btn onClick={() => handleUpdateTicketStatus('IN_PROGRESS')} disabled={busy}>

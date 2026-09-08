@@ -33,18 +33,18 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen w-full bg-[#FBFBFD] flex items-center justify-center p-6 text-[#172B3A]">
-          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-[#EDF2F1] shadow-xl text-center">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-[#FEF3C7] text-[#D97706] flex items-center justify-center mb-4">
+        <div className="min-h-screen w-full bg-[#FAF9F7] flex items-center justify-center p-6 text-[#16150F]">
+          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-[#E5E2DB] shadow-xl text-center">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-[#FBF3E2] text-[#8A5A00] flex items-center justify-center mb-4">
               <AlertTriangle className="w-7 h-7" />
             </div>
-            <h2 className="text-lg font-bold text-[#172B3A] mb-2">Something went wrong</h2>
-            <p className="text-xs text-[#8A97A0] mb-6">
+            <h2 className="text-lg font-bold text-[#16150F] mb-2">Something went wrong</h2>
+            <p className="text-xs text-[#7A756B] mb-6">
               The dashboard encountered an unexpected state. Click below to refresh and re-enter.
             </p>
             <button
               onClick={this.handleReload}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#1FAE72] to-[#5FD9A4] text-white font-bold text-xs flex items-center justify-center gap-2 hover:opacity-95 shadow-md shadow-emerald-500/20"
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#1F6F43] to-[#3F8760] text-white font-bold text-xs flex items-center justify-center gap-2 hover:opacity-95 shadow-md shadow-emerald-500/20"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Reload Admin Dashboard</span>
