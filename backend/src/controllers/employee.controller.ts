@@ -32,7 +32,7 @@ export async function listEmployees(req: AuthRequest, res: Response) {
       orderBy: { createdAt: 'desc' },
     });
 
-    return res.json({ count: employees.length, employees });
+    return res.json({ success: true, data: employees, count: employees.length });
   } catch (error: any) {
     console.error('Error in listEmployees:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -79,7 +79,7 @@ export async function createEmployee(req: AuthRequest, res: Response) {
       }).catch(() => {});
     }
 
-    return res.status(201).json({ message: 'Employee added successfully', employee });
+    return res.status(201).json({ success: true, message: 'Employee added successfully', data: employee });
   } catch (error: any) {
     console.error('Error in createEmployee:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -104,7 +104,7 @@ export async function updateEmployee(req: AuthRequest, res: Response) {
       include: { hub: true },
     });
 
-    return res.json({ message: 'Employee updated', employee: updated });
+    return res.json({ success: true, message: 'Employee updated', data: updated });
   } catch (error: any) {
     console.error('Error in updateEmployee:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -143,7 +143,7 @@ export async function getHierarchy(_req: AuthRequest, res: Response) {
       },
     }));
 
-    return res.json({ count: hierarchy.length, hierarchy });
+    return res.json({ success: true, data: hierarchy, count: hierarchy.length });
   } catch (error: any) {
     console.error('Error in getHierarchy:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -172,7 +172,7 @@ export async function listDeployments(req: AuthRequest, res: Response) {
       take: 100,
     });
 
-    return res.json({ count: logs.length, deployments: logs });
+    return res.json({ success: true, data: logs, count: logs.length });
   } catch (error: any) {
     console.error('Error in listDeployments:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -206,7 +206,11 @@ export async function getAttendance(req: AuthRequest, res: Response) {
       orderBy: [{ date: 'asc' }, { employee: { name: 'asc' } }],
     });
 
-    return res.json({ month: m, year: y, count: records.length, attendance: records });
+    return res.json({
+      success: true,
+      data: records,
+      meta: { month: m, year: y, count: records.length },
+    });
   } catch (error: any) {
     console.error('Error in getAttendance:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -245,7 +249,7 @@ export async function markAttendance(req: AuthRequest, res: Response) {
       include: { employee: true },
     });
 
-    return res.json({ message: 'Attendance marked successfully', attendance: record });
+    return res.json({ success: true, message: 'Attendance marked successfully', data: record });
   } catch (error: any) {
     console.error('Error in markAttendance:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -286,13 +290,16 @@ export async function listSalaries(req: AuthRequest, res: Response) {
     const paidAmount = salaries.filter((s) => s.status === 'PAID').reduce((acc, s) => acc + s.netPaid, 0);
 
     return res.json({
-      month: m,
-      year: y,
-      totalEmployees: salaries.length,
-      totalPayout,
-      paidAmount,
-      pendingAmount: totalPayout - paidAmount,
-      salaries,
+      success: true,
+      data: salaries,
+      meta: {
+        month: m,
+        year: y,
+        totalEmployees: salaries.length,
+        totalPayout,
+        paidAmount,
+        pendingAmount: totalPayout - paidAmount,
+      },
     });
   } catch (error: any) {
     console.error('Error in listSalaries:', error);
@@ -363,7 +370,11 @@ export async function generateSalaries(req: AuthRequest, res: Response) {
       generated.push(salaryRecord);
     }
 
-    return res.json({ message: `Generated payroll for ${generated.length} employees`, count: generated.length });
+    return res.json({
+      success: true,
+      message: `Generated payroll for ${generated.length} employees`,
+      data: { count: generated.length },
+    });
   } catch (error: any) {
     console.error('Error in generateSalaries:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -406,7 +417,7 @@ export async function markSalaryPaid(req: AuthRequest, res: Response) {
       },
     }).catch(() => {});
 
-    return res.json({ message: 'Salary marked as paid and logged to expenses', salary: updated });
+    return res.json({ success: true, message: 'Salary marked as paid and logged to expenses', data: updated });
   } catch (error: any) {
     console.error('Error in markSalaryPaid:', error);
     return res.status(500).json({ error: 'Internal server error' });
