@@ -51,19 +51,83 @@ export async function listBookings(req: Request, res: Response) {
   }
 }
 
-// POST /admin/api/bookings/:id/confirm  — mark a PENDING booking as paid/confirmed
-export async function confirmBooking(req: Request, res: Response) {
+// POST /admin/api/bookings/:id/confirm  — Body: { provider?, note? }
+// Move a PENDING booking to CONFIRMED. If the rider hasn't already paid in the
+// app, this is an *offline* confirmation (cash at the hub): the shortfall is
+// written as SUCCESS Payment rows — stamped with the staff id — so the ledger
+// balances and there's a trail of who let the bike out and why. A booking that
+// is already fully paid just flips status (idempotent).
+export async function confirmBooking(req: AuthRequest, res: Response) {
   try {
-    const booking = await prisma.booking.findUnique({ where: { id: req.params.id } });
+    const { provider, note } = req.body ?? {};
+
+    const booking = await prisma.booking.findUnique({
+      where: { id: req.params.id },
+      include: { payments: true },
+    });
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
     if (booking.status !== 'PENDING')
       return res.status(409).json({ error: `Booking is already ${booking.status}` });
 
-    const updated = await prisma.booking.update({
-      where: { id: booking.id },
-      data: { status: 'CONFIRMED' },
+    const paid = booking.payments
+      .filter((p) => p.status === 'SUCCESS' && p.amount > 0)
+      .reduce((s, p) => s + p.amount, 0);
+    const outstanding = booking.totalAmount - paid;
+
+    const writes: any[] = [];
+
+    if (outstanding > 0) {
+      const collectedProvider = String(provider || 'CASH').toUpperCase();
+      const txnRef = `MANUAL-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+      // Nothing paid yet -> record the proper RENT / DEPOSIT / PLATFORM_FEE
+      // split. A partial prepayment -> one top-up row for the remainder.
+      const lines: { purpose: string; amount: number }[] =
+        paid === 0
+          ? [
+              { purpose: 'RENT', amount: booking.rentAmount },
+              ...(booking.depositAmount > 0 ? [{ purpose: 'DEPOSIT', amount: booking.depositAmount }] : []),
+              ...(booking.platformFee > 0 ? [{ purpose: 'PLATFORM_FEE', amount: booking.platformFee }] : []),
+            ]
+          : [{ purpose: 'RENT', amount: outstanding }];
+
+      for (const l of lines) {
+        writes.push(
+          prisma.payment.create({
+            data: {
+              userId: booking.userId,
+              bookingId: booking.id,
+              purpose: l.purpose,
+              amount: l.amount,
+              provider: collectedProvider,
+              providerPaymentId: txnRef,
+              status: 'SUCCESS',
+              note: note ? String(note) : 'Offline payment recorded at manual confirmation',
+              recordedById: req.user?.id ?? null,
+            },
+          })
+        );
+      }
+    }
+
+    writes.push(
+      prisma.booking.update({
+        where: { id: booking.id },
+        // Paid bookings don't expire — the hold is now firm until handover.
+        data: { status: 'CONFIRMED', expiresAt: null },
+      })
+    );
+
+    const results = await prisma.$transaction(writes);
+    const updated = results[results.length - 1];
+
+    return res.json({
+      message:
+        outstanding > 0
+          ? `Booking confirmed — ₹${outstanding} recorded as an offline payment`
+          : 'Booking confirmed',
+      offlinePaymentRecorded: outstanding > 0 ? outstanding : 0,
+      booking: updated,
     });
-    return res.json({ message: 'Booking confirmed', booking: updated });
   } catch (e: any) {
     console.error('confirmBooking:', e);
     return res.status(500).json({ error: 'Internal server error' });
