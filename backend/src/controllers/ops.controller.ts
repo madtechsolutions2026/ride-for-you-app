@@ -340,7 +340,10 @@ export async function closeRental(req: Request, res: Response) {
         where: { id: rental.id },
         data: { status: 'COMPLETED', closedAt: new Date() },
       }),
-      prisma.booking.update({ where: { id: rental.bookingId }, data: { status: 'HANDED_OVER' } }),
+      // Terminal state for the booking — a closed rental is done. Leaving it at
+      // HANDED_OVER kept the rider's "single active booking" guard tripped
+      // forever, so they could never book again.
+      prisma.booking.update({ where: { id: rental.bookingId }, data: { status: 'COMPLETED' } }),
     ];
 
     if (refundable > 0) {

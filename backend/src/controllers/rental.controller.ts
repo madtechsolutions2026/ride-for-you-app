@@ -592,11 +592,24 @@ export async function createBooking(req: AuthRequest, res: Response) {
     // A rider can have only ONE active booking or live rental at a time.
     const [openBooking, activeRental] = await Promise.all([
       prisma.booking.findFirst({
-        where: { userId, status: { in: ['PENDING', 'CONFIRMED', 'READY', 'ACTIVE', 'HANDED_OVER', 'RETURN_REQUESTED'] } },
+        where: {
+          userId,
+          OR: [
+            // Not yet handed over — a live reservation or an unpaid hold.
+            { status: { in: ['PENDING', 'CONFIRMED', 'READY', 'ACTIVE'] } },
+            // Handed over, but only while the rental is still running. Once the
+            // rental is COMPLETED / RECOVERED / CANCELLED the booking is done
+            // and must not keep blocking the next one.
+            {
+              status: { in: ['HANDED_OVER', 'RETURN_REQUESTED'] },
+              rental: { status: { notIn: ['COMPLETED', 'RECOVERED', 'CANCELLED'] } },
+            },
+          ],
+        },
         include: BOOKING_INCLUDE,
       }),
       prisma.rental.findFirst({
-        where: { userId, status: { in: ['ACTIVE', 'OVERDUE', 'RETURN_REQUESTED'] } },
+        where: { userId, status: { in: ['ACTIVE', 'OVERDUE', 'RETURN_REQUESTED', 'RETURNED'] } },
         include: { bike: true, hub: true },
       }),
     ]);
