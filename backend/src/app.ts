@@ -58,6 +58,21 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
+// An unmatched API route must answer JSON. Without this it falls through to
+// the SPA handlers below and returns index.html with a 200, so a typo'd or
+// retired endpoint looks like a success to the client.
+const API_PREFIXES = ['/auth', '/user', '/kyc', '/rental', '/payments', '/support', '/admin/api'];
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const isApi = API_PREFIXES.some((p) => req.path === p || req.path.startsWith(p + '/'));
+  if (!isApi) return next();
+  return res.status(404).json({
+    error: 'Not Found',
+    path: req.originalUrl,
+    message: 'The requested resource does not exist on this server.',
+  });
+});
+
 // 2. Serve Static Admin Dashboard Files (if build exists)
 const adminDistPath = path.resolve(__dirname, '../../admin/dist');
 const fallbackPublicPath = path.resolve(__dirname, '../public');
