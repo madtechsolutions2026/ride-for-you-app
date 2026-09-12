@@ -19,7 +19,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
-import { ThemedModal } from '../components';
+import { RentPaymentSheet } from '../components';
 import { apiClient } from '../api/client';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MyRental'>;
@@ -35,6 +35,11 @@ type Week = {
   paidAt: string | null;
   daysUntilDue: number;
   payable: boolean;
+  /** Collections state — how close this week is to costing the rider the bike. */
+  graceEndsAt: string | null;
+  hoursUntilCollection: number | null;
+  finalWarningSent: boolean;
+  inRecovery: boolean;
 };
 
 type Rental = {
@@ -132,7 +137,15 @@ export default function MyRentalScreen({ navigation, route }: Props) {
       const res = await apiClient.post(`/rental/invoices/${payTarget.id}/pay`, { method: 'UPI' });
       setRental(res.data.rental);
       setPayTarget(null);
-      Alert.alert('Payment successful', res.data.message || 'Rent paid.');
+
+      // Say it plainly when the payment called off a collection — that is the
+      // single most reassuring thing we can tell a rider at this moment.
+      Alert.alert(
+        'Payment successful',
+        res.data.recoveryCancelled
+          ? 'Rent paid. Your bike is no longer scheduled for collection.'
+          : res.data.message || 'Rent paid.',
+      );
     } catch (e: any) {
       setPayTarget(null);
       Alert.alert('Payment failed', e?.response?.data?.error || 'Please try again.');
@@ -264,6 +277,49 @@ export default function MyRentalScreen({ navigation, route }: Props) {
           )}
 
           {/* --- week by week --- */}
+          {/* The countdown, above the ledger. A rider two days late should not
+              have to open a week to find out the bike is about to be taken. */}
+          {(() => {
+            const atRisk = rental.weeks.find((w) => w.payable && w.hoursUntilCollection !== null);
+            if (!atRisk) return null;
+
+            const hours = atRisk.hoursUntilCollection ?? 0;
+            if (!atRisk.inRecovery && hours > 48) return null;
+
+            return (
+              <Pressable
+                style={[styles.riskCard, atRisk.inRecovery && styles.riskCardCritical]}
+                onPress={() => setPayTarget(atRisk)}
+              >
+                <Ionicons
+                  name={atRisk.inRecovery ? 'alert-circle' : 'time-outline'}
+                  size={18}
+                  color={atRisk.inRecovery ? colors.status.error : colors.status.warning}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.riskTitle,
+                      atRisk.inRecovery && { color: colors.status.error },
+                    ]}
+                  >
+                    {atRisk.inRecovery
+                      ? 'Bike scheduled for collection'
+                      : hours <= 0
+                        ? 'Collection due now'
+                        : `${hours}h left to pay`}
+                  </Text>
+                  <Text style={styles.riskText}>
+                    {atRisk.inRecovery
+                      ? `Week ${atRisk.weekNumber} rent of ${rupee(atRisk.amount)} is unpaid. Pay now, then call support.`
+                      : `Pay ${rupee(atRisk.amount)} for week ${atRisk.weekNumber} to keep your bike.`}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
+              </Pressable>
+            );
+          })()}
+
           <Text style={styles.sectionLabel}>Weekly rent</Text>
           <View style={styles.weeksCard}>
             {rental.weeks.map((w, i) => {
@@ -307,6 +363,50 @@ export default function MyRentalScreen({ navigation, route }: Props) {
             })}
           </View>
 
+          <View style={styles.actionsGrid}>
+            <Pressable
+              style={styles.action}
+              onPress={() => navigation.navigate('RentalRequest', { type: 'EXTENSION' })}
+            >
+              <View style={styles.actionIcon}>
+                <Ionicons name="time-outline" size={18} color={colors.brand.primary} />
+              </View>
+              <Text style={styles.actionLabel}>Keep it longer</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.action}
+              onPress={() => navigation.navigate('RentalRequest', { type: 'RETURN' })}
+            >
+              <View style={styles.actionIcon}>
+                <Ionicons
+                  name="return-down-back-outline"
+                  size={18}
+                  color={colors.brand.primary}
+                />
+              </View>
+              <Text style={styles.actionLabel}>Book return slot</Text>
+            </Pressable>
+
+            <Pressable style={styles.action} onPress={() => navigation.navigate('BatterySwap')}>
+              <View style={styles.actionIcon}>
+                <Ionicons
+                  name="battery-charging-outline"
+                  size={18}
+                  color={colors.brand.primary}
+                />
+              </View>
+              <Text style={styles.actionLabel}>Swap battery</Text>
+            </Pressable>
+
+            <Pressable style={styles.action} onPress={() => navigation.navigate('ReportDamage')}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="camera-outline" size={18} color={colors.brand.primary} />
+              </View>
+              <Text style={styles.actionLabel}>Report damage</Text>
+            </Pressable>
+          </View>
+
           <Text style={styles.footnote}>
             Rent is billed every week for as long as you keep the bike. Return it at{' '}
             {rental.hub?.name || 'the hub'} to stop billing and get your deposit back.
@@ -314,21 +414,12 @@ export default function MyRentalScreen({ navigation, route }: Props) {
         </ScrollView>
       )}
 
-      <ThemedModal
+      <RentPaymentSheet
         visible={Boolean(payTarget)}
-        title={`Pay week ${payTarget?.weekNumber ?? ''} rent`}
-        message={
-          payTarget
-            ? `${rupee(payTarget.amount)} for ${shortDate(payTarget.periodStart)} – ${shortDate(
-                payTarget.periodEnd
-              )}.\n\nTest checkout — no money is charged.`
-            : ''
-        }
-        icon="wallet-outline"
-        confirmLabel={paying ? 'Paying…' : `Pay ${rupee(payTarget?.amount ?? 0)}`}
-        cancelLabel="Not now"
-        onConfirm={confirmPay}
-        onCancel={() => !paying && setPayTarget(null)}
+        invoiceId={payTarget?.id ?? null}
+        paying={paying}
+        onClose={() => !paying && setPayTarget(null)}
+        onPayInApp={confirmPay}
       />
     </View>
   );
@@ -446,6 +537,29 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
+  riskCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.status.warningTint,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  riskCardCritical: { backgroundColor: colors.status.errorTint },
+  riskTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: 13.5,
+    color: colors.status.warning,
+  },
+  riskText: {
+    fontFamily: fontFamily.regular,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.text.primary,
+    marginTop: 1,
+  },
+
   weeksCard: {
     backgroundColor: colors.common.white,
     borderRadius: radius.lg,
@@ -474,6 +588,40 @@ const styles = StyleSheet.create({
   weekPayText: { fontFamily: fontFamily.bold, fontSize: 11.5, color: colors.common.white },
   weekTag: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill },
   weekTagText: { fontFamily: fontFamily.bold, fontSize: 10 },
+
+  /* Mid-rental actions — two per row so each target stays comfortably tappable. */
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  action: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface.card,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    ...shadows.subtle,
+  },
+  actionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.pill,
+    backgroundColor: colors.brand.mintSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionLabel: {
+    flex: 1,
+    fontFamily: fontFamily.semibold,
+    fontSize: 12,
+    color: colors.text.primary,
+  },
 
   footnote: {
     fontFamily: fontFamily.regular,
