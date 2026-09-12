@@ -19,7 +19,17 @@ function normalizePhone(raw: string): string {
   return phone;
 }
 
+/** E.164-ish: a leading "+" then 10–15 digits. */
+function isValidPhone(phone: string): boolean {
+  return /^\+\d{10,15}$/.test(phone);
+}
+
 const ADMIN_PHONES = ['+917095682464', '+919999999999'];
+
+// Dev bypass code. Only honoured outside production, so a leaked constant can't
+// be used to sign in as anyone on a live deployment.
+const DEV_OTP_CODE = '123456';
+const DEV_OTP_ENABLED = process.env.NODE_ENV !== 'production';
 
 export async function requestOtp(req: Request, res: Response) {
   try {
@@ -29,6 +39,24 @@ export async function requestOtp(req: Request, res: Response) {
     }
 
     const phone = normalizePhone(rawPhone);
+    if (!isValidPhone(phone)) {
+      return res.status(400).json({ error: 'Valid phone number is required (e.g. +919876543210 or 9876543210)' });
+    }
+
+    // Throttle: while a live challenge for this phone is still inside its resend
+    // window, don't mint another one — the OTP-bombing / SMS-cost guard.
+    const live = await prisma.otpChallenge.findFirst({
+      where: { phone, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (live && live.resendAvailableAt > new Date()) {
+      const retryAfter = Math.ceil((live.resendAvailableAt.getTime() - Date.now()) / 1000);
+      res.setHeader('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: `Please wait ${retryAfter}s before requesting another code.`,
+        retryAfter,
+      });
+    }
 
     // Generate a random 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -97,11 +125,16 @@ export async function verifyOtp(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid or expired OTP challenge' });
     }
 
+    if (challenge.verified) {
+      return res.status(400).json({ error: 'This code has already been used. Request a new one.' });
+    }
+
     if (new Date() > challenge.expiresAt) {
       return res.status(400).json({ error: 'OTP has expired' });
     }
 
-    if (challenge.code !== otp && otp !== '123456') {
+    const isDevBypass = DEV_OTP_ENABLED && otp === DEV_OTP_CODE;
+    if (challenge.code !== otp && !isDevBypass) {
       return res.status(400).json({ error: 'Incorrect OTP code' });
     }
 
