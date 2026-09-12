@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { Tabs } from './ui';
 import type { NavTab } from '../nav';
 
@@ -9,6 +9,8 @@ interface HeaderProps {
   tabs?: NavTab[];
   onRefresh?: () => void;
   isRefreshing?: boolean;
+  /** True when the last dashboard stats fetch failed. */
+  statsError?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   tabs,
   onRefresh,
   isRefreshing,
+  statsError,
 }) => (
   <header className="bg-paper border-b border-rule px-7 sticky top-0 z-10">
     <div className="flex items-start justify-between gap-6 pt-4 pb-3">
@@ -26,15 +29,27 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3 shrink-0 pt-1">
-        <span className="flex items-center gap-1.5 text-[11px] text-ink-soft">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-          PostgreSQL &amp; R2
-        </span>
+        {/* The old version showed a green dot and "PostgreSQL & R2" whether or
+            not anything had actually been reached. It now reports what the
+            last fetch did. */}
+        {statsError ? (
+          <span className="flex items-center gap-1.5 text-[11px] text-signal-red">
+            <AlertTriangle className="w-3.5 h-3.5" strokeWidth={1.75} />
+            Live figures unavailable
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 text-[11px] text-ink-soft">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+            Connected
+          </span>
+        )}
+
         {onRefresh && (
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            title="Refresh data"
+            title="Reload this page and the dashboard figures"
+            aria-label="Refresh"
             className="p-1.5 rounded-sm border border-rule-strong bg-surface text-ink-soft hover:text-ink hover:bg-rule-soft transition-colors disabled:opacity-40"
           >
             <RefreshCw

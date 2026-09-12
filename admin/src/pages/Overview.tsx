@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Users,
   Bike,
@@ -6,308 +6,405 @@ import {
   Receipt,
   MapPin,
   ArrowUpRight,
-  Zap,
+  Headphones,
   BatteryCharging,
-  ShieldCheck,
-  TrendingUp,
+  Clock,
+  Wrench,
+  Truck,
+  ClipboardList,
+  AlertTriangle,
 } from 'lucide-react';
 import { ScreenId } from '../nav';
 import { FleetLiveMap } from '../components/FleetLiveMap';
+import { apiClient } from '../api/client';
+import { Card, SectionHeader, Pill, Amount, EmptyState, Loader, rupees } from '../components/ui';
+
+/**
+ * The dashboard.
+ *
+ * Rewritten because every figure on it that could not be loaded was being
+ * invented instead. The old version fell back to `{ totalBikes: 54,
+ * availableBikes: 42, utilizationRate: 22 }` when the stats call failed, so a
+ * dead backend rendered as a healthy fleet; it badged "+18% growth" with no
+ * growth calculation behind it anywhere; and it listed three hubs and three
+ * bike models with hardcoded names, prices and unit counts while the real ones
+ * sat one API call away.
+ *
+ * Rule for this screen now: if a number is not in the payload, the screen says
+ * so. It never fills the gap itself.
+ */
 
 interface OverviewProps {
   stats: any;
   setActiveTab: (tab: ScreenId) => void;
 }
 
+interface Hub {
+  id: string;
+  name: string;
+  address: string;
+  status: string;
+  openTime?: string | null;
+  closeTime?: string | null;
+  _count?: { bikes: number };
+  bikes?: unknown[];
+}
+
+const dash = '—';
+
+/** Renders a count, or an em dash when the payload genuinely lacks it. */
+const num = (v: number | null | undefined) =>
+  typeof v === 'number' ? v.toLocaleString('en-IN') : dash;
+
 export const Overview: React.FC<OverviewProps> = ({ stats, setActiveTab }) => {
-  const riders = stats?.riders || { total: 1, verified: 1, pendingKyc: 1 };
-  const fleet = stats?.fleet || { totalBikes: 54, availableBikes: 42, rentedBikes: 12, utilizationRate: 22 };
-  const finance = stats?.finance || { collectedRevenue: 0, overdueAmount: 0, pendingInvoiceAmount: 0 };
-  const ops = stats?.operations || { activeRentals: 0, overdueRentals: 0, pendingBookings: 0, openRecovery: 0, pendingDamage: 0, staffCount: 0 };
+  const [hubs, setHubs] = useState<Hub[] | null>(null);
+  const [hubsFailed, setHubsFailed] = useState(false);
 
-  const cards = [
+  useEffect(() => {
+    apiClient
+      .get('/admin/api/infrastructure')
+      .then((res) => setHubs(res.data?.hubs ?? res.data?.data?.hubs ?? []))
+      .catch(() => setHubsFailed(true));
+  }, []);
+
+  // No stats at all means the call is still in flight or it failed. Either way
+  // the honest thing is to say nothing rather than to draw a plausible fleet.
+  if (!stats) {
+    return (
+      <Card className="p-5">
+        <SectionHeader
+          title="Dashboard"
+          hint="Waiting for live figures from the operations API."
+        />
+        <Loader />
+      </Card>
+    );
+  }
+
+  const riders = stats.riders ?? {};
+  const fleet = stats.fleet ?? {};
+  const finance = stats.finance ?? {};
+  const ops = stats.operations ?? {};
+  const queues = stats.queues ?? {};
+  const activity = stats.activity ?? {};
+  const models: any[] = stats.featuredModels ?? [];
+
+  const tiles = [
     {
-      title: 'Active Fleet Vehicles',
-      value: fleet.totalBikes,
-      sub: `${fleet.availableBikes} Ready • ${fleet.rentedBikes} on Road`,
+      label: 'Fleet vehicles',
+      value: num(fleet.totalBikes),
+      hint:
+        typeof fleet.availableBikes === 'number' && typeof fleet.rentedBikes === 'number'
+          ? `${fleet.availableBikes} ready · ${fleet.rentedBikes} on road`
+          : 'Fleet breakdown unavailable',
+      pill:
+        typeof fleet.utilizationRate === 'number'
+          ? { tone: 'green' as const, text: `${fleet.utilizationRate}% in service` }
+          : null,
+      screen: 'fleet' as ScreenId,
       icon: Bike,
-      badge: `${fleet.utilizationRate}% In Service`,
-      badgeColor: 'bg-[#EDF3EF] text-[#1F6F43]',
-      onClick: () => setActiveTab('fleet'),
     },
     {
-      title: 'Registered Riders',
-      value: riders.total,
-      sub: `${riders.verified} KYC Approved`,
+      label: 'Registered riders',
+      value: num(riders.total),
+      hint:
+        typeof riders.verified === 'number'
+          ? `${riders.verified} KYC approved`
+          : 'Verification counts unavailable',
+      pill: null,
+      screen: 'riders' as ScreenId,
       icon: Users,
-      badge: '+18% growth',
-      badgeColor: 'bg-[#EDF1F6] text-[#1F4E79]',
-      onClick: () => setActiveTab('riders'),
     },
     {
-      title: 'Pending KYC Queue',
-      value: riders.pendingKyc,
-      sub: riders.pendingKyc > 0 ? 'Document review waiting' : 'All clear',
+      label: 'KYC queue',
+      value: num(riders.pendingKyc),
+      hint: riders.pendingKyc > 0 ? 'Documents waiting on review' : 'Queue clear',
+      pill:
+        riders.pendingKyc > 0
+          ? { tone: 'amber' as const, text: 'Needs action' }
+          : { tone: 'slate' as const, text: 'Clear' },
+      screen: 'kyc' as ScreenId,
       icon: FileCheck2,
-      badge: riders.pendingKyc > 0 ? 'Needs Action' : '0 Queue',
-      badgeColor: riders.pendingKyc > 0 ? 'bg-[#FBF3E2] text-[#8A5A00]' : 'bg-[#F4F2ED] text-[#7A756B]',
-      onClick: () => setActiveTab('kyc'),
     },
     {
-      title: 'Collected Revenue',
-      value: `₹${(finance.collectedRevenue || 0).toLocaleString('en-IN')}`,
-      sub:
-        (finance.overdueAmount || 0) > 0
-          ? `₹${(finance.overdueAmount || 0).toLocaleString('en-IN')} overdue`
-          : `${ops.activeRentals} active rental(s)`,
+      label: 'Collected revenue',
+      value: rupees(finance.collectedRevenue),
+      hint:
+        finance.overdueAmount > 0
+          ? `${rupees(finance.overdueAmount)} overdue`
+          : `${num(ops.activeRentals)} active rental(s)`,
+      pill:
+        finance.overdueAmount > 0
+          ? { tone: 'red' as const, text: 'Overdue dues' }
+          : { tone: 'green' as const, text: 'On track' },
+      screen: 'finance' as ScreenId,
       icon: Receipt,
-      badge: (finance.overdueAmount || 0) > 0 ? 'Overdue dues' : 'On track',
-      badgeColor: (finance.overdueAmount || 0) > 0 ? 'bg-[#FBEDEC] text-[#A02724]' : 'bg-[#EDF3EF] text-[#1F6F43]',
-      onClick: () => setActiveTab('finance'),
     },
   ];
 
-  const featuredModels = [
-    {
-      name: 'SPRINTO HS',
-      category: 'High-Speed Commercial',
-      range: '120 km',
-      speed: '65 km/h',
-      price: '₹1,925/wk',
-      image: '/assets/vehicle-s1.png',
-      count: 24,
-    },
-    {
-      name: 'AEROFLOW PRO',
-      category: 'Dual Battery Long-Range',
-      range: '140 km',
-      speed: '70 km/h',
-      price: '₹2,200/wk',
-      image: '/assets/vehiclex1.png',
-      count: 18,
-    },
-    {
-      name: 'ODYSSEY MAX',
-      category: 'Heavy-Duty Cargo Carrier',
-      range: '110 km',
-      speed: '55 km/h',
-      price: '₹1,750/wk',
-      image: '/assets/vehiclez1.png',
-      count: 12,
-    },
+  /* Everything waiting on a human, in one row. This is what staff open the
+     dashboard to find out, and it previously took five clicks to assemble. */
+  const workQueues = [
+    { label: 'KYC to review', count: queues.pendingKyc, screen: 'kyc' as ScreenId, icon: FileCheck2 },
+    { label: 'Bookings to confirm', count: queues.pendingBookings, screen: 'bookings' as ScreenId, icon: ClipboardList },
+    { label: 'Support tickets open', count: queues.openTickets, screen: 'support' as ScreenId, icon: Headphones },
+    { label: 'Extension / return asks', count: queues.pendingRentalRequests, screen: 'bookings' as ScreenId, icon: Clock },
+    { label: 'Damage unresolved', count: queues.pendingDamage, screen: 'service' as ScreenId, icon: Wrench },
+    { label: 'Recovery jobs open', count: queues.openRecovery, screen: 'recovery' as ScreenId, icon: Truck },
   ];
+
+  const totalWaiting = workQueues.reduce(
+    (sum, q) => sum + (typeof q.count === 'number' ? q.count : 0),
+    0,
+  );
 
   return (
-    <div className="space-y-7 font-sans">
-      {/* 1. Neumorphic KPI Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {cards.map((c, idx) => {
-          const Icon = c.icon;
+    <div className="space-y-6">
+      {/* KPI tiles */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {tiles.map((t) => {
+          const Icon = t.icon;
           return (
-            <div
-              key={idx}
-              onClick={c.onClick}
-              className="bg-white rounded-3xl p-5 border border-[#E5E2DB] shadow-neo hover:scale-[1.01] transition-all duration-200 cursor-pointer group"
+            <button
+              key={t.label}
+              onClick={() => setActiveTab(t.screen)}
+              className="text-left bg-surface border border-rule rounded-md p-4 hover:border-rule-strong transition-colors group"
             >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-[#7A756B]">{c.title}</span>
-                <div className="w-10 h-10 rounded-2xl bg-[#F4F2ED] border border-[#E5E2DB] flex items-center justify-center text-[#1F6F43] shadow-neo-sm group-hover:bg-[#1F6F43] group-hover:text-white transition">
-                  <Icon className="w-5 h-5" />
-                </div>
+              <div className="flex items-start justify-between gap-2">
+                <span className="u-label">{t.label}</span>
+                <Icon
+                  className="w-4 h-4 text-ink-faint group-hover:text-accent transition-colors shrink-0"
+                  strokeWidth={1.75}
+                />
               </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-extrabold text-[#16150F]">{c.value}</span>
-                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${c.badgeColor}`}>
-                  {c.badge}
-                </span>
+              <h3 className="u-title text-[26px] leading-none text-ink mt-2 mb-1.5 u-num">
+                {t.value}
+              </h3>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11.5px] text-ink-soft">{t.hint}</p>
+                {t.pill && <Pill tone={t.pill.tone}>{t.pill.text}</Pill>}
               </div>
-              <p className="text-xs text-[#7A756B] font-medium mt-1">{c.sub}</p>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {/* 2. Big Live GPS Fleet & IoT Battery Map with #1F6F43 Neumorphism */}
+      {/* Work queues */}
+      <Card className="p-5">
+        <SectionHeader
+          title="Waiting on someone"
+          hint={
+            totalWaiting === 0
+              ? 'Nothing is queued right now.'
+              : `${totalWaiting} item${totalWaiting === 1 ? '' : 's'} across every desk.`
+          }
+        />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {workQueues.map((q) => {
+            const Icon = q.icon;
+            const n = typeof q.count === 'number' ? q.count : null;
+            return (
+              <button
+                key={q.label}
+                onClick={() => setActiveTab(q.screen)}
+                className={`text-left border rounded-sm p-3 transition-colors ${
+                  n && n > 0
+                    ? 'border-signal-amberLine bg-signal-amberSoft hover:border-signal-amber'
+                    : 'border-rule hover:border-rule-strong'
+                }`}
+              >
+                <Icon
+                  className={`w-3.5 h-3.5 mb-1.5 ${n && n > 0 ? 'text-signal-amber' : 'text-ink-faint'}`}
+                  strokeWidth={1.75}
+                />
+                <p
+                  className={`u-num text-[20px] leading-none ${
+                    n && n > 0 ? 'text-signal-amber' : 'text-ink-muted'
+                  }`}
+                >
+                  {n === null ? dash : n}
+                </p>
+                <p className="text-[11px] text-ink-soft mt-1 leading-tight">{q.label}</p>
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+
       <FleetLiveMap />
 
-      {/* 3. Featured Vehicle Models Showcase with Real Assets */}
-      <div className="bg-white rounded-3xl p-6 border border-[#E5E2DB] shadow-neo">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-sm font-extrabold text-[#16150F] flex items-center gap-2">
-              <span>Fleet Vehicle Models & Specifications</span>
-              <span className="text-[10px] font-extrabold text-[#1F6F43] bg-[#EDF3EF] px-2.5 py-0.5 rounded-full">
-                3 Certified EV Lines
-              </span>
-            </h3>
-            <p className="text-xs text-[#7A756B] font-medium mt-0.5">
-              Available commercial 2-wheelers with smart IoT battery swapping compatibility.
-            </p>
-          </div>
-          <button
-            onClick={() => setActiveTab('fleet')}
-            className="text-xs font-extrabold text-[#1F6F43] hover:text-[#1F6F43] flex items-center gap-1 bg-[#F4F2ED] px-3.5 py-2 rounded-2xl border border-[#E5E2DB] shadow-neo-sm transition"
-          >
-            <span>View Full Fleet</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {featuredModels.map((m, idx) => (
-            <div
-              key={idx}
-              className="bg-[#F4F2ED] rounded-3xl p-4 border border-[#E5E2DB] shadow-neo-sm hover:shadow-neo transition flex flex-col justify-between"
-            >
-              <div>
-                <div className="w-full h-40 bg-white rounded-2xl p-3 border border-[#E5E2DB] flex items-center justify-center overflow-hidden mb-3 shadow-neo-inset">
-                  <img
-                    src={m.image}
-                    alt={m.name}
-                    className="max-h-full max-w-full object-contain hover:scale-105 transition duration-300"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-extrabold text-[#16150F]">{m.name}</h4>
-                  <span className="text-xs font-extrabold text-[#1F6F43] bg-white px-2.5 py-1 rounded-xl shadow-neo-sm border border-[#E5E2DB]">
-                    {m.price}
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#7A756B] font-medium mt-0.5">{m.category}</p>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-[#E5E2DB] flex items-center justify-between text-xs font-bold text-[#16150F]">
-                <span className="flex items-center gap-1 text-[#7A756B]">
-                  <BatteryCharging className="w-3.5 h-3.5 text-[#1F6F43]" />
-                  <span>{m.range}</span>
-                </span>
-                <span className="text-[#7A756B]">Top: <strong className="text-[#16150F]">{m.speed}</strong></span>
-                <span className="text-[11px] text-[#1F6F43] bg-[#EDF3EF] px-2 py-0.5 rounded-lg">
-                  {m.count} Active
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. Operational Highlights Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: EV Hubs & Deployment */}
-        <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-[#E5E2DB] shadow-neo">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-extrabold text-[#16150F]">Operations Hubs & Deployment Points</h3>
-              <p className="text-xs text-[#7A756B] font-medium">Physical EV distribution points across Hyderabad</p>
-            </div>
-            <button
-              onClick={() => setActiveTab('infrastructure')}
-              className="text-xs font-extrabold text-[#1F6F43] hover:text-[#1F6F43] flex items-center gap-1"
-            >
-              <span>Manage Hubs</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-3xl bg-[#F4F2ED] border border-[#E5E2DB] shadow-neo-sm">
-              <div className="flex items-center gap-2 mb-1.5">
-                <MapPin className="w-4 h-4 text-[#1F6F43]" />
-                <span className="text-xs font-extrabold text-[#16150F]">Kondapur Main Hub</span>
-              </div>
-              <p className="text-xs text-[#7A756B]">Botanical Garden Rd</p>
-              <div className="mt-3 flex items-center justify-between text-xs font-bold">
-                <span className="text-[#1F6F43] bg-[#EDF3EF] px-2.5 py-0.5 rounded-xl">18 Bikes</span>
-                <span className="text-[#7A756B]">09:00 - 21:00</span>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-3xl bg-[#F4F2ED] border border-[#E5E2DB] shadow-neo-sm">
-              <div className="flex items-center gap-2 mb-1.5">
-                <MapPin className="w-4 h-4 text-[#1F6F43]" />
-                <span className="text-xs font-extrabold text-[#16150F]">Hitech City Station</span>
-              </div>
-              <p className="text-xs text-[#7A756B]">Cyber Towers Junction</p>
-              <div className="mt-3 flex items-center justify-between text-xs font-bold">
-                <span className="text-[#1F6F43] bg-[#EDF3EF] px-2.5 py-0.5 rounded-xl">14 Bikes</span>
-                <span className="text-[#7A756B]">08:00 - 22:00</span>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-3xl bg-[#F4F2ED] border border-[#E5E2DB] shadow-neo-sm">
-              <div className="flex items-center gap-2 mb-1.5">
-                <MapPin className="w-4 h-4 text-[#1F6F43]" />
-                <span className="text-xs font-extrabold text-[#16150F]">Gachibowli Hub</span>
-              </div>
-              <p className="text-xs text-[#7A756B]">Near DLF Cybercity</p>
-              <div className="mt-3 flex items-center justify-between text-xs font-bold">
-                <span className="text-[#1F6F43] bg-[#EDF3EF] px-2.5 py-0.5 rounded-xl">10 Bikes</span>
-                <span className="text-[#7A756B]">09:00 - 21:00</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Col: Quick Actions */}
-        <div className="bg-white rounded-3xl p-6 border border-[#E5E2DB] shadow-neo flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-extrabold text-[#16150F] mb-1">Operations Action Center</h3>
-            <p className="text-xs text-[#7A756B] mb-4">Fast shortcuts for daily fleet management</p>
-
-            <div className="space-y-2.5">
-              <button
-                onClick={() => setActiveTab('kyc')}
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#FBF3E2] border border-[#EEDCB4] text-[#8A5A00] hover:bg-[#EEDCB4]/60 transition text-left shadow-neo-sm"
-              >
-                <div className="flex items-center gap-2.5">
-                  <FileCheck2 className="w-4 h-4 text-[#8A5A00]" />
-                  <div>
-                    <p className="text-xs font-extrabold">Review KYC Submissions</p>
-                    <p className="text-[11px] text-[#8A5A00] font-semibold">{riders.pendingKyc} in review queue</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-[#8A5A00]" />
-              </button>
-
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Real models, real unit counts, real prices */}
+        <Card className="p-5 lg:col-span-2">
+          <SectionHeader
+            title="Fleet models"
+            hint="The three models with the most units on the road."
+            actions={
               <button
                 onClick={() => setActiveTab('fleet')}
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#EDF3EF] border border-[#D3E4DA] text-[#1F6F43] hover:bg-[#D3E4DA] transition text-left shadow-neo-sm"
+                className="inline-flex items-center gap-1 text-[12px] text-accent hover:text-accent-deep"
               >
-                <div className="flex items-center gap-2.5">
-                  <Bike className="w-4 h-4 text-[#1F6F43]" />
-                  <div>
-                    <p className="text-xs font-extrabold">Add New Bike to Fleet</p>
-                    <p className="text-[11px] text-[#1F6F43] font-semibold">Assign model & hub</p>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-[#1F6F43]" />
+                View full fleet <ArrowUpRight className="w-3.5 h-3.5" />
               </button>
+            }
+          />
 
-              <button
-                onClick={() => setActiveTab('infrastructure')}
-                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#EDF1F6] border border-[#D8E1EB] text-[#1F4E79] hover:bg-[#D8E1EB] transition text-left shadow-neo-sm"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Zap className="w-4 h-4 text-[#1F4E79]" />
-                  <div>
-                    <p className="text-xs font-extrabold">Add 2-Min Swap Dock</p>
-                    <p className="text-[11px] text-[#1F4E79] font-semibold">Install IoT battery station</p>
+          {models.length === 0 ? (
+            <EmptyState
+              title="No active models"
+              hint="Add a model with pricing plans from Vehicles & Fleet."
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {models.map((m) => (
+                <div key={m.id} className="border border-rule rounded-sm p-3">
+                  <div className="h-28 bg-shell border border-rule rounded-sm flex items-center justify-center overflow-hidden mb-2.5">
+                    {m.imageUrl ? (
+                      <img src={m.imageUrl} alt="" className="max-h-full max-w-full object-contain" />
+                    ) : (
+                      <Bike className="w-7 h-7 text-ink-faint" strokeWidth={1.25} />
+                    )}
+                  </div>
+
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-[13px] font-medium text-ink leading-tight">{m.name}</h4>
+                    {m.fromPrice != null && (
+                      <span className="u-num text-[12px] text-ink whitespace-nowrap">
+                        <Amount value={m.fromPrice} />
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-ink-soft mt-0.5">{m.category}</p>
+
+                  <div className="mt-2.5 pt-2.5 border-t border-rule flex items-center justify-between text-[11px] text-ink-soft">
+                    <span className="inline-flex items-center gap-1">
+                      <BatteryCharging className="w-3 h-3 text-accent" strokeWidth={1.75} />
+                      <span className="u-num">{m.rangeKm} km</span>
+                    </span>
+                    <span className="u-num">{m.topSpeedKmph} km/h</span>
+                    <Pill tone={m.units > 0 ? 'green' : 'slate'}>{m.units} units</Pill>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-[#1F4E79]" />
-              </button>
+              ))}
             </div>
-          </div>
+          )}
+        </Card>
 
-          <div className="mt-5 pt-4 border-t border-[#E5E2DB] flex items-center justify-between text-[11px] text-[#7A756B] font-bold">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#1F6F43]" />
-              <span>Cloudflare R2 Vault</span>
+        {/* Money that is owed in both directions */}
+        <Card className="p-5">
+          <SectionHeader title="Money position" />
+
+          <dl className="space-y-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-[12.5px] text-ink-soft">Collected to date</dt>
+              <dd className="u-num text-[15px] text-ink">
+                <Amount value={finance.collectedRevenue} />
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-[12.5px] text-ink-soft">Invoiced, not yet due</dt>
+              <dd className="u-num text-[15px] text-ink">
+                <Amount value={finance.pendingInvoiceAmount} />
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-[12.5px] text-ink-soft">Overdue</dt>
+              <dd
+                className={`u-num text-[15px] ${
+                  finance.overdueAmount > 0 ? 'text-signal-red' : 'text-ink'
+                }`}
+              >
+                <Amount value={finance.overdueAmount} />
+              </dd>
+            </div>
+
+            <div className="flex items-baseline justify-between gap-3 pt-3 border-t border-rule">
+              <dt className="text-[12.5px] text-ink-soft">
+                Rider wallet credit
+                <span className="block text-[10.5px] text-ink-faint">
+                  Owed to riders — comes off future rent
+                </span>
+              </dt>
+              <dd className="u-num text-[15px] text-ink">
+                <Amount value={finance.walletLiability} />
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-4 pt-3 border-t border-rule flex items-center justify-between text-[11px] text-ink-soft">
+            <span className="inline-flex items-center gap-1.5">
+              <BatteryCharging className="w-3.5 h-3.5 text-accent" strokeWidth={1.75} />
+              <span className="u-num">{num(activity.swapsLast7Days)}</span> swaps this week
             </span>
-            <span>v2.5.0 Production</span>
+            <button
+              onClick={() => setActiveTab('finance')}
+              className="inline-flex items-center gap-1 text-accent hover:text-accent-deep"
+            >
+              Finance <ArrowUpRight className="w-3 h-3" />
+            </button>
           </div>
-        </div>
+        </Card>
       </div>
+
+      {/* Real hubs from the infrastructure endpoint */}
+      <Card className="p-5">
+        <SectionHeader
+          title="Hubs"
+          hint={
+            typeof stats.infrastructure?.hubs === 'number'
+              ? `${stats.infrastructure.hubs} active pickup point(s), ${stats.infrastructure.swapStations ?? dash} swap dock(s).`
+              : undefined
+          }
+          actions={
+            <button
+              onClick={() => setActiveTab('infrastructure')}
+              className="inline-flex items-center gap-1 text-[12px] text-accent hover:text-accent-deep"
+            >
+              Manage network <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          }
+        />
+
+        {hubsFailed ? (
+          <div className="flex items-center gap-2 text-[12.5px] text-signal-red">
+            <AlertTriangle className="w-4 h-4" strokeWidth={1.75} />
+            Hub list could not be loaded.
+          </div>
+        ) : hubs === null ? (
+          <Loader />
+        ) : hubs.length === 0 ? (
+          <EmptyState title="No hubs yet" hint="Add one from Hubs & Stations." />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {hubs.slice(0, 6).map((h) => (
+              <div key={h.id} className="border border-rule rounded-sm p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 min-w-0">
+                    <MapPin className="w-3.5 h-3.5 text-accent shrink-0" strokeWidth={1.75} />
+                    <span className="text-[13px] font-medium text-ink truncate">{h.name}</span>
+                  </span>
+                  <Pill tone={h.status === 'ACTIVE' ? 'green' : 'slate'}>{h.status}</Pill>
+                </div>
+                <p className="text-[11.5px] text-ink-soft mt-1 truncate">{h.address}</p>
+                <div className="mt-2.5 pt-2.5 border-t border-rule flex items-center justify-between text-[11px]">
+                  <span className="u-num text-ink-muted">
+                    {h._count?.bikes ?? h.bikes?.length ?? dash} bikes
+                  </span>
+                  <span className="u-num text-ink-soft">
+                    {h.openTime && h.closeTime ? `${h.openTime} – ${h.closeTime}` : dash}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {stats.generatedAt && (
+        <p className="text-[11px] text-ink-faint text-right">
+          Figures as of {new Date(stats.generatedAt).toLocaleTimeString('en-IN')} · cached up to 30s
+        </p>
+      )}
     </div>
   );
 };

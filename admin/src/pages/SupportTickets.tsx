@@ -1,8 +1,10 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useCallback, useEffect, useState } from 'react';
 import { Headphones, CheckCircle2, Clock, AlertCircle, MessageSquare, ExternalLink, Search } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Pill, toneFor, Btn, Modal, Field, input, Loader, EmptyState } from '../components/ui';
 import { errMsg } from '../api/errors';
+import { TicketThread } from '../components/TicketThread';
+import { usePageRefresh } from '../context/RefreshContext';
 
 export const SupportTickets: React.FC = () => {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -13,21 +15,27 @@ export const SupportTickets: React.FC = () => {
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     try {
       const res = await apiClient.get('/admin/api/support/tickets');
-      setTickets(res.data.data?.tickets || []);
+      const rows = res.data.data?.tickets || [];
+      setTickets(rows);
+      // Keep the open modal in sync after a reply changes the ticket's status.
+      setSelectedTicket((current: any) =>
+        current ? rows.find((t: any) => t.id === current.id) ?? current : current,
+      );
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    load();
-  }, []);
+    void load();
+  }, [load]);
+
+  usePageRefresh(load);
 
   const handleUpdateTicket = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -270,12 +278,15 @@ export const SupportTickets: React.FC = () => {
               </div>
             </div>
 
-            <div>
-              <p className="text-xs font-extrabold text-[#16150F] mb-1">Rider Description</p>
-              <div className="p-3 bg-white border border-[#E5E2DB] rounded-xl text-sm text-[#4A4740] leading-relaxed whitespace-pre-wrap">
-                {selectedTicket.description}
-              </div>
-            </div>
+            {/* The two-way thread. The rider sees every agent reply in the app,
+                and can answer — which is what `adminNotes` alone never allowed. */}
+            <TicketThread
+              ticketId={selectedTicket.id}
+              opening={selectedTicket.description}
+              openedAt={selectedTicket.createdAt}
+              riderName={selectedTicket.rider?.fullName || 'Rider'}
+              onReplied={load}
+            />
 
             {selectedTicket.attachmentUrl && (
               <div>
@@ -312,7 +323,7 @@ export const SupportTickets: React.FC = () => {
               </div>
             </div>
 
-            <Field label="Resolution / Admin Notes (Visible to Helpdesk)">
+            <Field label="Internal resolution note (not sent to the rider — use the reply box above for that)">
               <textarea
                 name="adminNotes"
                 rows={3}
