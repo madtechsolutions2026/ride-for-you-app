@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { getCache, setCache, delCache } from '../utils/cache';
-import { presignGet, PRESIGNED_URL_TTL_SECONDS } from '../utils/r2';
+import { presignGet, publicUrl, PRESIGNED_URL_TTL_SECONDS } from '../utils/r2';
 
 /**
  * Enterprise Admin Controller
@@ -43,6 +43,12 @@ export async function getAdminStats(_req: Request, res: Response) {
       collectedAgg,
       overdueAgg,
       pendingInvoiceAgg,
+      openTickets,
+      pendingRentalRequests,
+      walletLiabilityAgg,
+      swapsLast7Days,
+      featuredModels,
+      openCollections,
     ] = await Promise.all([
       prisma.user.count({ where: { role: 'RIDER' } }),
       prisma.user.count({ where: { role: 'RIDER', kycStatus: 'APPROVED' } }),
@@ -66,6 +72,41 @@ export async function getAdminStats(_req: Request, res: Response) {
         where: { status: { in: ['PENDING', 'OVERDUE'] }, dueAt: { lt: now } },
       }),
       prisma.weeklyInvoice.aggregate({ _sum: { amount: true }, where: { status: 'PENDING' } }),
+      prisma.supportTicket.count({ where: { status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+      prisma.rentalRequest.count({ where: { status: 'PENDING' } }),
+      // Unspent rider credit is a liability, so finance needs it on the tile
+      // row rather than buried inside one rider's ledger.
+      prisma.wallet.aggregate({ _sum: { balance: true } }),
+      prisma.batterySwap.count({
+        where: { createdAt: { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } },
+      }),
+      // The dashboard used to hardcode three model names and their counts.
+      // These are the real ones, with the real number of units behind each.
+      prisma.bikeModel.findMany({
+        where: { status: 'ACTIVE' },
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          rangeKm: true,
+          topSpeedKmph: true,
+          imageKey: true,
+          _count: { select: { bikes: true } },
+          plans: {
+            where: { status: 'ACTIVE' },
+            orderBy: { price: 'asc' },
+            take: 1,
+            select: { price: true, duration: true },
+          },
+        },
+        orderBy: { bikes: { _count: 'desc' } },
+        take: 3,
+      }),
+      // Bikes queued for collection over unpaid rent. Distinct from roadside
+      // recovery, which is counted in openRecovery above.
+      prisma.recoveryJob.count({
+        where: { type: 'NON_PAYMENT', status: { in: ['OPEN', 'DISPATCHED', 'IN_PROGRESS'] } },
+      }),
     ]);
 
     const fleetUtilization =
@@ -94,7 +135,30 @@ export async function getAdminStats(_req: Request, res: Response) {
         collectedRevenue: collectedAgg._sum.amount ?? 0,
         overdueAmount: overdueAgg._sum.amount ?? 0,
         pendingInvoiceAmount: pendingInvoiceAgg._sum.amount ?? 0,
+        walletLiability: walletLiabilityAgg._sum.balance ?? 0,
       },
+      queues: {
+        openTickets,
+        pendingRentalRequests,
+        pendingKyc,
+        pendingBookings,
+        pendingDamage,
+        openRecovery,
+        openCollections,
+      },
+      activity: { swapsLast7Days },
+      featuredModels: featuredModels.map((m) => ({
+        id: m.id,
+        name: m.name,
+        category: m.category,
+        rangeKm: m.rangeKm,
+        topSpeedKmph: m.topSpeedKmph,
+        imageUrl: publicUrl(m.imageKey),
+        units: m._count.bikes,
+        fromPrice: m.plans[0]?.price ?? null,
+        planDuration: m.plans[0]?.duration ?? null,
+      })),
+      generatedAt: now.toISOString(),
     };
 
     await setCache(STATS_CACHE_KEY, payload, STATS_TTL_SECONDS);
@@ -158,6 +222,11 @@ export async function getAllUsers(req: Request, res: Response) {
           accountStatus: true,
           kycStatus: true,
           createdAt: true,
+          // Collections history — staff need to see a repeat non-payer in the
+          // list, not only after opening the profile.
+          recoveryCount: true,
+          lastRecoveryAt: true,
+          writtenOffAmount: true,
           _count: {
             select: {
               bookings: true,

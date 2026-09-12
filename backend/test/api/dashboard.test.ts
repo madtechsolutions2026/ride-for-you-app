@@ -101,7 +101,13 @@ describe('Dashboard Overview', () => {
     await makeSwapStation();
     const a = await stats(headers);
     const b = await stats(headers);
-    expect(a).toEqual(b);
+
+    // `generatedAt` is deliberately excluded: it reports when the figures were
+    // computed, so it is expected to move between two uncached calls. Every
+    // counted value must not.
+    const { generatedAt: _a, ...countsA } = a;
+    const { generatedAt: _b, ...countsB } = b;
+    expect(countsA).toEqual(countsB);
   });
 
   it('DAS-012 every stat matches a direct DB query', async () => {

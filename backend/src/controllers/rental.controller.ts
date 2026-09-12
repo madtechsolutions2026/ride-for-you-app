@@ -4,6 +4,9 @@ import { AuthRequest } from '../middleware/auth';
 import { publicUrl } from '../utils/r2';
 import { getCache, setCache } from '../utils/cache';
 import { notify } from '../utils/notifications';
+import { debitWallet } from '../services/wallet';
+import { settleDunning } from '../services/collections';
+import { buildRentPaymentHandles, qrFromUri } from '../services/upi';
 
 /**
  * Rental discovery module — RIDER, read-only.
@@ -864,7 +867,10 @@ const RENTAL_INCLUDE = {
   },
   hub: true,
   booking: { select: { reference: true, depositAmount: true, plan: { select: { duration: true } } } },
-  weeklyInvoices: { orderBy: { weekNumber: 'asc' as const } },
+  weeklyInvoices: {
+    orderBy: { weekNumber: 'asc' as const },
+    include: { recoveryJobs: { select: { id: true, status: true, reference: true } } },
+  },
   damageReports: {
     select: { id: true, severity: true, description: true, estimatedCost: true, chargeStatus: true },
   },
@@ -894,6 +900,19 @@ function serializeRental(r: any) {
       // negative = overdue by that many days
       daysUntilDue: Math.ceil((dueMs - now) / DAY_MS),
       payable: status === 'PENDING' || status === 'OVERDUE',
+
+      // --- Collections state, so the app can show the rider exactly where
+      // they stand instead of just "overdue". ---
+      upiUri: w.upiUri ?? null,
+      graceEndsAt: w.graceEndsAt ?? null,
+      /** Hours until the bike is queued for collection. Negative = past it. */
+      hoursUntilCollection: w.graceEndsAt
+        ? Math.ceil((new Date(w.graceEndsAt).getTime() - now) / (60 * 60 * 1000))
+        : null,
+      finalWarningSent: Boolean(w.finalWarningAt),
+      inRecovery: (w.recoveryJobs ?? []).some(
+        (j: any) => j.status !== 'CLOSED' && j.status !== 'RESOLVED',
+      ),
     };
   });
 
@@ -1044,24 +1063,54 @@ export async function payWeeklyInvoice(req: AuthRequest, res: Response) {
 
     const txnRef = `DUMMY-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
 
-    await prisma.$transaction([
-      prisma.weeklyInvoice.update({
+    // Wallet credit is spent before anything is charged — it is money the
+    // company already owes this rider, so collecting cash while holding their
+    // credit would be wrong. A partial balance covers part of the week and the
+    // rest is charged as normal.
+    //
+    // The wallet portion deliberately does NOT write a Payment row: no money
+    // moved, and booking one would report credit we granted as revenue we
+    // collected. The WalletTransaction (DEBIT · INVOICE_APPLIED, linked to this
+    // invoice) is the record of how that part was settled.
+    let walletApplied = 0;
+
+    await prisma.$transaction(async (tx) => {
+      const spend = await debitWallet(
+        {
+          userId,
+          amount: invoice.amount,
+          reason: 'INVOICE_APPLIED',
+          weeklyInvoiceId: invoice.id,
+          note: `Week ${invoice.weekNumber} rent`,
+        },
+        tx,
+      );
+      walletApplied = spend.applied;
+      const charged = invoice.amount - walletApplied;
+
+      await tx.weeklyInvoice.update({
         where: { id: invoice.id },
         data: { status: 'PAID', paidAt: new Date() },
-      }),
-      prisma.payment.create({
-        data: {
-          userId,
-          weeklyInvoiceId: invoice.id,
-          purpose: 'WEEKLY_RENT',
-          amount: invoice.amount,
-          provider,
-          providerPaymentId: txnRef,
-          status: 'SUCCESS',
-          note: `Week ${invoice.weekNumber} rent (test payment — no gateway in V1)`,
-        },
-      }),
-    ]);
+      });
+
+      if (charged > 0) {
+        await tx.payment.create({
+          data: {
+            userId,
+            weeklyInvoiceId: invoice.id,
+            purpose: 'WEEKLY_RENT',
+            amount: charged,
+            provider,
+            providerPaymentId: txnRef,
+            status: 'SUCCESS',
+            note:
+              walletApplied > 0
+                ? `Week ${invoice.weekNumber} rent (₹${walletApplied} paid from wallet credit)`
+                : `Week ${invoice.weekNumber} rent (test payment — no gateway in V1)`,
+          },
+        });
+      }
+    });
 
     // Lift the rental out of OVERDUE once nothing is actually *late*. A week
     // that simply hasn't fallen due yet must not keep the rider flagged.
@@ -1080,15 +1129,103 @@ export async function payWeeklyInvoice(req: AuthRequest, res: Response) {
       include: RENTAL_INCLUDE,
     });
 
-    void notify.paymentReceived(userId, invoice.amount, `week ${invoice.weekNumber} rent`);
+    // Stop the 2-hourly chase and stand down an undispatched recovery. Awaited
+    // rather than fired off: the response below tells the rider their bike is
+    // no longer being collected, and that must be true when they read it.
+    const { recoveryCancelled } = await settleDunning(invoice.id);
+
+    if (walletApplied > 0) {
+      void notify.walletApplied(userId, walletApplied, invoice.weekNumber);
+    }
+    const charged = invoice.amount - walletApplied;
+    if (charged > 0) {
+      void notify.paymentReceived(userId, charged, `week ${invoice.weekNumber} rent`);
+    }
 
     return res.json({
       message: `Week ${invoice.weekNumber} rent paid`,
-      transactionId: txnRef,
+      transactionId: charged > 0 ? txnRef : null,
+      walletApplied,
+      charged,
+      recoveryCancelled,
       rental: fresh ? serializeRental(fresh) : null,
     });
   } catch (error: any) {
     console.error('Error in payWeeklyInvoice:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* GET /rental/invoices/:id/payment                                            */
+/*                                                                            */
+/* The QR and links for one week's rent, on demand.                           */
+/*                                                                            */
+/* The midnight notice generates these and stores the URI, but a rider who    */
+/* opens the app three days later still needs the QR — and the URI is stored, */
+/* not the image, so the QR is re-rendered here rather than kept as a blob.   */
+/* -------------------------------------------------------------------------- */
+
+export async function getInvoicePaymentHandles(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const invoice = await prisma.weeklyInvoice.findUnique({
+      where: { id: req.params.id },
+      include: {
+        rental: { select: { userId: true } },
+        recoveryJobs: { select: { status: true, reference: true } },
+      },
+    });
+
+    if (!invoice || invoice.rental.userId !== userId) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    if (invoice.status === 'PAID') {
+      return res.status(409).json({ error: 'This week is already paid', code: 'ALREADY_PAID' });
+    }
+
+    // Generate on first request if the midnight job has not run for this week
+    // yet — a rider paying early should not be told to come back at midnight.
+    let upiUri = invoice.upiUri;
+    if (!upiUri) {
+      const handles = await buildRentPaymentHandles({
+        invoiceId: invoice.id,
+        amount: invoice.amount,
+        weekNumber: invoice.weekNumber,
+      });
+      upiUri = handles.upiUri || null;
+      if (upiUri) {
+        await prisma.weeklyInvoice.update({
+          where: { id: invoice.id },
+          data: { upiUri, paymentLinkUrl: handles.appLink },
+        });
+      }
+    }
+
+    const now = Date.now();
+    const graceMs = invoice.graceEndsAt?.getTime() ?? null;
+
+    return res.json({
+      invoiceId: invoice.id,
+      weekNumber: invoice.weekNumber,
+      amount: invoice.amount,
+      dueAt: invoice.dueAt,
+      status: invoice.status,
+      upiUri,
+      qrDataUri: upiUri ? await qrFromUri(upiUri) : '',
+      // Null when no company VPA is configured — the app then hides the QR
+      // block rather than showing an empty square.
+      qrAvailable: Boolean(upiUri),
+      graceEndsAt: invoice.graceEndsAt,
+      hoursUntilCollection: graceMs ? Math.ceil((graceMs - now) / (60 * 60 * 1000)) : null,
+      inRecovery: invoice.recoveryJobs.some(
+        (j) => j.status !== 'CLOSED' && j.status !== 'RESOLVED',
+      ),
+    });
+  } catch (error: any) {
+    console.error('Error in getInvoicePaymentHandles:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

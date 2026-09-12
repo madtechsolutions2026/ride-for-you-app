@@ -4,6 +4,8 @@ import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { notify } from '../utils/notifications';
 import { sendPaymentReceiptWhatsApp } from '../utils/whatsapp';
+import { createGatewayOrder, GatewayError } from '../services/gateways';
+import { settleDunning } from '../services/collections';
 
 /**
  * Payment gateway layer.
@@ -148,14 +150,49 @@ export async function createIntent(req: AuthRequest, res: Response) {
       });
     }
 
-    // Live mode: the gateway order is created here and its handle returned.
-    // Deliberately not implemented until real credentials exist — returning a
-    // fake order would look like it worked and fail at the sheet.
-    return res.status(501).json({
-      error: `${provider} order creation is not implemented yet`,
-      code: 'GATEWAY_NOT_IMPLEMENTED',
-      payment: { id: payment.id, amount, orderId },
-    });
+    // Live mode: create the real order and hand the app what it needs to open
+    // the sheet. The Payment row stays INITIATED until the webhook settles it —
+    // creating an order is not being paid.
+    try {
+      const rider = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { phone: true },
+      });
+
+      const order = await createGatewayOrder(provider as 'RAZORPAY' | 'PHONEPE', {
+        orderId,
+        amount,
+        userId,
+        phone: rider?.phone,
+        label,
+      });
+
+      // Record the gateway's own id alongside ours so a payment can be traced
+      // from their dashboard without a join through the webhook payload.
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: { note: `${label} · ${order.provider}:${order.gatewayOrderId}` },
+      });
+
+      return res.json({
+        mode: 'live',
+        payment: { id: payment.id, amount, orderId },
+        checkout: order.checkout,
+      });
+    } catch (e) {
+      // The order never opened, so nothing can settle against this row. Mark
+      // it FAILED rather than leaving an INITIATED payment to age forever.
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: 'FAILED', note: `${label} · order creation failed` },
+      });
+
+      const message =
+        e instanceof GatewayError ? e.message : 'Payment could not be started. Please try again.';
+      console.error('createIntent gateway error:', e);
+
+      return res.status(502).json({ error: message, code: 'GATEWAY_ORDER_FAILED' });
+    }
   } catch (error: any) {
     console.error('createIntent:', error);
     return res.status(500).json({ error: 'Internal server error' });
@@ -246,6 +283,14 @@ export async function handleWebhook(req: Request, res: Response) {
         });
       }
     });
+
+    // Same stand-down as the in-app path: a gateway payment must stop the
+    // chase and cancel an undispatched recovery just as an app payment does.
+    if (payment.weeklyInvoiceId) {
+      await settleDunning(payment.weeklyInvoiceId).catch((e) =>
+        console.error('[webhook] settleDunning failed:', e?.message),
+      );
+    }
 
     // Receipts are best-effort and must never fail the webhook — a non-200
     // makes the gateway retry a payment we've already banked.

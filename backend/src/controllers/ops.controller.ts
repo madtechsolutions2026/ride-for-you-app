@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { notify } from '../utils/notifications';
+import { settleDunning, markRiderRecovered } from '../services/collections';
 
 /**
  * Operational-layer admin controller: bookings, rentals, weekly billing,
@@ -458,7 +459,14 @@ export async function markInvoicePaid(req: AuthRequest, res: Response) {
       }),
     ]);
 
-    return res.json({ message: 'Invoice marked paid and payment recorded' });
+    // Third settlement path: staff marking it paid must stand the ladder down
+    // exactly as the app and the gateway do.
+    const { recoveryCancelled } = await settleDunning(invoice.id);
+
+    return res.json({
+      message: 'Invoice marked paid and payment recorded',
+      recoveryCancelled,
+    });
   } catch (e: any) {
     console.error('markInvoicePaid:', e);
     return res.status(500).json({ error: 'Internal server error' });
@@ -693,15 +701,47 @@ export async function listRecovery(req: Request, res: Response) {
 
     const jobs = await prisma.recoveryJob.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      // Open jobs first, then oldest first inside each status: a collection
+      // that has been sitting for four days is more urgent than one raised
+      // this morning, and "newest first" buried exactly those.
+      orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
       take: 200,
       include: {
-        bike: { select: { registrationNumber: true } },
-        rental: { select: { user: { select: { fullName: true, phone: true } } } },
-        assignedTo: { select: { fullName: true } },
+        bike: { select: { registrationNumber: true, batteryPercent: true } },
+        rental: {
+          select: {
+            id: true,
+            expectedReturnAt: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                // The rider's collections history, so the desk knows whether
+                // this is a first miss or a repeat before they call.
+                recoveryCount: true,
+                lastRecoveryAt: true,
+                writtenOffAmount: true,
+              },
+            },
+          },
+        },
+        // What is actually owed. A collections job without the amount on it
+        // makes the agent phone the office before every visit.
+        weeklyInvoice: {
+          select: { id: true, weekNumber: true, amount: true, status: true, dueAt: true },
+        },
+        assignedTo: { select: { id: true, fullName: true, phone: true } },
       },
     });
-    return res.json({ count: jobs.length, jobs });
+
+    const outstanding = jobs.reduce(
+      (sum, j) =>
+        j.weeklyInvoice && j.weeklyInvoice.status !== 'PAID' ? sum + j.weeklyInvoice.amount : sum,
+      0,
+    );
+
+    return res.json({ count: jobs.length, jobs, outstanding });
   } catch (e: any) {
     console.error('listRecovery:', e);
     return res.status(500).json({ error: 'Internal server error' });
@@ -763,15 +803,32 @@ export async function updateRecovery(req: Request, res: Response) {
     if (policeStation !== undefined) data.policeStation = policeStation;
     if (firNumber !== undefined) data.firNumber = firNumber;
 
-    // A resolved theft/police job flips the rental to RECOVERED.
+    // A resolved theft/police/non-payment job flips the rental to RECOVERED.
     if ((status === 'RESOLVED' || status === 'CLOSED') && job.rentalId) {
       await prisma.rental.updateMany({
         where: { id: job.rentalId, status: { in: ['ACTIVE', 'OVERDUE'] } },
         data: { status: 'RECOVERED' },
       });
+
+      // Put the bike back on the shelf — it is physically at the hub again.
+      if (job.bikeId) {
+        await prisma.bike.updateMany({
+          where: { id: job.bikeId, status: { in: ['RENTED', 'RESERVED'] } },
+          data: { status: 'MAINTENANCE' },
+        });
+      }
     }
 
     const updated = await prisma.recoveryJob.update({ where: { id: job.id }, data });
+
+    // Only a completed collection marks the rider, and only for non-payment.
+    // Doing it after the update means a failed update leaves no mark behind.
+    if (status === 'RESOLVED' || status === 'CLOSED') {
+      await markRiderRecovered(job.id).catch((e) =>
+        console.error('markRiderRecovered failed:', e?.message),
+      );
+    }
+
     return res.json({ message: 'Recovery job updated', job: updated });
   } catch (e: any) {
     console.error('updateRecovery:', e);
