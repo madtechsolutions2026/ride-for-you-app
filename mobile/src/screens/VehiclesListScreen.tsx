@@ -18,6 +18,7 @@ import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
 import { ThemedModal } from '../components';
 import { apiClient } from '../api/client';
+import { getAccessToken } from '../api/tokenStore';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - screenPadding * 2 - 12) / 2;
@@ -294,6 +295,9 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     const catQuery = categoryId === 'swap' ? 'SWAP' : 'HOME';
+    getAccessToken().then((t) =>
+      console.log('[VehiclesList] fetching bikes, token present:', !!t)
+    );
     apiClient
       .get(`/rental/bikes?category=${catQuery}`)
       .then((res) => {
@@ -314,10 +318,10 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
 
             let platformFee = 2000;
             let totalDue = 4125;
-            if (m.name.toUpperCase().includes('NEW') || m.id.includes('new')) {
+            if (m.name.toUpperCase().includes('NEW') || m.modelId.includes('new')) {
               platformFee = 1500;
               totalDue = 3625;
-            } else if (m.name.toUpperCase().includes('ODYSSEY') || m.id.includes('odyssey')) {
+            } else if (m.name.toUpperCase().includes('ODYSSEY') || m.modelId.includes('odyssey')) {
               platformFee = 2500;
               totalDue = 4625;
             } else if (
@@ -357,9 +361,16 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
             };
           });
           setBikesList(mapped);
+        } else {
+          console.warn('[VehiclesList] /rental/bikes returned no bikes for', catQuery, res.data);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error(
+          '[VehiclesList] /rental/bikes failed:',
+          err?.response?.status,
+          err?.response?.data || err?.message
+        );
         setBikesList(defaultCategoryBikes);
       });
   }, [categoryId]);
