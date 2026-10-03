@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './tokenStore';
 
 // Local development backend URL (using your machine's local IP address)
-const LIVE_BACKEND_URL = 'http://192.168.1.6:3000';
+const LIVE_BACKEND_URL = 'https://ride-for-you-app-pn7m.onrender.com';
 const BASE_URL = LIVE_BACKEND_URL;
 
 export const apiClient = axios.create({
