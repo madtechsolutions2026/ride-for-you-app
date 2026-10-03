@@ -52,7 +52,7 @@ export async function sendWhatsAppOtp(phone: string, otp: string): Promise<boole
     phoneNoId: way2chatsConfig.phoneId,
     type: 'template',
     name: 'otp',
-    language: 'en_GB',
+    language: 'en',
     bodyParams: [otp],
     buttons: [
       {
@@ -77,7 +77,7 @@ export async function sendKycApprovalWhatsApp(phone: string, fullName: string): 
     phoneNoId: way2chatsConfig.phoneId,
     type: 'template',
     name: 'kyc_approved_v1',
-    language: 'en_GB',
+    language: 'en',
     bodyParams: [fullName || 'Rider', 'Kondapur Main Hub'],
   };
 
@@ -101,7 +101,7 @@ export async function sendBookingConfirmationWhatsApp(
     phoneNoId: way2chatsConfig.phoneId,
     type: 'template',
     name: 'booking_confirmed_v1',
-    language: 'en_GB',
+    language: 'en',
     bodyParams: [fullName || 'Rider', reference, modelName, hubName],
   };
 
@@ -126,7 +126,7 @@ export async function sendRentDueWhatsApp(
     phoneNoId: way2chatsConfig.phoneId,
     type: 'template',
     name: 'rent_due_v1',
-    language: 'en_GB',
+    language: 'en',
     bodyParams: [fullName || 'Rider', String(amount), String(weekNumber), dueDate],
   });
 }
@@ -147,7 +147,7 @@ export async function sendRentOverdueWhatsApp(
     phoneNoId: way2chatsConfig.phoneId,
     type: 'template',
     name: 'rent_overdue_v1',
-    language: 'en_GB',
+    language: 'en',
     bodyParams: [fullName || 'Rider', String(amount), String(daysLate)],
   });
 }
@@ -168,7 +168,7 @@ export async function sendPaymentReceiptWhatsApp(
     phoneNoId: way2chatsConfig.phoneId,
     type: 'template',
     name: 'payment_received_v1',
-    language: 'en_GB',
+    language: 'en',
     bodyParams: [fullName || 'Rider', String(amount), covers],
   });
 }
