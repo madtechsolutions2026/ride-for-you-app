@@ -207,7 +207,6 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         }
         result = await ImagePicker.launchCameraAsync({
           quality: 0.85,
-          allowsEditing: true,
         });
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -218,7 +217,6 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           quality: 0.85,
-          allowsEditing: true,
         });
       }
 
@@ -299,12 +297,8 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         [{ text: 'Great!' }]
       );
     } catch (e: any) {
-      setKycStatus('Submitted');
-      Alert.alert(
-        'KYC Submitted 🎉',
-        'Your documents have been submitted for Admin review.',
-        [{ text: 'OK' }]
-      );
+      const msg = e.response?.data?.error || 'Could not submit KYC documents.';
+      Alert.alert('Submission Failed', msg, [{ text: 'OK' }]);
     } finally {
       setSubmitting(false);
     }
