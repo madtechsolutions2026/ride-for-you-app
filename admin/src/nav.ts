@@ -17,7 +17,7 @@ export interface NavItem {
   subtitle: string;
   icon: typeof LayoutDashboard;
   tabs?: NavTab[];
-  badge?: 'pendingKyc';
+  badge?: 'pendingKyc' | 'openTickets' | 'pendingRequests' | 'openCollections';
 }
 
 export interface NavSection {
@@ -48,6 +48,11 @@ export const NAV: NavSection[] = [
         id: 'bookings', label: 'Bookings & Rentals', path: '/bookings', icon: ClipboardList,
         title: 'Bookings & Rentals',
         subtitle: 'Confirm bookings, hand over bikes, take returns',
+        badge: 'pendingRequests',
+        tabs: [
+          { label: 'Bookings & rentals', path: '/bookings/list' },
+          { label: 'Rider requests', path: '/bookings/requests' },
+        ],
       },
       {
         id: 'fleet', label: 'Vehicles & Fleet', path: '/fleet', icon: Bike,
@@ -95,14 +100,20 @@ export const NAV: NavSection[] = [
         ],
       },
       {
-        id: 'recovery', label: 'Roadside & Police', path: '/recovery', icon: Truck,
-        title: 'Roadside & Police Recovery',
-        subtitle: 'Breakdown dispatch, theft and police-hold jobs',
+        id: 'recovery', label: 'Recovery & Collections', path: '/recovery', icon: Truck,
+        title: 'Recovery',
+        subtitle: 'Breakdown dispatch, theft, police holds and unpaid-rent collections',
+        badge: 'openCollections',
+        tabs: [
+          { label: 'Collections', path: '/recovery/collections' },
+          { label: 'Roadside & Police', path: '/recovery/roadside' },
+        ],
       },
       {
         id: 'support', label: 'Support Helpdesk', path: '/support', icon: Headphones,
         title: 'Support Helpdesk',
         subtitle: 'Incoming rider issues, bike complaints and resolutions',
+        badge: 'openTickets',
       },
     ],
   },

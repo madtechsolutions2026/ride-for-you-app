@@ -31,6 +31,17 @@ model User {
   // Cached KYC summary. Source of truth is the latest KycVerification row.
   kycStatus String @default("PENDING") // PENDING, SUBMITTED, APPROVED, REJECTED
 
+  // --- Collections history ---
+  //
+  // A bike recovered for non-payment is the single most useful thing to know
+  // about a rider at their next booking, so it is denormalised onto the
+  // profile rather than left to be re-derived from RecoveryJob every time.
+  // RecoveryJob remains the detailed record; these are the summary.
+  recoveryCount  Int       @default(0)
+  lastRecoveryAt DateTime?
+  /// Weeks of rent written off across all recoveries, in rupees.
+  writtenOffAmount Int @default(0)
+
   // Expo push token, registered by the app after login. Null until the
   // rider grants notification permission (or on a build without the module).
   pushToken          String?
@@ -51,6 +62,14 @@ model User {
   recoveryJobs    RecoveryJob[]  @relation("RecoveryAssignee")
   deploymentLogs  BikeDeploymentLog[]
   supportTickets  SupportTicket[]
+
+  wallet            Wallet?
+  walletCreditsIssued WalletTransaction[] @relation("WalletCreditIssuer")
+  notifications     Notification[]
+  supportMessages   SupportMessage[]  @relation("SupportMessageAuthor")
+  batterySwaps      BatterySwap[]     @relation("BatterySwapRider")
+  rentalRequests    RentalRequest[]   @relation("RentalRequestRider")
+  rentalRequestsDecided RentalRequest[] @relation("RentalRequestDecider")
 
   @@index([role])
   @@index([assignedHubId])
@@ -149,6 +168,8 @@ model Hub {
   deploymentLogs BikeDeploymentLog[]
   expenses       Expense[]
   servicePersons ServicePerson[]
+  batterySwaps   BatterySwap[]
+  rentalRequests RentalRequest[]
 
   @@index([status])
 }
@@ -164,6 +185,8 @@ model SwapStation {
   closeTime String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  batterySwaps BatterySwap[]
 
   @@index([status])
 }
@@ -217,6 +240,7 @@ model Bike {
   reservations   Booking[]           @relation("BikeReservation")
   deploymentLogs BikeDeploymentLog[]
   serviceTickets ServiceTicket[]
+  batterySwaps   BatterySwap[]
 
   @@index([modelId])
   @@index([hubId])
@@ -347,6 +371,8 @@ model Rental {
   weeklyInvoices WeeklyInvoice[]
   damageReports  DamageReport[]
   recoveryJobs   RecoveryJob[]
+  batterySwaps   BatterySwap[]
+  requests       RentalRequest[]
 
   @@index([userId])
   @@index([status])
@@ -381,6 +407,8 @@ model Payment {
   note         String?
   recordedById String? // staff User.id when entered manually
 
+  walletTransactions WalletTransaction[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -411,10 +439,35 @@ model WeeklyInvoice {
   lastReminderAt DateTime?
   paymentLinkUrl String?
 
+  // --- Collections ladder ---
+  //
+  // dueAt ──2 days──> graceEndsAt ──> recovery
+  //
+  // The rider is chased every 2 hours inside that window, warned once on the
+  // final day, and the bike is queued for recovery when the window closes.
+  // Times are absolute so a sweep that misses a tick (restart, outage) still
+  // escalates to the right stage rather than restarting the ladder.
+
+  /// dueAt + the grace period. Past this and unpaid, the bike is recovered.
+  graceEndsAt DateTime?
+  /// Set once, when the "bike will be collected tomorrow" notice goes out.
+  finalWarningAt DateTime?
+  /// The midnight notice carrying the QR — set so it is never sent twice.
+  billedNoticeAt DateTime?
+
+  /// UPI deep link for this week's rent. Regenerated if the amount changes.
+  upiUri String?
+
+  /// NON_PAYMENT jobs raised for this week. The sweep only ever raises one -
+  /// it checks for an open job first - but the relation stays many-to-one so
+  /// no unique constraint is needed, which a plain db push would refuse.
+  recoveryJobs RecoveryJob[] @relation("InvoiceRecovery")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  payments Payment[]
+  payments           Payment[]
+  walletTransactions WalletTransaction[]
 
   @@unique([rentalId, weekNumber])
   @@index([status])
@@ -453,12 +506,18 @@ model RecoveryJob {
   id        String @id @default(uuid())
   reference String @unique // REC-2049
 
+  // Set when collections raised this job automatically for unpaid rent.
+  // Recovering a bike over money is a different conversation from recovering
+  // one after a crash, and the desk needs to see which it is.
+  weeklyInvoiceId String?
+  weeklyInvoice   WeeklyInvoice? @relation("InvoiceRecovery", fields: [weeklyInvoiceId], references: [id], onDelete: SetNull)
+
   rentalId String?
   rental   Rental? @relation(fields: [rentalId], references: [id], onDelete: SetNull)
   bikeId   String?
   bike     Bike?   @relation(fields: [bikeId], references: [id], onDelete: SetNull)
 
-  // ROADSIDE · ACCIDENT · THEFT · POLICE_HOLD · BREAKDOWN
+  // ROADSIDE · ACCIDENT · THEFT · POLICE_HOLD · BREAKDOWN · NON_PAYMENT
   type     String
   // OPEN · DISPATCHED · IN_PROGRESS · RESOLVED · CLOSED
   status   String @default("OPEN")
@@ -487,6 +546,7 @@ model RecoveryJob {
 
   @@index([status])
   @@index([type])
+  @@index([weeklyInvoiceId])
 }
 
 // ===========================================================================
@@ -681,8 +741,204 @@ model SupportTicket {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  messages SupportMessage[]
+
   @@index([riderId])
   @@index([status])
   @@index([category])
 }
 
+
+// ---------------------------------------------------------------------------
+// Rider wallet — company-issued credit only.
+//
+// Riders CANNOT top this up; there is no inbound payment path into it. The only
+// things that create credit are money the company owes back (a refund, a
+// reversed damage charge, a returned deposit) or credit the company grants
+// (promo, goodwill). Credit is spent automatically against the next weekly
+// invoice, so the balance can never go negative and never needs a gateway.
+//
+// The wallet is a cache of its own ledger: every mutation writes a
+// WalletTransaction carrying the resulting balance, so the balance is always
+// reconstructable and `balance` is only ever changed inside the same
+// transaction that appends the row.
+// ---------------------------------------------------------------------------
+
+model Wallet {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Rupees. Never negative — spending is capped at the available balance.
+  balance Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id       String @id @default(uuid())
+  walletId String
+  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  // Denormalised so a rider's ledger reads without joining through Wallet.
+  userId   String
+
+  // CREDIT (money in) · DEBIT (money spent)
+  direction String
+
+  // CREDIT: REFUND · DAMAGE_REVERSAL · DEPOSIT_RETURN · PROMO · GOODWILL
+  // DEBIT:  INVOICE_APPLIED · ADJUSTMENT
+  reason String
+
+  // Always positive; `direction` carries the sign.
+  amount       Int
+  // Wallet balance immediately after this row was applied.
+  balanceAfter Int
+
+  weeklyInvoiceId String?
+  weeklyInvoice   WeeklyInvoice? @relation(fields: [weeklyInvoiceId], references: [id], onDelete: SetNull)
+  paymentId       String?
+  payment         Payment?       @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  note         String?
+  // Staff User.id when a human granted or adjusted the credit.
+  issuedById   String?
+  issuedBy     User?   @relation("WalletCreditIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([reason])
+}
+
+// ---------------------------------------------------------------------------
+// In-app notification inbox. Distinct from push: push is the delivery attempt
+// (best-effort, may be denied or undelivered), this is the durable record the
+// rider can always open. Everything that pushes also writes one of these.
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // BOOKING · PAYMENT · KYC · SUPPORT · RENTAL · SWAP · PROMO · SYSTEM
+  category String
+  title    String
+  body     String
+
+  // Deep link target, mirroring the push payload the app already understands.
+  screen String?
+  params Json?
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Support ticket conversation. The original ticket description stays on
+// SupportTicket; every reply after it — from either side — is a message here.
+// ---------------------------------------------------------------------------
+
+model SupportMessage {
+  id       String        @id @default(uuid())
+  ticketId String
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  // RIDER · AGENT
+  authorType String
+  // User.id of the rider or the staff member who wrote it.
+  authorId   String?
+  author     User?   @relation("SupportMessageAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  body String
+  // Private R2 key; served to the client as a short-lived presigned URL.
+  attachmentKey String?
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Battery swap events, logged when a rider scans a dock QR mid-rental.
+// ---------------------------------------------------------------------------
+
+model BatterySwap {
+  id        String @id @default(uuid())
+  reference String @unique // SWP-4T9K2
+
+  rentalId String
+  rental   Rental @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation("BatterySwapRider", fields: [userId], references: [id], onDelete: Cascade)
+  bikeId   String
+  bike     Bike   @relation(fields: [bikeId], references: [id], onDelete: Restrict)
+
+  stationId String?
+  station   SwapStation? @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  hubId     String?
+  hub       Hub?         @relation(fields: [hubId], references: [id], onDelete: SetNull)
+
+  // The code physically printed on the dock, as scanned.
+  scannedCode String
+
+  batteryOutPercent Int // what the rider handed in
+  batteryInPercent  Int // what they took away
+
+  createdAt DateTime @default(now())
+
+  @@index([rentalId])
+  @@index([userId])
+  @@index([stationId])
+}
+
+// ---------------------------------------------------------------------------
+// Rider-initiated changes to a live rental: extend it, or book a return slot.
+// Staff approve or reject; approval is what actually moves the rental dates.
+// ---------------------------------------------------------------------------
+
+model RentalRequest {
+  id        String @id @default(uuid())
+  reference String @unique // REQ-7K3M1
+
+  rentalId String
+  rental   Rental @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation("RentalRequestRider", fields: [userId], references: [id], onDelete: Cascade)
+
+  // EXTENSION · RETURN
+  type String
+
+  // EXTENSION only — how many extra weeks, and the rent that implies.
+  extraWeeks    Int?
+  quotedAmount  Int?
+
+  // RETURN only — when the rider wants to hand the bike back, and where.
+  preferredSlotAt DateTime?
+  hubId           String?
+  hub             Hub?      @relation(fields: [hubId], references: [id], onDelete: SetNull)
+
+  riderNote String?
+
+  // PENDING · APPROVED · REJECTED · CANCELLED · COMPLETED
+  status       String    @default("PENDING")
+  decidedById  String?
+  decidedBy    User?     @relation("RentalRequestDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt    DateTime?
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([rentalId])
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+}

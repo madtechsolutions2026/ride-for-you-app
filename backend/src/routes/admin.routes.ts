@@ -81,7 +81,20 @@ import {
   listAllTickets,
   getAdminTicketDetail,
   updateAdminTicket,
+  listAdminTicketMessages,
+  postAgentMessage,
 } from '../controllers/support.controller';
+import {
+  adminListRentalRequests,
+  adminDecideRentalRequest,
+  adminListSwaps,
+} from '../controllers/ride.controller';
+import {
+  adminListWallets,
+  adminGetWallet,
+  adminCreditWallet,
+} from '../controllers/wallet.controller';
+import { getMrrReport, getIntegrationStatus } from '../controllers/reports.controller';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
 const router = Router();
@@ -141,6 +154,8 @@ router.post('/service/tickets/:id/notes', addServiceNote);
 router.get('/support/tickets', listAllTickets);
 router.get('/support/tickets/:id', getAdminTicketDetail);
 router.put('/support/tickets/:id', updateAdminTicket);
+router.get('/support/tickets/:id/messages', listAdminTicketMessages);
+router.post('/support/tickets/:id/messages', postAgentMessage);
 
 /* -------- Fleet: models, plans, physical bikes, live map -------- */
 router.get('/fleet', getFleet);
@@ -187,6 +202,22 @@ router.post('/payments/:id/refund', adminOnly, refundPayment);
 /* -------- Damage -------- */
 router.get('/damage', listDamage);
 router.post('/damage/:id/resolve', resolveDamage);
+
+/* -------- Rider wallet credit (company-issued only) -------- */
+router.get('/wallet', adminListWallets);
+router.get('/wallet/:userId', adminGetWallet);
+router.post('/wallet/:userId/credit', adminOnly, adminCreditWallet);
+
+/* -------- Rider requests: extensions & return slots -------- */
+router.get('/rental-requests', adminListRentalRequests);
+router.post('/rental-requests/:id/decide', adminDecideRentalRequest);
+
+/* -------- Battery swaps -------- */
+router.get('/swaps', adminListSwaps);
+
+/* -------- Reports & system health -------- */
+router.get('/reports/mrr', getMrrReport);
+router.get('/settings/integrations', getIntegrationStatus);
 
 /* -------- Recovery (roadside / police) -------- */
 router.get('/recovery', listRecovery);

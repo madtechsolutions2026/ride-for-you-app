@@ -13,7 +13,17 @@ const ROLE_LABEL: Record<string, string> = {
   STAFF: 'Staff Executive',
 };
 
-export const Sidebar: React.FC<{ pendingKycCount: number }> = ({ pendingKycCount }) => {
+export const Sidebar: React.FC<{
+  pendingKycCount: number;
+  openTicketCount?: number;
+  pendingRequestCount?: number;
+  openCollectionsCount?: number;
+}> = ({
+  pendingKycCount,
+  openTicketCount = 0,
+  pendingRequestCount = 0,
+  openCollectionsCount = 0,
+}) => {
   const { logout, user, can } = useAuth();
 
   const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => can(i.id)) })).filter(
@@ -45,7 +55,13 @@ export const Sidebar: React.FC<{ pendingKycCount: number }> = ({ pendingKycCount
             <p className="u-label px-5 mb-1.5">{group.title}</p>
             {group.items.map((item) => {
               const Icon = item.icon;
-              const badge = item.badge === 'pendingKyc' ? pendingKycCount : 0;
+              const BADGE_COUNTS: Record<string, number> = {
+                pendingKyc: pendingKycCount,
+                openTickets: openTicketCount,
+                pendingRequests: pendingRequestCount,
+                openCollections: openCollectionsCount,
+              };
+              const badge = item.badge ? (BADGE_COUNTS[item.badge] ?? 0) : 0;
               return (
                 <NavLink
                   key={item.id}

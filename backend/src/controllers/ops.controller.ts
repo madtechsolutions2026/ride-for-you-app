@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { notify } from '../utils/notifications';
+import { sendRentDueWhatsApp, sendRentOverdueWhatsApp } from '../utils/whatsapp';
+import { settleDunning, markRiderRecovered } from '../services/collections';
 
 /**
  * Operational-layer admin controller: bookings, rentals, weekly billing,
@@ -525,25 +527,97 @@ export async function markInvoicePaid(req: AuthRequest, res: Response) {
       }),
     ]);
 
-    return res.json({ message: 'Invoice marked paid and payment recorded' });
+    // Third settlement path: staff marking it paid must stand the ladder down
+    // exactly as the app and the gateway do.
+    const { recoveryCancelled } = await settleDunning(invoice.id);
+
+    return res.json({
+      message: 'Invoice marked paid and payment recorded',
+      recoveryCancelled,
+    });
   } catch (e: any) {
     console.error('markInvoicePaid:', e);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
 
-// POST /admin/api/invoices/:id/remind  — bump the reminder counter (WhatsApp send is a later slice)
+/**
+ * POST /admin/api/invoices/:id/remind — send this week's reminder now.
+ *
+ * Previously this only incremented `reminderCount` and reported "Reminder
+ * logged", which read on the dashboard as though a message had gone out. It
+ * had not: nothing was dispatched anywhere. Staff chasing a rider believed
+ * they had chased them.
+ *
+ * It now sends on the same two channels the automatic ladder uses — in-app
+ * push always, WhatsApp as well once the week is genuinely late — and the
+ * counter moves only if at least one of them succeeded. The response says
+ * which channels landed, so the desk can see a WhatsApp failure rather than
+ * assume delivery.
+ */
 export async function sendInvoiceReminder(req: Request, res: Response) {
   try {
-    const invoice = await prisma.weeklyInvoice.update({
+    const invoice = await prisma.weeklyInvoice.findUnique({
       where: { id: req.params.id },
-      data: { reminderCount: { increment: 1 }, lastReminderAt: new Date() },
-      include: { rental: { select: { user: { select: { phone: true } } } } },
+      include: {
+        rental: {
+          select: { userId: true, user: { select: { phone: true, fullName: true } } },
+        },
+      },
     });
-    // TODO: dispatch WhatsApp/SMS via the notifications service.
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+
+    // Chasing a settled week would be worse than doing nothing.
+    if (invoice.status === 'PAID' || invoice.status === 'WAIVED') {
+      return res
+        .status(409)
+        .json({ error: `Week ${invoice.weekNumber} is already ${invoice.status.toLowerCase()}` });
+    }
+
+    const now = new Date();
+    const msLate = now.getTime() - invoice.dueAt.getTime();
+    const daysLate = Math.max(0, Math.floor(msLate / (24 * 60 * 60 * 1000)));
+    const isLate = msLate > 0;
+
+    const pushed = isLate
+      ? await notify.rentOverdue(invoice.rental.userId, invoice.amount, Math.max(1, daysLate))
+      : await notify.rentDue(invoice.rental.userId, invoice.amount, invoice.weekNumber);
+
+    const phone = invoice.rental.user?.phone;
+    const name = invoice.rental.user?.fullName || 'Rider';
+    let whatsapped = false;
+    if (phone) {
+      try {
+        whatsapped = isLate
+          ? await sendRentOverdueWhatsApp(phone, name, invoice.amount, Math.max(1, daysLate))
+          : await sendRentDueWhatsApp(
+              phone,
+              name,
+              invoice.amount,
+              invoice.weekNumber,
+              invoice.dueAt.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' }),
+            );
+      } catch (waErr: any) {
+        console.error('sendInvoiceReminder: WhatsApp failed:', waErr?.message);
+      }
+    }
+
+    const updated = await prisma.weeklyInvoice.update({
+      where: { id: invoice.id },
+      data: { reminderCount: { increment: 1 }, lastReminderAt: now },
+    });
+
+    // The inbox row is written unconditionally by `notify`, so the rider always
+    // has the reminder when they next open the app. `pushed` reports only
+    // whether the phone was woken — false for a rider with no push token
+    // registered, which is not a failure worth hiding the send behind.
+    const extra = [pushed && 'push', whatsapped && 'WhatsApp'].filter(Boolean) as string[];
     return res.json({
-      message: `Reminder logged (#${invoice.reminderCount}) for ${invoice.rental.user.phone}`,
-      invoice,
+      message: extra.length
+        ? `Reminder #${updated.reminderCount} sent to ${name} — in-app inbox + ${extra.join(' + ')}`
+        : `Reminder #${updated.reminderCount} placed in ${name}'s in-app inbox (no push token, WhatsApp not sent)`,
+      sentVia: { inbox: true, push: pushed, whatsapp: whatsapped },
+      invoice: updated,
     });
   } catch (e: any) {
     console.error('sendInvoiceReminder:', e);
@@ -760,15 +834,47 @@ export async function listRecovery(req: Request, res: Response) {
 
     const jobs = await prisma.recoveryJob.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      // Open jobs first, then oldest first inside each status: a collection
+      // that has been sitting for four days is more urgent than one raised
+      // this morning, and "newest first" buried exactly those.
+      orderBy: [{ status: 'asc' }, { createdAt: 'asc' }],
       take: 200,
       include: {
-        bike: { select: { registrationNumber: true } },
-        rental: { select: { user: { select: { fullName: true, phone: true } } } },
-        assignedTo: { select: { fullName: true } },
+        bike: { select: { registrationNumber: true, batteryPercent: true } },
+        rental: {
+          select: {
+            id: true,
+            expectedReturnAt: true,
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                phone: true,
+                // The rider's collections history, so the desk knows whether
+                // this is a first miss or a repeat before they call.
+                recoveryCount: true,
+                lastRecoveryAt: true,
+                writtenOffAmount: true,
+              },
+            },
+          },
+        },
+        // What is actually owed. A collections job without the amount on it
+        // makes the agent phone the office before every visit.
+        weeklyInvoice: {
+          select: { id: true, weekNumber: true, amount: true, status: true, dueAt: true },
+        },
+        assignedTo: { select: { id: true, fullName: true, phone: true } },
       },
     });
-    return res.json({ count: jobs.length, jobs });
+
+    const outstanding = jobs.reduce(
+      (sum, j) =>
+        j.weeklyInvoice && j.weeklyInvoice.status !== 'PAID' ? sum + j.weeklyInvoice.amount : sum,
+      0,
+    );
+
+    return res.json({ count: jobs.length, jobs, outstanding });
   } catch (e: any) {
     console.error('listRecovery:', e);
     return res.status(500).json({ error: 'Internal server error' });
@@ -830,15 +936,32 @@ export async function updateRecovery(req: Request, res: Response) {
     if (policeStation !== undefined) data.policeStation = policeStation;
     if (firNumber !== undefined) data.firNumber = firNumber;
 
-    // A resolved theft/police job flips the rental to RECOVERED.
+    // A resolved theft/police/non-payment job flips the rental to RECOVERED.
     if ((status === 'RESOLVED' || status === 'CLOSED') && job.rentalId) {
       await prisma.rental.updateMany({
         where: { id: job.rentalId, status: { in: ['ACTIVE', 'OVERDUE'] } },
         data: { status: 'RECOVERED' },
       });
+
+      // Put the bike back on the shelf — it is physically at the hub again.
+      if (job.bikeId) {
+        await prisma.bike.updateMany({
+          where: { id: job.bikeId, status: { in: ['RENTED', 'RESERVED'] } },
+          data: { status: 'MAINTENANCE' },
+        });
+      }
     }
 
     const updated = await prisma.recoveryJob.update({ where: { id: job.id }, data });
+
+    // Only a completed collection marks the rider, and only for non-payment.
+    // Doing it after the update means a failed update leaves no mark behind.
+    if (status === 'RESOLVED' || status === 'CLOSED') {
+      await markRiderRecovered(job.id).catch((e) =>
+        console.error('markRiderRecovered failed:', e?.message),
+      );
+    }
+
     return res.json({ message: 'Recovery job updated', job: updated });
   } catch (e: any) {
     console.error('updateRecovery:', e);

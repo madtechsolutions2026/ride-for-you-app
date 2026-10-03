@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { Sidebar } from './components/Sidebar';
@@ -17,7 +17,10 @@ import { Employees } from './pages/Employees';
 import { SupportTickets } from './pages/SupportTickets';
 import { Settings } from './pages/Settings';
 import { Reports } from './pages/Reports';
+import { RiderRequests } from './pages/RiderRequests';
+import { Collections } from './pages/Collections';
 import { apiClient } from './api/client';
+import { RefreshProvider, useRefresh } from './context/RefreshContext';
 
 /** Redirects instead of rendering a screen this role can't open. */
 const Guard: React.FC<{ screen: string; children: React.ReactNode }> = ({ screen, children }) => {
@@ -31,23 +34,24 @@ export const App: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [stats, setStats] = useState<any>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [statsError, setStatsError] = useState(false);
 
-  const fetchStats = async () => {
-    setIsRefreshing(true);
+  const fetchStats = useCallback(async () => {
     try {
       const res = await apiClient.get('/admin/api/stats');
       setStats(res.data);
+      setStatsError(false);
     } catch (e) {
       console.error('Error fetching admin stats:', e);
-    } finally {
-      setIsRefreshing(false);
+      // Leave `stats` null rather than substituting numbers. Overview renders
+      // a waiting state; it must never invent a fleet.
+      setStatsError(true);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (user) fetchStats();
-  }, [user]);
+    if (user) void fetchStats();
+  }, [user, fetchStats]);
 
   if (isLoading) {
     return (
@@ -62,19 +66,43 @@ export const App: React.FC = () => {
 
   if (!user) return <Login />;
 
-  const item = itemForPath(location.pathname);
+  return (
+    <RefreshProvider globalReload={fetchStats}>
+      <Shell stats={stats} statsError={statsError} navigate={navigate} pathname={location.pathname} />
+    </RefreshProvider>
+  );
+};
+
+/**
+ * Split out so the header can read `useRefresh()` — a hook cannot be called in
+ * the same component that renders the provider.
+ */
+const Shell: React.FC<{
+  stats: any;
+  statsError: boolean;
+  navigate: ReturnType<typeof useNavigate>;
+  pathname: string;
+}> = ({ stats, statsError, navigate, pathname }) => {
+  const { refresh, isRefreshing } = useRefresh();
+  const item = itemForPath(pathname);
 
   return (
     <div className="min-h-screen bg-paper flex">
-      <Sidebar pendingKycCount={stats?.riders?.pendingKyc || 0} />
+      <Sidebar
+        pendingKycCount={stats?.riders?.pendingKyc || 0}
+        openTicketCount={stats?.queues?.openTickets || 0}
+        pendingRequestCount={stats?.queues?.pendingRentalRequests || 0}
+        openCollectionsCount={stats?.queues?.openCollections || 0}
+      />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           title={item?.title || 'Dashboard'}
           subtitle={item?.subtitle || ''}
           tabs={item?.tabs}
-          onRefresh={fetchStats}
+          onRefresh={refresh}
           isRefreshing={isRefreshing}
+          statsError={statsError}
         />
 
         <main className="flex-1 px-7 py-6 min-w-0">
@@ -91,6 +119,11 @@ export const App: React.FC = () => {
             />
 
             <Route path="/riders/*" element={<Guard screen="riders"><Riders /></Guard>} />
+            <Route path="/bookings" element={<Navigate to="/bookings/list" replace />} />
+            <Route
+              path="/bookings/requests"
+              element={<Guard screen="bookings"><RiderRequests /></Guard>}
+            />
             <Route path="/bookings/*" element={<Guard screen="bookings"><Bookings /></Guard>} />
             <Route path="/fleet/*" element={<Guard screen="fleet"><Fleet /></Guard>} />
             <Route path="/kyc/*" element={<Guard screen="kyc"><KycReview /></Guard>} />
@@ -120,8 +153,13 @@ export const App: React.FC = () => {
               path="/service/damage"
               element={<Guard screen="service"><ServiceRecovery tab="damage" /></Guard>}
             />
+            <Route path="/recovery" element={<Navigate to="/recovery/collections" replace />} />
             <Route
-              path="/recovery"
+              path="/recovery/collections"
+              element={<Guard screen="recovery"><Collections /></Guard>}
+            />
+            <Route
+              path="/recovery/roadside"
               element={<Guard screen="recovery"><ServiceRecovery tab="recovery" /></Guard>}
             />
 

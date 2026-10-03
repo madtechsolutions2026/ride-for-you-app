@@ -11,25 +11,35 @@ interface Plan {
   deposit?: number;
 }
 
-const INTEGRATIONS = [
-  { name: 'PhonePe', purpose: 'Primary payment gateway', env: 'PHONEPE_*' },
-  { name: 'Razorpay', purpose: 'Fallback payment gateway', env: 'RAZORPAY_*' },
-  { name: 'Way2Chats', purpose: 'WhatsApp OTP and rent reminders', env: 'WAY2CHATS_API_KEY' },
-  { name: 'Cloudflare R2', purpose: 'KYC document and image storage', env: 'R2_*' },
-  { name: 'Expo Push', purpose: 'Rider mobile notifications', env: 'EXPO_TOKEN' },
-];
+interface Integration {
+  name: string;
+  purpose: string;
+  env: string;
+  configured: boolean;
+}
 
 export const Settings: React.FC<{ tab?: 'pricing' | 'integrations' }> = ({ tab = 'pricing' }) => {
   const [models, setModels] = useState<any[]>([]);
+  const [integrations, setIntegrations] = useState<Integration[] | null>(null);
+  const [paymentsMode, setPaymentsMode] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiClient.get('/admin/api/fleet');
-        setModels(res.data.models || []);
+        // Both tabs load together — the payloads are small and it keeps
+        // switching between them instant.
+        const [fleet, status] = await Promise.all([
+          apiClient.get('/admin/api/fleet'),
+          apiClient.get('/admin/api/settings/integrations').catch(() => null),
+        ]);
+        setModels(fleet.data.models || []);
+        if (status) {
+          setIntegrations(status.data.integrations ?? []);
+          setPaymentsMode(status.data.paymentsMode ?? '');
+        }
       } catch (e) {
-        console.error('Error fetching pricing:', e);
+        console.error('Error fetching settings:', e);
       } finally {
         setLoading(false);
       }
@@ -49,29 +59,52 @@ export const Settings: React.FC<{ tab?: 'pricing' | 'integrations' }> = ({ tab =
           title="Integrations"
           hint="Third-party services this deployment depends on. Credentials live in server environment variables and are never exposed to the dashboard."
         />
-        <Table>
-          <thead>
-            <tr>
-              <TH>Service</TH>
-              <TH>Purpose</TH>
-              <TH>Configured by</TH>
-              <TH align="right">Live status</TH>
-            </tr>
-          </thead>
-          <tbody>
-            {INTEGRATIONS.map((i) => (
-              <TR key={i.name}>
-                <TD className="font-medium text-ink whitespace-nowrap">{i.name}</TD>
-                <TD className="text-ink-soft">{i.purpose}</TD>
-                <TD className="u-num text-ink-muted whitespace-nowrap">{i.env}</TD>
-                <TD align="right"><Pill tone="slate">Not reported</Pill></TD>
-              </TR>
-            ))}
-          </tbody>
-        </Table>
+        {paymentsMode === 'stub' && (
+          <div className="mb-4 border border-signal-amberLine bg-signal-amberSoft rounded-sm p-3">
+            <p className="text-[12.5px] text-signal-amber">
+              <strong>Payments are in stub mode.</strong> Bookings and weekly rent are marked paid
+              and written to the ledger, but no gateway is called and no money moves. Set{' '}
+              <span className="u-num">PAYMENTS_MODE=live</span> once gateway credentials are in
+              place.
+            </p>
+          </div>
+        )}
+
+        {integrations === null ? (
+          <EmptyState
+            title="Status unavailable"
+            hint="The server did not report integration configuration."
+          />
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <TH>Service</TH>
+                <TH>Purpose</TH>
+                <TH>Configured by</TH>
+                <TH align="right">Status</TH>
+              </tr>
+            </thead>
+            <tbody>
+              {integrations.map((i) => (
+                <TR key={i.name}>
+                  <TD className="font-medium text-ink whitespace-nowrap">{i.name}</TD>
+                  <TD className="text-ink-soft">{i.purpose}</TD>
+                  <TD className="u-num text-ink-muted whitespace-nowrap">{i.env}</TD>
+                  <TD align="right">
+                    <Pill tone={i.configured ? 'green' : 'slate'}>
+                      {i.configured ? 'Configured' : 'Not configured'}
+                    </Pill>
+                  </TD>
+                </TR>
+              ))}
+            </tbody>
+          </Table>
+        )}
+
         <p className="text-[11.5px] text-ink-soft mt-3 pt-3 border-t border-rule">
-          Live status needs a <span className="u-num">GET /admin/api/settings/integrations</span>{' '}
-          endpoint returning a configured/reachable flag per service. Not built yet.
+          "Configured" means the server holds credentials for that service. It does not call the
+          provider to confirm they still work — that belongs in a health check, not a page load.
         </p>
       </Card>
     );

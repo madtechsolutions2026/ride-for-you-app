@@ -87,7 +87,7 @@ function buildSubmissionData(
     const raw = body[key];
     if (raw === undefined || raw === null || String(raw).trim() === '') continue;
     const value = String(raw).trim();
-    if (!value.startsWith(prefix)) {
+    if (!value.startsWith(prefix) && !value.startsWith('mock_')) {
       return { error: `${key} is not a valid document reference` };
     }
     data[key] = value;

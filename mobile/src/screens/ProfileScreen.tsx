@@ -23,7 +23,13 @@ import { apiClient } from '../api/client';
 import { getStoredUser, setStoredUser } from '../api/tokenStore';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
-import { NeoSurface, PrimaryButton, PrivacyPolicyModal } from '../components';
+import {
+  NeoSurface,
+  PrimaryButton,
+  PrivacyPolicyModal,
+  BottomNav,
+  BOTTOM_NAV_HEIGHT,
+} from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'> & {
   onLogout?: () => void;
@@ -201,7 +207,6 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         }
         result = await ImagePicker.launchCameraAsync({
           quality: 0.85,
-          allowsEditing: true,
         });
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -212,7 +217,6 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           quality: 0.85,
-          allowsEditing: true,
         });
       }
 
@@ -293,12 +297,8 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         [{ text: 'Great!' }]
       );
     } catch (e: any) {
-      setKycStatus('Submitted');
-      Alert.alert(
-        'KYC Submitted 🎉',
-        'Your documents have been submitted for Admin review.',
-        [{ text: 'OK' }]
-      );
+      const msg = e.response?.data?.error || 'Could not submit KYC documents.';
+      Alert.alert('Submission Failed', msg, [{ text: 'OK' }]);
     } finally {
       setSubmitting(false);
     }
@@ -645,39 +645,9 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         )}
       </ScrollView>
 
-      {/* ---------------- BOTTOM NAV BAR ---------------- */}
-      <View style={styles.bottomBar}>
-        <Pressable style={styles.tabItem} onPress={() => navigation.navigate('Home')}>
-          <Ionicons name="home-outline" size={22} color={colors.text.secondary} />
-          <Text style={styles.tabLabel}>Home</Text>
-        </Pressable>
-
-        <Pressable style={styles.tabItem} onPress={() => {}}>
-          <Ionicons name="calendar-outline" size={22} color={colors.text.secondary} />
-          <Text style={styles.tabLabel}>Bookings</Text>
-        </Pressable>
-
-        <Pressable style={styles.tabItem} onPress={() => {}}>
-          <Ionicons name="wallet-outline" size={22} color={colors.text.secondary} />
-          <Text style={styles.tabLabel}>Wallet</Text>
-        </Pressable>
-
-        <Pressable style={styles.tabItem} onPress={() => {}}>
-          <View>
-            <Ionicons name="chatbubble-outline" size={22} color={colors.text.secondary} />
-            <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>2</Text>
-            </View>
-          </View>
-          <Text style={styles.tabLabel}>Inbox</Text>
-        </Pressable>
-
-        <Pressable style={styles.tabItem} onPress={() => {}}>
-          <Ionicons name="person" size={22} color={colors.brand.primary} />
-          <Text style={[styles.tabLabel, styles.tabLabelActive]}>Profile</Text>
-          <View style={styles.activeTabIndicator} />
-        </Pressable>
-      </View>
+      {/* Shared with every other tabbed screen. This used to be a local copy in
+          which four of the five buttons were wired to `() => {}`. */}
+      <BottomNav active="profile" />
 
       {/* ---------------- 1. AADHAAR CARD UPLOAD MODAL ---------------- */}
       <Modal
@@ -1030,7 +1000,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: screenPadding,
-    paddingBottom: 100,
+    paddingBottom: BOTTOM_NAV_HEIGHT + spacing.lg,
   },
 
   /* Hero */
@@ -1405,61 +1375,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bold,
     fontSize: 13,
     color: colors.status.error,
-  },
-
-  /* Bottom Nav Bar */
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    height: 64,
-    backgroundColor: colors.surface.card,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingBottom: 4,
-  },
-  tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  tabLabel: {
-    fontFamily: fontFamily.medium,
-    fontSize: 10,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
-  tabLabelActive: {
-    fontFamily: fontFamily.bold,
-    color: colors.brand.primary,
-  },
-  tabBadge: {
-    position: 'absolute',
-    top: -3,
-    right: -6,
-    backgroundColor: colors.status.error,
-    borderRadius: 8,
-    width: 15,
-    height: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabBadgeText: {
-    fontFamily: fontFamily.bold,
-    fontSize: 9,
-    color: colors.common.white,
-  },
-  activeTabIndicator: {
-    position: 'absolute',
-    bottom: -6,
-    width: 16,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: colors.brand.primary,
   },
 
   /* Modals */

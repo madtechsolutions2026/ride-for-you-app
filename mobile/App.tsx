@@ -31,6 +31,13 @@ import MyBookingsScreen from './src/screens/MyBookingsScreen';
 import MyRentalScreen from './src/screens/MyRentalScreen';
 import SupportScreen from './src/screens/SupportScreen';
 import RaiseTicketScreen from './src/screens/RaiseTicketScreen';
+import TicketDetailScreen from './src/screens/TicketDetailScreen';
+import WalletScreen from './src/screens/WalletScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
+import BatterySwapScreen from './src/screens/BatterySwapScreen';
+import RentalRequestScreen from './src/screens/RentalRequestScreen';
+import ReportDamageScreen from './src/screens/ReportDamageScreen';
+import SafetyGuideScreen from './src/screens/SafetyGuideScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -128,6 +135,13 @@ export default function App() {
                 <Stack.Screen name="MyRental" component={MyRentalScreen} />
                 <Stack.Screen name="Support" component={SupportScreen} />
                 <Stack.Screen name="RaiseTicket" component={RaiseTicketScreen} />
+                <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+                <Stack.Screen name="Wallet" component={WalletScreen} />
+                <Stack.Screen name="Notifications" component={NotificationsScreen} />
+                <Stack.Screen name="BatterySwap" component={BatterySwapScreen} />
+                <Stack.Screen name="RentalRequest" component={RentalRequestScreen} />
+                <Stack.Screen name="ReportDamage" component={ReportDamageScreen} />
+                <Stack.Screen name="SafetyGuide" component={SafetyGuideScreen} />
               </>
             ) : (
               <>

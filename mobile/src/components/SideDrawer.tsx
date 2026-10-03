@@ -22,6 +22,7 @@ type Props = {
   onNavigateBookings?: () => void;
   onNavigateRental?: () => void;
   onNavigateWallet?: () => void;
+  onNavigateSafety?: () => void;
   onNavigateSupport?: () => void;
   onLogout: () => void;
 };
@@ -36,6 +37,7 @@ export function SideDrawer({
   onNavigateBookings,
   onNavigateRental,
   onNavigateWallet,
+  onNavigateSafety,
   onNavigateSupport,
   onLogout,
 }: Props) {
@@ -152,7 +154,10 @@ export function SideDrawer({
 
             <Pressable
               style={styles.menuItem}
-              onPress={onClose}
+              onPress={() => {
+                onClose();
+                onNavigateSafety && onNavigateSafety();
+              }}
             >
               <View style={styles.menuIconWrapper}>
                 <Ionicons name="shield-checkmark-outline" size={20} color={colors.brand.primary} />

@@ -14,8 +14,11 @@ import {
   AlertTriangle,
   Phone,
   Mail,
+  Wallet,
+  History,
 } from 'lucide-react';
 import { apiClient } from '../api/client';
+import { WalletPanel } from '../components/WalletPanel';
 
 export const Riders: React.FC = () => {
   const [riders, setRiders] = useState<any[]>([]);
@@ -28,7 +31,9 @@ export const Riders: React.FC = () => {
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
   const [riderDetail, setRiderDetail] = useState<any | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'bookings' | 'kyc' | 'payments'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'kyc' | 'payments' | 'wallet'>(
+    'bookings',
+  );
 
   const fetchRiders = async () => {
     setLoading(true);
@@ -175,7 +180,18 @@ export const Riders: React.FC = () => {
                           {r.fullName ? r.fullName.charAt(0).toUpperCase() : 'R'}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{r.fullName || 'Registered Rider'}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-slate-900">{r.fullName || 'Registered Rider'}</p>
+                            {r.recoveryCount > 0 && (
+                              <span
+                                title={`${r.recoveryCount} bike(s) recovered for non-payment`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 border border-rose-200"
+                              >
+                                <History className="w-2.5 h-2.5" strokeWidth={2.5} />
+                                {r.recoveryCount}× RECOVERED
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[11px] text-slate-500 font-mono">{r.phone}</p>
                           {r.email && <p className="text-[10px] text-slate-400 truncate max-w-[150px]">{r.email}</p>}
                         </div>
@@ -293,6 +309,16 @@ export const Riders: React.FC = () => {
                     >
                       {riderDetail?.user?.accountStatus || 'ACTIVE'}
                     </span>
+
+                    {(riderDetail?.user?.recoveryCount ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                        <History className="w-3 h-3" strokeWidth={2.5} />
+                        {riderDetail.user.recoveryCount} RECOVERY
+                        {riderDetail.user.recoveryCount === 1 ? '' : 'S'}
+                        {riderDetail.user.writtenOffAmount > 0 &&
+                          ` · ₹${riderDetail.user.writtenOffAmount.toLocaleString('en-IN')} WRITTEN OFF`}
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-4 mt-1.5 text-xs text-slate-300 font-medium">
                     <span className="flex items-center gap-1">
@@ -423,7 +449,27 @@ export const Riders: React.FC = () => {
                     <Receipt className="w-4 h-4" />
                     <span>Payments Ledger ({riderDetail?.payments?.length || 0})</span>
                   </button>
+
+                  <button
+                    onClick={() => setActiveTab('wallet')}
+                    className={`pb-3 border-b-2 transition flex items-center gap-1.5 ${
+                      activeTab === 'wallet'
+                        ? 'border-emerald-600 text-emerald-700'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Wallet className="w-4 h-4" />
+                    <span>Wallet Credit</span>
+                  </button>
                 </div>
+
+                {/* Tab Content 4: company-issued wallet credit */}
+                {activeTab === 'wallet' && selectedRiderId && (
+                  <WalletPanel
+                    riderId={selectedRiderId}
+                    riderName={riderDetail?.user?.fullName || riderDetail?.fullName || 'this rider'}
+                  />
+                )}
 
                 {/* Tab Content 1: Bookings & Rentals History */}
                 {activeTab === 'bookings' && (

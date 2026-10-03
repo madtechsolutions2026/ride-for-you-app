@@ -13,7 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
-import { NeoSurface } from '../components';
+import { NeoSurface, BottomNav, BOTTOM_NAV_HEIGHT } from '../components';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Support'>;
 
@@ -21,6 +21,7 @@ type SupportTicket = {
   id: string;
   ticketNumber: string;
   category: string;
+  _count?: { messages: number };
   subject?: string;
   description: string;
   status: string;
@@ -165,8 +166,16 @@ export default function SupportScreen({ navigation }: Props) {
                 const isResolved = ticket.status === 'RESOLVED' || ticket.status === 'CLOSED';
                 const isOpen = ticket.status === 'OPEN';
 
+                const replyCount = ticket._count?.messages ?? 0;
+
                 return (
-                  <View key={ticket.id} style={styles.ticketCard}>
+                  <Pressable
+                    key={ticket.id}
+                    style={styles.ticketCard}
+                    onPress={() => navigation.navigate('TicketDetail', { ticketId: ticket.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ticket ${ticket.ticketNumber}`}
+                  >
                     <View style={styles.ticketHeader}>
                       <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -206,7 +215,25 @@ export default function SupportScreen({ navigation }: Props) {
                       </Text>
                     </View>
 
-                    <Text style={styles.ticketDesc}>{ticket.description}</Text>
+                    <Text style={styles.ticketDesc} numberOfLines={2}>
+                      {ticket.description}
+                    </Text>
+
+                    <View style={styles.ticketFooter}>
+                      <Text style={styles.ticketReplies}>
+                        {replyCount === 0
+                          ? 'No replies yet'
+                          : `${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`}
+                      </Text>
+                      <View style={styles.ticketOpenRow}>
+                        <Text style={styles.ticketOpenText}>Open conversation</Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={13}
+                          color={colors.brand.primary}
+                        />
+                      </View>
+                    </View>
 
                     {ticket.adminNotes && (
                       <View style={styles.adminNotesBox}>
@@ -217,7 +244,7 @@ export default function SupportScreen({ navigation }: Props) {
                         <Text style={styles.adminNotesText}>{ticket.adminNotes}</Text>
                       </View>
                     )}
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -251,6 +278,8 @@ export default function SupportScreen({ navigation }: Props) {
           </View>
         </View>
       </ScrollView>
+
+      <BottomNav active="support" />
     </View>
   );
 }
@@ -281,7 +310,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: screenPadding,
-    paddingBottom: 40,
+    paddingBottom: BOTTOM_NAV_HEIGHT + spacing.lg,
   },
 
   quickContactsRow: {
@@ -448,8 +477,28 @@ const styles = StyleSheet.create({
   ticketDesc: {
     fontFamily: fontFamily.regular,
     fontSize: 12,
-    color: '#475569',
+    color: colors.text.secondary,
     lineHeight: 17,
+  },
+  ticketFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  ticketReplies: {
+    fontFamily: fontFamily.medium,
+    fontSize: 11,
+    color: colors.text.secondary,
+  },
+  ticketOpenRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ticketOpenText: {
+    fontFamily: fontFamily.semibold,
+    fontSize: 11.5,
+    color: colors.brand.primary,
   },
   adminNotesBox: {
     marginTop: 8,

@@ -26,12 +26,13 @@ import {
   Glass,
   NearbyHubsSheet,
   NeoSurface,
-  NotificationSheet,
+  NotificationBell,
   QuickAction,
   QuickActionDivider,
   SideDrawer,
   StylizedMap,
   ThemedModal,
+  BottomNav,
   type CategoryHub,
   type MapStation,
 } from '../components';
@@ -50,14 +51,6 @@ type UserProfile = {
   kycStatus?: string;
 };
 
-const TABS = [
-  { key: 'home', icon: 'home', label: 'Home' },
-  { key: 'bookings', icon: 'receipt-outline', label: 'Bookings' },
-  { key: 'support', icon: 'headset-outline', label: 'Support' },
-  { key: 'inbox', icon: 'chatbubble-outline', label: 'Inbox', badge: '2' },
-  { key: 'profile', icon: 'person-outline', label: 'Profile' },
-] as const;
-
 export default function HomeScreen({ navigation, onLogout }: Props) {
   const { width } = useWindowDimensions();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -65,7 +58,6 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
 
   // Modal & Sheet States
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const [notifVisible, setNotifVisible] = useState(false);
   const [hubsSheetVisible, setHubsSheetVisible] = useState(false);
   const [categoryHubsVisible, setCategoryHubsVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<'swap' | 'home'>('swap');
@@ -201,12 +193,9 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
                 </Glass>
               </Pressable>
 
-              <Pressable onPress={() => setNotifVisible(true)} hitSlop={6}>
-                <Glass borderRadius={radius.md} style={styles.iconBtn}>
-                  <Ionicons name="notifications-outline" size={20} color={colors.text.primary} />
-                  <View style={styles.notifDot} />
-                </Glass>
-              </Pressable>
+              <Glass borderRadius={radius.md} style={styles.iconBtn}>
+                <NotificationBell onPress={() => navigation.navigate('Notifications')} />
+              </Glass>
             </View>
 
             <Text style={styles.hello}>
@@ -250,10 +239,9 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
             />
             <QuickActionDivider />
             <QuickAction
-              icon="pricetag-outline"
-              label={'Offers &\nDeals'}
-              badge="New"
-              onPress={() => setNotifVisible(true)}
+              icon="battery-charging-outline"
+              label={'Battery\nSwap'}
+              onPress={() => navigation.navigate('BatterySwap')}
             />
           </View>
         </NeoSurface>
@@ -365,39 +353,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
       </ScrollView>
 
       {/* ---------------- UNIFIED BOTTOM TAB BAR ---------------- */}
-      <View style={styles.tabBar}>
-        {TABS.map((t) => {
-          const active = t.key === 'home';
-          return (
-            <Pressable
-              key={t.key}
-              style={styles.tab}
-              hitSlop={6}
-              onPress={() => {
-                if (t.key === 'profile') navigation.navigate('Profile');
-                else if (t.key === 'inbox') setNotifVisible(true);
-                else if (t.key === 'bookings') navigation.navigate('MyBookings');
-                else if (t.key === 'support') navigation.navigate('Support');
-              }}
-            >
-              <View>
-                <Ionicons
-                  name={(active ? 'home' : t.icon) as keyof typeof Ionicons.glyphMap}
-                  size={22}
-                  color={active ? colors.brand.primary : colors.text.secondary}
-                />
-                {'badge' in t && t.badge ? (
-                  <View style={styles.tabBadge}>
-                    <Text style={styles.tabBadgeText}>{t.badge}</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{t.label}</Text>
-              {active ? <View style={styles.tabActiveBar} /> : null}
-            </Pressable>
-          );
-        })}
-      </View>
+      <BottomNav active="home" />
 
       {/* ---------------- SIDE DRAWER MENU ---------------- */}
       <SideDrawer
@@ -410,13 +366,9 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
         onNavigateRental={() => navigation.navigate('MyRental')}
         onNavigateBookings={() => navigation.navigate('MyBookings')}
         onNavigateSupport={() => navigation.navigate('Support')}
+        onNavigateWallet={() => navigation.navigate('Wallet')}
+        onNavigateSafety={() => navigation.navigate('SafetyGuide')}
         onLogout={() => setLogoutModalVisible(true)}
-      />
-
-      {/* ---------------- NOTIFICATION SHEET ---------------- */}
-      <NotificationSheet
-        visible={notifVisible}
-        onClose={() => setNotifVisible(false)}
       />
 
       {/* ---------------- NEARBY HUBS SHEET ---------------- */}
