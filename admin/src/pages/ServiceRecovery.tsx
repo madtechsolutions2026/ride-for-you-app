@@ -31,8 +31,8 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
     try {
       const query = new URLSearchParams(filters as any).toString();
       const [srvRes, statsRes, techRes, dmgRes, recRes, fltRes, infraRes] = await Promise.all([
-        apiClient.get(/admin/api/service/tickets?),
-        apiClient.get(/admin/api/service/dashboard-stats?),
+        apiClient.get(`/admin/api/service/tickets?${query}`),
+        apiClient.get(`/admin/api/service/dashboard-stats?${query}`),
         apiClient.get('/admin/api/service/technicians'),
         apiClient.get('/admin/api/damage'),
         apiClient.get('/admin/api/recovery'),
