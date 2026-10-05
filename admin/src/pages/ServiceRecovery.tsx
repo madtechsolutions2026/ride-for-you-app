@@ -356,6 +356,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
             </div>
           )}
         </Card>
+      </div>
       )}
 
       {/* 2. TECHNICIANS */}
