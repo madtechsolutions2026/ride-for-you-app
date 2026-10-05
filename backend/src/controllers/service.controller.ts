@@ -1,4 +1,4 @@
-﻿import { Response } from 'express';
+import { Response } from 'express';
 import { prisma } from '../utils/prisma';
 import { AuthRequest } from '../middleware/auth';
 
@@ -96,11 +96,40 @@ export async function updateServicePerson(req: AuthRequest, res: Response) {
 
 export async function listServiceTickets(req: AuthRequest, res: Response) {
   try {
-    const { status, bikeId, assignedServicePersonId, page = '1', limit = '50' } = req.query;
+    const { 
+      status, 
+      bikeId, 
+      assignedServicePersonId, 
+      hubId,
+      dateFrom,
+      dateTo,
+      search,
+      page = '1', 
+      limit = '50' 
+    } = req.query;
+
     const where: any = {};
-    if (status) where.status = status as any;
+    if (status) where.status = status as string;
     if (bikeId) where.bikeId = bikeId as string;
     if (assignedServicePersonId) where.assignedServicePersonId = assignedServicePersonId as string;
+
+    if (hubId) {
+      where.bike = { ...where.bike, hubId: hubId as string };
+    }
+
+    if (search) {
+      const searchStr = search as string;
+      where.OR = [
+        { reportedIssue: { contains: searchStr, mode: 'insensitive' } },
+        { bike: { registrationNumber: { contains: searchStr, mode: 'insensitive' } } }
+      ];
+    }
+
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom as string);
+      if (dateTo) where.createdAt.lte = new Date(dateTo as string);
+    }
 
     const skip = (parseInt(page as string, 10) - 1) * parseInt(limit as string, 10);
     const take = parseInt(limit as string, 10);
@@ -362,5 +391,76 @@ export async function updateServiceTicket(req: AuthRequest, res: Response) {
   } catch (error: any) {
     console.error('updateServiceTicket error:', error);
     return res.status(500).json({ success: false, message: 'Failed to update ticket' });
+  }
+}
+
+export async function getServiceDashboardStats(req: AuthRequest, res: Response) {
+  try {
+    const { hubId, dateFrom, dateTo } = req.query;
+    
+    const baseWhere: any = {};
+    if (hubId) {
+      baseWhere.bike = { hubId: hubId as string };
+    }
+    if (dateFrom || dateTo) {
+      baseWhere.createdAt = {};
+      if (dateFrom) baseWhere.createdAt.gte = new Date(dateFrom as string);
+      if (dateTo) baseWhere.createdAt.lte = new Date(dateTo as string);
+    }
+
+    const totalTickets = await prisma.serviceTicket.count({ where: baseWhere });
+    
+    const pendingTickets = await prisma.serviceTicket.count({ 
+      where: { ...baseWhere, status: 'ASSIGNED' } 
+    });
+    
+    const inProgressTickets = await prisma.serviceTicket.count({ 
+      where: { ...baseWhere, status: 'IN_PROGRESS' } 
+    });
+    
+    const completedTickets = await prisma.serviceTicket.count({ 
+      where: { ...baseWhere, status: 'COMPLETED' } 
+    });
+
+    const overdueTickets = await prisma.serviceTicket.count({
+      where: {
+        ...baseWhere,
+        status: { not: 'COMPLETED' },
+        scheduledTime: { lt: new Date() }
+      }
+    });
+
+    const completedWithTimes = await prisma.serviceTicket.findMany({
+      where: {
+        ...baseWhere,
+        status: 'COMPLETED',
+        startedAt: { not: null },
+        completedAt: { not: null }
+      },
+      select: { startedAt: true, completedAt: true }
+    });
+
+    let avgResolutionHours = 0;
+    if (completedWithTimes.length > 0) {
+      const totalMs = completedWithTimes.reduce((acc, t) => {
+        return acc + (t.completedAt!.getTime() - t.startedAt!.getTime());
+      }, 0);
+      avgResolutionHours = totalMs / completedWithTimes.length / (1000 * 60 * 60);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        totalTickets,
+        pendingTickets,
+        inProgressTickets,
+        completedTickets,
+        overdueTickets,
+        avgResolutionHours: Math.round(avgResolutionHours * 10) / 10
+      }
+    });
+  } catch (error: any) {
+    console.error('getServiceDashboardStats error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch dashboard stats' });
   }
 }

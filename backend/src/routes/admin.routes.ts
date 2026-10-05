@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import {
   getAdminStats,
   getAllUsers,
@@ -76,6 +76,7 @@ import {
   addServicePart,
   addServiceNote,
   updateServiceTicket,
+  getServiceDashboardStats,
 } from '../controllers/service.controller';
 import {
   listAllTickets,
@@ -140,6 +141,7 @@ router.post('/finance/expenses', createExpense);
 router.delete('/finance/expenses/:id', adminOnly, deleteExpense);
 
 /* -------- Service & Maintenance -------- */
+router.get('/service/dashboard-stats', getServiceDashboardStats);
 router.get('/service/technicians', listServicePersons);
 router.post('/service/technicians', createServicePerson);
 router.put('/service/technicians/:id', updateServicePerson);

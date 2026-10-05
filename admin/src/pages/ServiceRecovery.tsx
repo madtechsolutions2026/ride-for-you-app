@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Wrench, Truck, Plus, ShieldAlert, UserCog, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptyState } from '../components/ui';
@@ -7,7 +7,11 @@ import { errMsg } from '../api/errors';
 type Tab = 'tickets' | 'technicians' | 'damage' | 'recovery';
 
 export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) => {
+  
   const [serviceTickets, setServiceTickets] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [filters, setFilters] = useState({ status: '', hubId: '', search: '', dateFrom: '', dateTo: '' });
+
   const [technicians, setTechnicians] = useState<any[]>([]);
   const [damage, setDamage] = useState<any[]>([]);
   const [recovery, setRecovery] = useState<any[]>([]);
@@ -25,8 +29,10 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
   const loadData = async () => {
     setLoading(true);
     try {
-      const [srvRes, techRes, dmgRes, recRes, fltRes, infraRes] = await Promise.all([
-        apiClient.get('/admin/api/service/tickets'),
+      const query = new URLSearchParams(filters as any).toString();
+      const [srvRes, statsRes, techRes, dmgRes, recRes, fltRes, infraRes] = await Promise.all([
+        apiClient.get(/admin/api/service/tickets?),
+        apiClient.get(/admin/api/service/dashboard-stats?),
         apiClient.get('/admin/api/service/technicians'),
         apiClient.get('/admin/api/damage'),
         apiClient.get('/admin/api/recovery'),
@@ -35,6 +41,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       ]);
 
       setServiceTickets(srvRes.data.data?.tickets || []);
+      setStats(statsRes.data.data || null);
       setTechnicians(techRes.data.data || []);
       setDamage(dmgRes.data.reports || []);
       setRecovery(recRes.data.jobs || []);
@@ -161,7 +168,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
   const resolveDamage = async (id: string, action: 'CHARGE' | 'WAIVE') => {
     let finalCost: number | undefined;
     if (action === 'CHARGE') {
-      const v = prompt('Final charge amount ₹:');
+      const v = prompt('Final charge amount ?:');
       if (v === null) return;
       finalCost = Number(v);
     }
@@ -213,7 +220,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
 
   return (
     <div className="space-y-6">
-      {/* Tab selection lives in the URL — see nav.ts. */}
+      {/* Tab selection lives in the URL � see nav.ts. */}
       <div className="flex items-center justify-end gap-2">
         {tab === 'tickets' && (
           <Btn variant="primary" onClick={() => setIsNewTicketOpen(true)}>
@@ -234,8 +241,68 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
         )}
       </div>
 
+      
       {/* 1. SERVICE TICKETS */}
       {tab === 'tickets' && (
+        <div className="space-y-4">
+          {stats && (
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              <div className="bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-sm">
+                <p className="text-[10px] uppercase font-extrabold text-[#7A756B]">Total Tickets</p>
+                <p className="text-2xl font-black text-[#16150F]">{stats.totalTickets}</p>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-sm">
+                <p className="text-[10px] uppercase font-extrabold text-[#7A756B]">Pending</p>
+                <p className="text-2xl font-black text-[#16150F]">{stats.pendingTickets}</p>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-sm">
+                <p className="text-[10px] uppercase font-extrabold text-[#7A756B]">In Progress</p>
+                <p className="text-2xl font-black text-[#16150F]">{stats.inProgressTickets}</p>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-sm">
+                <p className="text-[10px] uppercase font-extrabold text-[#7A756B]">Completed</p>
+                <p className="text-2xl font-black text-[#16150F]">{stats.completedTickets}</p>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-sm">
+                <p className="text-[10px] uppercase font-extrabold text-[#E53E3E]">Overdue</p>
+                <p className="text-2xl font-black text-[#E53E3E]">{stats.overdueTickets}</p>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-sm">
+                <p className="text-[10px] uppercase font-extrabold text-[#7A756B]">Avg Resolution</p>
+                <p className="text-2xl font-black text-[#16150F]">{stats.avgResolutionHours}h</p>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white p-3 rounded-2xl border border-[#E5E2DB] flex flex-wrap gap-2 items-center">
+            <input 
+              placeholder="Search bike or issue..." 
+              className="text-sm border border-[#E5E2DB] rounded-lg px-3 py-2 outline-none flex-1 min-w-[200px]"
+              value={filters.search}
+              onChange={e => setFilters({...filters, search: e.target.value})}
+            />
+            <select 
+              className="text-sm border border-[#E5E2DB] rounded-lg px-3 py-2 outline-none bg-white"
+              value={filters.status}
+              onChange={e => setFilters({...filters, status: e.target.value})}
+            >
+              <option value="">All Statuses</option>
+              <option value="ASSIGNED">Assigned / Pending</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+            <select 
+              className="text-sm border border-[#E5E2DB] rounded-lg px-3 py-2 outline-none bg-white"
+              value={filters.hubId}
+              onChange={e => setFilters({...filters, hubId: e.target.value})}
+            >
+              <option value="">All Hubs</option>
+              {hubs.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+            <Btn variant="primary" onClick={loadData}>Apply Filters</Btn>
+          </div>
+
         <Card>
           {serviceTickets.length === 0 ? (
             <EmptyState
@@ -295,7 +362,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       {tab === 'technicians' && (
         <Card>
           {technicians.length === 0 ? (
-            <EmptyState icon="🔧" title="No service personnel registered" hint="Add internal or outsourced mechanics." />
+            <EmptyState icon="??" title="No service personnel registered" hint="Add internal or outsourced mechanics." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -344,7 +411,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase border-b border-[#E5E2DB]">
-                    <th className="px-5 py-3">Bike · Rider</th>
+                    <th className="px-5 py-3">Bike � Rider</th>
                     <th className="px-5 py-3">Severity</th>
                     <th className="px-5 py-3">Description</th>
                     <th className="px-5 py-3">Est. cost</th>
@@ -358,7 +425,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
                       <td className="px-5 py-3">
                         <div className="font-extrabold text-[#16150F]">{d.bike?.registrationNumber}</div>
                         <div className="text-xs text-[#7A756B]">
-                          {d.rental?.user?.fullName} · {d.rental?.user?.phone}
+                          {d.rental?.user?.fullName} � {d.rental?.user?.phone}
                         </div>
                       </td>
                       <td className="px-5 py-3">
@@ -404,7 +471,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase border-b border-[#E5E2DB]">
-                    <th className="px-5 py-3">Ref · Type</th>
+                    <th className="px-5 py-3">Ref � Type</th>
                     <th className="px-5 py-3">Bike / Rider</th>
                     <th className="px-5 py-3">Location</th>
                     <th className="px-5 py-3">Priority</th>
@@ -422,13 +489,13 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
                         </Pill>
                       </td>
                       <td className="px-5 py-3 text-xs text-[#4A4740]">
-                        {j.bike?.registrationNumber || '—'}
+                        {j.bike?.registrationNumber || '�'}
                         <br />
                         <span className="text-[#7A756B]">
                           {j.rental?.user?.fullName || j.reportedByPhone || ''}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-xs text-[#4A4740] max-w-[180px]">{j.locationText || '—'}</td>
+                      <td className="px-5 py-3 text-xs text-[#4A4740] max-w-[180px]">{j.locationText || '�'}</td>
                       <td className="px-5 py-3">
                         <Pill tone={toneFor(j.priority)}>{j.priority}</Pill>
                       </td>
@@ -487,10 +554,10 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
           <form onSubmit={handleCreateTicket} className="space-y-3.5">
             <Field label="Select Bike for Maintenance">
               <select name="bikeId" required className={input}>
-                <option value="">— Select Bike —</option>
+                <option value="">� Select Bike �</option>
                 {bikes.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.registrationNumber} ({b.model?.name} · {b.hub?.name} · Status: {b.status})
+                    {b.registrationNumber} ({b.model?.name} � {b.hub?.name} � Status: {b.status})
                   </option>
                 ))}
               </select>
@@ -503,7 +570,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Assign Technician">
                 <select name="assignedServicePersonId" className={input}>
-                  <option value="">— Assign Later —</option>
+                  <option value="">� Assign Later �</option>
                   {technicians.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.specialization || 'General'})
@@ -518,7 +585,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
             </div>
 
             <Field label="Initial Inspection Note (optional)">
-              <textarea name="note" rows={2} placeholder="Condition observations…" className={input} />
+              <textarea name="note" rows={2} placeholder="Condition observations�" className={input} />
             </Field>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-[#E5E2DB]">
@@ -526,7 +593,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
                 Cancel
               </Btn>
               <Btn type="submit" variant="primary" disabled={busy}>
-                {busy ? 'Creating…' : 'Create Ticket'}
+                {busy ? 'Creating�' : 'Create Ticket'}
               </Btn>
             </div>
           </form>
@@ -542,7 +609,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
             </Field>
 
             <Field label="Phone Number">
-              <input name="phone" required placeholder="+91…" className={input} />
+              <input name="phone" required placeholder="+91�" className={input} />
             </Field>
 
             <Field label="Specialization">
@@ -551,7 +618,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
 
             <Field label="Home Hub">
               <select name="hubId" className={input}>
-                <option value="">— All Hubs / Mobile —</option>
+                <option value="">� All Hubs / Mobile �</option>
                 {hubs.map((h) => (
                   <option key={h.id} value={h.id}>
                     {h.name} ({h.city})
@@ -565,7 +632,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
                 Cancel
               </Btn>
               <Btn type="submit" variant="primary" disabled={busy}>
-                {busy ? 'Saving…' : 'Add Technician'}
+                {busy ? 'Saving�' : 'Add Technician'}
               </Btn>
             </div>
           </form>
@@ -575,7 +642,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
       {/* View & Update Ticket Modal */}
       {selectedTicket && (
         <Modal
-          title={`Service Ticket — ${selectedTicket.bike?.registrationNumber}`}
+          title={`Service Ticket � ${selectedTicket.bike?.registrationNumber}`}
           onClose={() => setSelectedTicket(null)}
           wide
         >
@@ -618,7 +685,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
               {selectedTicket.status !== 'COMPLETED' && (
                 <form onSubmit={handleAddPart} className="flex gap-2 bg-[#FAF9F7] p-3 rounded-xl border border-[#E5E2DB]">
                   <input name="partName" required placeholder="Part name (e.g. Brake Shoe)" className={`${input} text-xs flex-1`} />
-                  <input name="cost" type="number" required placeholder="Unit Cost ₹" className={`${input} text-xs w-28`} />
+                  <input name="cost" type="number" required placeholder="Unit Cost ?" className={`${input} text-xs w-28`} />
                   <input name="quantity" type="number" defaultValue="1" min="1" placeholder="Qty" className={`${input} text-xs w-16`} />
                   <Btn type="submit" disabled={busy}>Add Part</Btn>
                 </form>
@@ -643,7 +710,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
 
               {selectedTicket.status !== 'COMPLETED' && (
                 <form onSubmit={handleAddNote} className="flex gap-2">
-                  <input name="note" required placeholder="Add a progress observation…" className={`${input} text-xs flex-1`} />
+                  <input name="note" required placeholder="Add a progress observation�" className={`${input} text-xs flex-1`} />
                   <Btn type="submit" disabled={busy}>Add Note</Btn>
                 </form>
               )}
@@ -692,7 +759,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
               </Field>
             </div>
             <Field label="Reporter phone (optional)">
-              <input name="reportedByPhone" className={input} placeholder="+91…" />
+              <input name="reportedByPhone" className={input} placeholder="+91�" />
             </Field>
             <Field label="Location">
               <input name="locationText" className={input} placeholder="Near Inorbit Mall flyover" />
@@ -705,7 +772,7 @@ export const ServiceRecovery: React.FC<{ tab?: Tab }> = ({ tab = 'tickets' }) =>
                 Cancel
               </Btn>
               <Btn type="submit" variant="primary" disabled={busyId === 'new'}>
-                {busyId === 'new' ? 'Opening…' : 'Open job'}
+                {busyId === 'new' ? 'Opening�' : 'Open job'}
               </Btn>
             </div>
           </form>
