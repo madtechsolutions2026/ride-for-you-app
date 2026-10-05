@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "seed": "node prisma/seed.js",
+    "trigger-billing": "ts-node scripts/trigger-billing.ts",
     "test": "jest --runInBand",
     "test:watch": "jest --runInBand --watch",
     "postinstall": "prisma generate",
