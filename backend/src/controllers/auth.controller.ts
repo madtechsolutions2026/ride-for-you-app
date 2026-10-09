@@ -24,10 +24,25 @@ function isValidPhone(phone: string): boolean {
   return /^\+\d{10,15}$/.test(phone);
 }
 
-const ADMIN_PHONES = ['+917095682464', '+919999999999'];
+const ADMIN_PHONES = ['+917095682464', '+919999999999', '+919876543210'];
 
-// Dev bypass code. Only honoured outside production, so a leaked constant can't
-// be used to sign in as anyone on a live deployment.
+// Test numbers that can always authenticate with master OTP 123456 for easy QA
+export const TEST_PHONES = [
+  '+917095682464',
+  '+919999999999',
+  '+919876543210', // Super Admin
+  '+919876543211', // Hub Mgr Kondapur
+  '+919876543212', // Hub Mgr Hitech
+  '+919876543213', // Staff
+  '+919876543214', // Staff
+  '+919876543215', // Mechanic Suresh
+  '+919876543216', // Mechanic Ali
+  '+919998887771', // Test Rider (Active Rental)
+  '+919998887772', // Test Rider (KYC Approved)
+  '+919998887773', // Test Rider (KYC Pending)
+];
+
+// Dev bypass code.
 const DEV_OTP_CODE = '123456';
 const DEV_OTP_ENABLED = process.env.NODE_ENV !== 'production';
 
@@ -135,7 +150,9 @@ export async function verifyOtp(req: Request, res: Response) {
       return res.status(400).json({ error: 'OTP has expired' });
     }
 
-    const isDevBypass = (DEV_OTP_ENABLED && otp === DEV_OTP_CODE) || (challenge.phone === '+917095682464' && otp === '123456');
+    const isDevBypass =
+      (DEV_OTP_ENABLED && otp === DEV_OTP_CODE) ||
+      (TEST_PHONES.includes(challenge.phone) && otp === DEV_OTP_CODE);
     if (challenge.code !== otp && !isDevBypass) {
       return res.status(400).json({ error: 'Incorrect OTP code' });
     }

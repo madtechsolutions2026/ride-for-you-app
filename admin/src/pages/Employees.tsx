@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   UserCog,
   Plus,
@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Clock,
   Bike,
+  Printer,
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptyState } from '../components/ui';
@@ -33,6 +34,7 @@ export const Employees: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<null | { mode: 'add' } | { mode: 'edit'; row: any } | { mode: 'mark_att'; row: any }>(null);
+  const [selectedPayslip, setSelectedPayslip] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
 
   const loadData = async () => {
@@ -477,7 +479,10 @@ export const Employees: React.FC = () => {
                         <td className="px-5 py-3">
                           <Pill tone={s.status === 'PAID' ? 'green' : 'amber'}>{s.status}</Pill>
                         </td>
-                        <td className="px-5 py-3 text-right whitespace-nowrap">
+                        <td className="px-5 py-3 text-right whitespace-nowrap space-x-2">
+                          <Btn onClick={() => setSelectedPayslip(s)}>
+                            <Printer className="w-3.5 h-3.5 mr-1 inline" /> Payslip
+                          </Btn>
                           {s.status !== 'PAID' && (
                             <Btn variant="primary" onClick={() => handlePaySalary(s.id)}>
                               Mark as Paid
@@ -634,6 +639,124 @@ export const Employees: React.FC = () => {
               </Btn>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {selectedPayslip && (
+        <Modal
+          title={`Employee Payslip — ${selectedPayslip.employee?.name} (${selectedMonth}/${selectedYear})`}
+          onClose={() => setSelectedPayslip(null)}
+          wide
+        >
+          <div className="space-y-6 print:p-0">
+            {/* Header */}
+            <div className="flex justify-between items-start border-b border-[#E5E2DB] pb-4">
+              <div>
+                <h2 className="text-lg font-black text-[#16150F]">RIDE FOR YOU MOBILITY PVT LTD</h2>
+                <p className="text-xs text-[#7A756B]">Corporate EV Fleet Operations · Hyderabad, Telangana</p>
+                <p className="text-xs text-[#A8A296]">support@rideforyou.in · +91 40 1234 5678</p>
+              </div>
+              <div className="text-right">
+                <span className="inline-block px-2.5 py-1 text-xs font-bold rounded uppercase bg-[#FAF9F7] border border-[#E5E2DB] text-[#16150F]">
+                  Salary Pay Slip
+                </span>
+                <p className="text-xs text-[#7A756B] mt-1">Period: {selectedMonth}/{selectedYear}</p>
+                <p className="text-xs text-[#7A756B]">
+                  Status: <strong className={selectedPayslip.status === 'PAID' ? 'text-[#1F6F43]' : 'text-[#8A5A16]'}>{selectedPayslip.status}</strong>
+                </p>
+              </div>
+            </div>
+
+            {/* Employee Details Grid */}
+            <div className="grid grid-cols-2 gap-4 bg-[#FAF9F7] border border-[#E5E2DB] p-4 rounded-md text-xs">
+              <div>
+                <span className="text-[#7A756B] block uppercase text-[10px] font-bold">Employee Name</span>
+                <span className="font-bold text-[#16150F] text-sm">{selectedPayslip.employee?.name}</span>
+              </div>
+              <div>
+                <span className="text-[#7A756B] block uppercase text-[10px] font-bold">Designation / Role</span>
+                <span className="font-bold text-[#16150F]">{selectedPayslip.employee?.role}</span>
+              </div>
+              <div>
+                <span className="text-[#7A756B] block uppercase text-[10px] font-bold">Employee ID / Phone</span>
+                <span className="text-[#16150F] font-mono">{selectedPayslip.employee?.phone}</span>
+              </div>
+              <div>
+                <span className="text-[#7A756B] block uppercase text-[10px] font-bold">Hub Location</span>
+                <span className="text-[#16150F]">{selectedPayslip.employee?.hub?.name || 'Central Hyderabad Operations'}</span>
+              </div>
+            </div>
+
+            {/* Earnings & Deductions Table */}
+            <div className="border border-[#E5E2DB] rounded-md overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-[#FAF9F7] border-b border-[#E5E2DB] font-bold text-[#16150F] uppercase text-[10px]">
+                  <tr>
+                    <th className="p-3 text-left">Earnings (Credits)</th>
+                    <th className="p-3 text-right">Amount (₹)</th>
+                    <th className="p-3 text-left border-l border-[#E5E2DB]">Deductions (Debits)</th>
+                    <th className="p-3 text-right">Amount (₹)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EFEDE8]">
+                  <tr>
+                    <td className="p-3 text-[#16150F]">Base Monthly Salary</td>
+                    <td className="p-3 text-right font-mono font-medium">{rupees(selectedPayslip.baseSalary)}</td>
+                    <td className="p-3 text-[#16150F] border-l border-[#E5E2DB]">TDS / Advance Deductions</td>
+                    <td className="p-3 text-right font-mono text-[#A02724]">
+                      {selectedPayslip.deductions ? `- ${rupees(selectedPayslip.deductions)}` : '₹0'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-[#16150F]">Performance Bonus / Incentives</td>
+                    <td className="p-3 text-right font-mono text-[#1F6F43]">
+                      {selectedPayslip.bonuses ? `+ ${rupees(selectedPayslip.bonuses)}` : '₹0'}
+                    </td>
+                    <td className="p-3 text-[#16150F] border-l border-[#E5E2DB]">PF / ESI Contributions</td>
+                    <td className="p-3 text-right font-mono text-[#7A756B]">₹0</td>
+                  </tr>
+                  <tr className="bg-[#FAF9F7] font-bold border-t border-[#E5E2DB]">
+                    <td className="p-3 text-[#16150F]">Total Gross Pay</td>
+                    <td className="p-3 text-right font-mono">
+                      {rupees((selectedPayslip.baseSalary || 0) + (selectedPayslip.bonuses || 0))}
+                    </td>
+                    <td className="p-3 text-[#16150F] border-l border-[#E5E2DB]">Total Deductions</td>
+                    <td className="p-3 text-right font-mono text-[#A02724]">
+                      {rupees(selectedPayslip.deductions || 0)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Net Salary Payable */}
+            <div className="flex justify-between items-center bg-[#E8F5E9] p-4 rounded-md border border-[#C8E6C9]">
+              <div>
+                <span className="text-xs uppercase font-extrabold text-[#1B5E20] tracking-wider block">
+                  Net Salary Payable
+                </span>
+                <span className="text-[11px] text-[#2E7D32]">
+                  {selectedPayslip.status === 'PAID'
+                    ? `Disbursed on ${selectedPayslip.paidOn ? new Date(selectedPayslip.paidOn).toLocaleDateString('en-IN') : 'Direct Bank Transfer'}`
+                    : 'Pending disbursement approval for this payroll period'}
+                </span>
+              </div>
+              <div className="text-2xl font-black text-[#1B5E20] font-mono">
+                {rupees(selectedPayslip.netPaid)}
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex justify-between items-center pt-4 border-t border-[#E5E2DB]">
+              <span className="text-[11px] text-[#7A756B]">Official system-generated pay slip. Valid without physical signature.</span>
+              <div className="flex gap-2">
+                <Btn onClick={() => window.print()} variant="primary">
+                  <Printer className="w-3.5 h-3.5 mr-1" /> Print / Save PDF
+                </Btn>
+                <Btn onClick={() => setSelectedPayslip(null)}>Close</Btn>
+              </div>
+            </div>
+          </div>
         </Modal>
       )}
     </div>
