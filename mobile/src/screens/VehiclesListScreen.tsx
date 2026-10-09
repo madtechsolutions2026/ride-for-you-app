@@ -241,7 +241,61 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
         }
       })
       .catch(() => {});
-  }, []);
+
+    // Fetch dynamic fleet models and prices from dashboard/DB
+    apiClient
+      .get('/rental/bikes')
+      .then((res) => {
+        const models = res.data?.models;
+        if (Array.isArray(models) && models.length > 0) {
+          const categoryModels = models.filter(
+            (m: any) => m.category?.toLowerCase() === categoryId?.toLowerCase()
+          );
+          if (categoryModels.length > 0) {
+            const mapped: VehicleItem[] = categoryModels.map((m: any) => {
+              const weekPlan =
+                m.plans?.find((p: any) => p.duration === 'WEEK') || m.plans?.[0];
+              const dayPlan = m.plans?.find((p: any) => p.duration === 'DAY');
+              const monthPlan = m.plans?.find((p: any) => p.duration === 'MONTH');
+              const deposit = weekPlan?.deposit ?? 1500;
+              const weekPrice = weekPlan?.price ?? 1645;
+              const dayPrice = dayPlan?.price ?? Math.round(weekPrice / 7);
+              const monthPrice = monthPlan?.price ?? (weekPrice * 4 - 500);
+
+              // Matching default image or fallback
+              const defaultMatch = FLEET_DATA.find(
+                (f) => f.id === m.modelId || f.id === m.id || f.name.toLowerCase() === m.name?.toLowerCase()
+              );
+
+              return {
+                id: m.modelId || m.id,
+                name: m.name,
+                category: (m.category?.toLowerCase() === 'swap' ? 'swap' : 'home') as 'swap' | 'home',
+                speedCategory: ((m.topSpeedKmph || 45) > 40 ? 'high' : 'low') as 'high' | 'low',
+                tag: m.category?.toLowerCase() === 'swap' ? '⚡ UNLIMITED SWAPPING' : '🔌 3-PIN CHARGER INCLUDED',
+                tagBg: m.category?.toLowerCase() === 'swap' ? colors.brand.mint : colors.status.infoTint,
+                tagColor: m.category?.toLowerCase() === 'swap' ? colors.brand.primary : colors.status.info,
+                rangeKm: m.rangeKm || 90,
+                topSpeed: m.topSpeedKmph || 45,
+                batteryPercent: 100,
+                pricePerDay: dayPrice,
+                pricePerWeek: weekPrice,
+                pricePerMonth: monthPrice,
+                platformFee: deposit,
+                bookingFee: 200,
+                totalDueToday: weekPrice + deposit + 200,
+                image: m.imageUrl ? { uri: m.imageUrl } : (defaultMatch?.image || images.vehicleS1),
+                features: m.category?.toLowerCase() === 'swap'
+                  ? ['Unlimited Free Swaps', 'Delivery Carrier Box', 'Sanitized Helmet', 'Full Insurance']
+                  : ['Fast Home Charger Included', 'Long Distance Battery', 'Dual Disc Brakes', 'Full Insurance'],
+              };
+            });
+            setBikesList(mapped);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [categoryId]);
 
   const handleBookingConfirm = async () => {
     if (creating || !activeBookingBike) return;

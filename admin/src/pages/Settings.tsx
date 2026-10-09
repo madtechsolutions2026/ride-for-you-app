@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../api/client';
 import {
-  Card, SectionHeader, Table, TH, TD, TR, Pill, Amount, EmptyState, Loader,
+  Card, SectionHeader, Table, TH, TD, TR, Pill, Amount, EmptyState, Loader, Btn, Modal, Field, input,
 } from '../components/ui';
 
 interface Plan {
@@ -9,6 +9,7 @@ interface Plan {
   duration: string;
   price: number;
   deposit?: number;
+  status?: string;
 }
 
 interface Integration {
@@ -23,6 +24,17 @@ export const Settings: React.FC<{ tab?: 'pricing' | 'integrations' }> = ({ tab =
   const [integrations, setIntegrations] = useState<Integration[] | null>(null);
   const [paymentsMode, setPaymentsMode] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [editingPlan, setEditingPlan] = useState<any | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const reloadFleet = async () => {
+    try {
+      const fleet = await apiClient.get('/admin/api/fleet');
+      setModels(fleet.data.models || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -46,10 +58,31 @@ export const Settings: React.FC<{ tab?: 'pricing' | 'integrations' }> = ({ tab =
     })();
   }, []);
 
+  const handleSavePlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlan) return;
+    setSaving(true);
+    try {
+      await apiClient.post('/admin/api/fleet/plans', {
+        modelId: editingPlan.modelId,
+        duration: editingPlan.duration,
+        price: Number(editingPlan.price),
+        deposit: Number(editingPlan.deposit ?? 0),
+        status: editingPlan.status || 'ACTIVE',
+      });
+      setEditingPlan(null);
+      await reloadFleet();
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Failed to update plan pricing');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <Loader />;
 
   const rows = models.flatMap((m) =>
-    (m.plans || []).map((p: Plan) => ({ model: m.name, category: m.category, ...p })),
+    (m.plans || []).map((p: Plan) => ({ modelId: m.id, model: m.name, category: m.category, ...p })),
   );
 
   if (tab === 'integrations') {
@@ -114,7 +147,7 @@ export const Settings: React.FC<{ tab?: 'pricing' | 'integrations' }> = ({ tab =
     <Card className="p-5">
       <SectionHeader
         title="Rental Plan Pricing"
-        hint={`${rows.length} plans across ${models.length} models. Edit plans from Vehicles & Fleet.`}
+        hint={`${rows.length} plans across ${models.length} models. Click 'Edit Price' to update rental rates or security deposits.`}
       />
       {rows.length === 0 ? (
         <EmptyState title="No rental plans" hint="Add a model with plans from Vehicles & Fleet." />
@@ -127,11 +160,12 @@ export const Settings: React.FC<{ tab?: 'pricing' | 'integrations' }> = ({ tab =
               <TH>Duration</TH>
               <TH align="right">Rent</TH>
               <TH align="right">Deposit</TH>
+              <TH align="right">Actions</TH>
             </tr>
           </thead>
           <tbody>
             {rows.map((r: any) => (
-              <TR key={r.id}>
+              <TR key={`${r.modelId}-${r.duration}`}>
                 <TD className="font-medium text-ink whitespace-nowrap">{r.model}</TD>
                 <TD className="text-ink-soft whitespace-nowrap">{r.category}</TD>
                 <TD className="text-ink-muted whitespace-nowrap">{r.duration}</TD>
@@ -139,10 +173,63 @@ export const Settings: React.FC<{ tab?: 'pricing' | 'integrations' }> = ({ tab =
                 <TD align="right" className="text-ink-muted">
                   {r.deposit ? <Amount value={r.deposit} /> : '—'}
                 </TD>
+                <TD align="right">
+                  <Btn onClick={() => setEditingPlan(r)}>Edit Price</Btn>
+                </TD>
               </TR>
             ))}
           </tbody>
         </Table>
+      )}
+
+      {editingPlan && (
+        <Modal
+          title={`Edit Pricing — ${editingPlan.model} (${editingPlan.duration})`}
+          onClose={() => setEditingPlan(null)}
+        >
+          <form onSubmit={handleSavePlan} className="space-y-4">
+            <Field label="Duration">
+              <input value={editingPlan.duration} disabled className={`${input} bg-rule-soft`} />
+            </Field>
+            <Field label="Rent Price (₹)">
+              <input
+                type="number"
+                required
+                min="1"
+                value={editingPlan.price}
+                onChange={(e) => setEditingPlan({ ...editingPlan, price: Number(e.target.value) })}
+                className={input}
+              />
+            </Field>
+            <Field label="Security Deposit (₹)">
+              <input
+                type="number"
+                min="0"
+                value={editingPlan.deposit ?? 0}
+                onChange={(e) => setEditingPlan({ ...editingPlan, deposit: Number(e.target.value) })}
+                className={input}
+              />
+            </Field>
+            <Field label="Status">
+              <select
+                value={editingPlan.status || 'ACTIVE'}
+                onChange={(e) => setEditingPlan({ ...editingPlan, status: e.target.value })}
+                className={input}
+              >
+                <option value="ACTIVE">ACTIVE (Visible in Rider Mobile App)</option>
+                <option value="INACTIVE">INACTIVE (Hidden)</option>
+              </select>
+            </Field>
+            <div className="flex justify-end gap-2 pt-3 border-t border-rule">
+              <Btn type="button" onClick={() => setEditingPlan(null)}>
+                Cancel
+              </Btn>
+              <Btn type="submit" variant="primary" disabled={saving}>
+                {saving ? 'Saving...' : 'Save Price'}
+              </Btn>
+            </div>
+          </form>
+        </Modal>
       )}
     </Card>
   );

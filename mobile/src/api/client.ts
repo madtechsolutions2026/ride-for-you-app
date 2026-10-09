@@ -2,8 +2,9 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './tokenStore';
 
-// Local development backend URL (using your machine's local IP address)
-const LIVE_BACKEND_URL = 'https://ride-for-you-app-pn7m.onrender.com';
+// Backend URL: Railway production with EXPO_PUBLIC_API_URL override support
+const LIVE_BACKEND_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'https://ride-for-you-app-production.up.railway.app';
 const BASE_URL = LIVE_BACKEND_URL;
 
 export const apiClient = axios.create({

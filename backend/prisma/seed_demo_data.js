@@ -1,4 +1,4 @@
-﻿const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function seedAll() {
@@ -261,9 +261,9 @@ async function seedAll() {
   const riderRahul = await prisma.user.create({
     data: {
       id: 'rider_rahul',
-      phone: '+919999911111',
-      fullName: 'Rahul Sharma',
-      email: 'rahul.sharma@gmail.com',
+      phone: '+919998887771',
+      fullName: 'Ramesh Kumar (Active Rental)',
+      email: 'ramesh.kumar@example.com',
       city: 'Hyderabad',
       role: 'RIDER',
       accountStatus: 'ACTIVE',
@@ -275,7 +275,7 @@ async function seedAll() {
     data: {
       userId: riderRahul.id,
       status: 'APPROVED',
-      fullName: 'Rahul Sharma',
+      fullName: 'Ramesh Kumar',
       aadhaarNumber: 'XXXX-XXXX-8921',
       panNumber: 'ABCPS1234K',
       address: 'Plot 42, Silicon Valley Colony, Madhapur, Hyderabad',
@@ -287,9 +287,9 @@ async function seedAll() {
   const riderSneha = await prisma.user.create({
     data: {
       id: 'rider_sneha',
-      phone: '+919999922222',
-      fullName: 'Sneha Patel',
-      email: 'sneha.patel@gmail.com',
+      phone: '+919998887772',
+      fullName: 'Sita Reddy (Ready to Book)',
+      email: 'sita.reddy@example.com',
       city: 'Hyderabad',
       role: 'RIDER',
       accountStatus: 'ACTIVE',
@@ -297,12 +297,25 @@ async function seedAll() {
     },
   });
 
+  await prisma.kycVerification.create({
+    data: {
+      userId: riderSneha.id,
+      status: 'APPROVED',
+      fullName: 'Sita Reddy',
+      aadhaarNumber: 'XXXX-XXXX-4521',
+      panNumber: 'XYVPS9876P',
+      address: 'House 14, Whitefields, Kondapur, Hyderabad',
+      reviewedBy: 'usr_admin',
+      reviewedAt: new Date(),
+    },
+  });
+
   const riderAmit = await prisma.user.create({
     data: {
       id: 'rider_amit',
-      phone: '+919999933333',
-      fullName: 'Amit Gupta',
-      email: 'amit.gupta@outlook.com',
+      phone: '+919998887773',
+      fullName: 'Kiran Patel (KYC Under Review)',
+      email: 'kiran.patel@example.com',
       city: 'Hyderabad',
       role: 'RIDER',
       accountStatus: 'ACTIVE',
@@ -314,10 +327,23 @@ async function seedAll() {
     data: {
       userId: riderAmit.id,
       status: 'SUBMITTED',
-      fullName: 'Amit Gupta',
+      fullName: 'Kiran Patel',
       aadhaarNumber: 'XXXX-XXXX-3419',
       panNumber: 'BGFPG5678L',
       address: 'Flat 302, Green Hills Apt, Kondapur, Hyderabad',
+    },
+  });
+
+  const riderArjun = await prisma.user.create({
+    data: {
+      id: 'rider_arjun',
+      phone: '+919998887774',
+      fullName: 'Arjun Rao (Pending KYC)',
+      email: 'arjun.rao@example.com',
+      city: 'Hyderabad',
+      role: 'RIDER',
+      accountStatus: 'ACTIVE',
+      kycStatus: 'PENDING',
     },
   });
 
@@ -653,13 +679,31 @@ async function seedAll() {
     });
   }
 
-  // Month 9 (September - PENDING)
+  // Month 9 (September - PAID)
   for (const s of salaryData) {
     const net = s.base + s.bonus - s.ded;
     await prisma.salary.create({
       data: {
         employeeId: s.emp.id,
         month: 9,
+        year: 2026,
+        baseSalary: s.base,
+        bonuses: s.bonus,
+        deductions: s.ded,
+        netPaid: net,
+        status: 'PAID',
+        paidOn: new Date(2026, 8, 30),
+      },
+    });
+  }
+
+  // Month 10 (October - PENDING for current testing cycle)
+  for (const s of salaryData) {
+    const net = s.base + s.bonus - s.ded;
+    await prisma.salary.create({
+      data: {
+        employeeId: s.emp.id,
+        month: 10,
         year: 2026,
         baseSalary: s.base,
         bonuses: s.bonus,
