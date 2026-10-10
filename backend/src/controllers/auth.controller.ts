@@ -97,7 +97,13 @@ export async function requestOtp(req: Request, res: Response) {
 
     // Log OTP to console (dev fallback) + dispatch via WhatsApp
     console.log(`[OTP] ${phone} -> ${otp} (challenge: ${challengeId})`);
-    if (phone !== '+917095682464') {
+    // Local seeded accounts use the development OTP without contacting test numbers.
+    // This exemption is disabled in production and requires a seeded account ID.
+    const devAccount = DEV_OTP_ENABLED
+      ? await prisma.user.findUnique({ where: { phone }, select: { id: true } })
+      : null;
+    const isSeededDevAccount = DEV_OTP_ENABLED && !!devAccount?.id.startsWith('dev_role_');
+    if (phone !== '+917095682464' && !isSeededDevAccount) {
       sendWhatsAppOtp(phone, otp).catch((err) =>
         console.warn(`[WHATSAPP] Could not send OTP:`, err?.message)
       );

@@ -121,6 +121,11 @@ export const NAV: NavSection[] = [
     title: 'Organisation',
     items: [
       {
+        id: 'attendance', label: 'Attendance & Payslips', path: '/attendance', icon: UserCog,
+        title: 'Attendance & Payslips',
+        subtitle: 'Clock-in, attendance history and monthly payroll',
+      },
+      {
         id: 'employees', label: 'Employees & Payroll', path: '/people', icon: UserCog,
         title: 'Employees & Payroll',
         subtitle: 'Hierarchy, attendance calendar and payroll sheets',

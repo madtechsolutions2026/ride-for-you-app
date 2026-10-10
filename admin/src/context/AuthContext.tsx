@@ -9,10 +9,10 @@ export type StaffRole = 'ADMIN' | 'EXECUTIVE' | 'SUPPORT';
 export const ROLE_DEFAULT_SCREENS: Record<StaffRole, string[]> = {
   ADMIN: [
     'overview', 'riders', 'fleet', 'bookings', 'kyc', 'infrastructure',
-    'finance', 'service', 'recovery', 'support', 'employees', 'reports', 'settings',
+    'finance', 'service', 'recovery', 'support', 'employees', 'reports', 'settings', 'attendance',
   ],
-  EXECUTIVE: ['overview', 'fleet', 'bookings', 'kyc', 'infrastructure', 'service', 'recovery'],
-  SUPPORT: ['overview', 'riders', 'bookings', 'finance', 'recovery', 'support'],
+  EXECUTIVE: ['overview', 'fleet', 'bookings', 'kyc', 'infrastructure', 'service', 'recovery', 'attendance'],
+  SUPPORT: ['overview', 'riders', 'bookings', 'finance', 'recovery', 'support', 'attendance'],
 };
 
 interface AdminUser {
@@ -157,7 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('rfy_admin_user');
   };
 
-  const can = (screen: string) => !!user && user.screens.includes(screen);
+  const can = (screen: string) => !!user && (screen === 'attendance' || (screen === 'employees' ? user.role === 'ADMIN' : user.screens.includes(screen)));
 
   return (
     <AuthContext.Provider

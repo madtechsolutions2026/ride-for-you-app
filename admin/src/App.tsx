@@ -14,6 +14,7 @@ import { Infrastructure } from './pages/Infrastructure';
 import { Finance } from './pages/Finance';
 import { ServiceRecovery } from './pages/ServiceRecovery';
 import { Employees } from './pages/Employees';
+import { Attendance } from './pages/Attendance';
 import { SupportTickets } from './pages/SupportTickets';
 import { Settings } from './pages/Settings';
 import { Reports } from './pages/Reports';
@@ -164,6 +165,7 @@ const Shell: React.FC<{
             />
 
             <Route path="/support/*" element={<Guard screen="support"><SupportTickets /></Guard>} />
+            <Route path="/attendance" element={<Attendance />} />
             <Route path="/people/*" element={<Guard screen="employees"><Employees /></Guard>} />
             <Route path="/reports" element={<Guard screen="reports"><Reports /></Guard>} />
 

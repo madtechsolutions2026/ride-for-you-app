@@ -53,13 +53,19 @@ import {
   updateEmployee,
   getHierarchy,
   listDeployments,
+} from '../controllers/employee.controller';
+import {
+  attendanceContext,
+  clockIn,
+  clockOut,
+  payslip,
   getAttendance,
   markAttendance,
   listSalaries,
   generateSalaries,
   markSalaryPaid,
   exportSalariesCsv,
-} from '../controllers/employee.controller';
+} from '../controllers/attendance.controller';
 import {
   getFinancialSummary,
   listExpenses,
@@ -122,17 +128,21 @@ router.put('/staff/:id', adminOnly, updateStaff);
 router.delete('/staff/:id', adminOnly, revokeStaff);
 
 /* -------- Employees, Attendance, Hierarchy & Salaries -------- */
-router.get('/employees', listEmployees);
+router.get('/employees', adminOnly, listEmployees);
 router.post('/employees', adminOnly, createEmployee);
 router.put('/employees/:id', adminOnly, updateEmployee);
-router.get('/employees/hierarchy', getHierarchy);
+router.get('/employees/hierarchy', adminOnly, getHierarchy);
 router.get('/employees/deployments', listDeployments);
 router.get('/employees/attendance', getAttendance);
+router.get('/employees/attendance/context', attendanceContext);
+router.post('/employees/attendance/clock-in', clockIn);
+router.post('/employees/attendance/clock-out', clockOut);
 router.post('/employees/attendance', markAttendance);
 router.get('/employees/salaries', listSalaries);
 router.post('/employees/salaries/generate', adminOnly, generateSalaries);
 router.post('/employees/salaries/:id/pay', adminOnly, markSalaryPaid);
-router.get('/employees/salaries/export', exportSalariesCsv);
+router.get('/employees/salaries/export', adminOnly, exportSalariesCsv);
+router.get('/employees/salaries/:id/payslip', payslip);
 
 /* -------- Finance & Expenses -------- */
 router.get('/finance/summary', getFinancialSummary);

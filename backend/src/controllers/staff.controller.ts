@@ -14,9 +14,9 @@ export const STAFF_ROLES = ['ADMIN', 'EXECUTIVE', 'SUPPORT'] as const;
 
 // Screens each role can open by default. `permissions` adds extras on top.
 export const ROLE_DEFAULT_SCREENS: Record<string, string[]> = {
-  ADMIN: ['overview', 'riders', 'fleet', 'kyc', 'infrastructure', 'finance', 'service', 'recovery', 'employees', 'reports', 'settings'],
-  EXECUTIVE: ['overview', 'fleet', 'kyc', 'infrastructure', 'service', 'recovery'],
-  SUPPORT: ['overview', 'riders', 'finance', 'recovery'],
+  ADMIN: ['attendance', 'overview', 'riders', 'fleet', 'kyc', 'infrastructure', 'finance', 'service', 'recovery', 'employees', 'reports', 'settings'],
+  EXECUTIVE: ['attendance', 'overview', 'fleet', 'kyc', 'infrastructure', 'service', 'recovery'],
+  SUPPORT: ['attendance', 'overview', 'riders', 'finance', 'recovery'],
 };
 
 const genId = () => `usr_${crypto.randomBytes(12).toString('hex')}`;

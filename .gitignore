@@ -22,3 +22,7 @@ backend/prisma/dev.db
 
 # admin build output — served straight from admin/dist now
 backend/public/
+
+# Generated PDF previews
+output/pdf/
+tmp/pdfs/

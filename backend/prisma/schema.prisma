@@ -8,6 +8,7 @@ generator client {
 }
 
 model User {
+  employeeProfile Employee? @relation("EmployeeLogin")
   id            String  @id
   phone         String  @unique
   fullName      String?
@@ -555,6 +556,9 @@ model RecoveryJob {
 // ===========================================================================
 
 model Employee {
+  userId    String? @unique
+  user      User? @relation("EmployeeLogin", fields: [userId], references: [id], onDelete: SetNull)
+  baseSalary Int @default(0)
   id        String   @id @default(uuid())
   name      String
   phone     String   @unique
@@ -606,6 +610,13 @@ model BikeDeploymentLog {
 }
 
 model Attendance {
+  checkInLat Float?
+  checkInLng Float?
+  checkInAccuracy Float?
+  checkInHubId String?
+  confirmedById String?
+  confirmedAt DateTime?
+  audit AttendanceAudit[]
   id           String    @id @default(uuid())
   employeeId   String
   employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
@@ -623,6 +634,10 @@ model Attendance {
 }
 
 model Salary {
+  absenceDays Int?
+  employeeName String?
+  employeeRole String?
+  hubName String?
   id         String    @id @default(uuid())
   employeeId String
   employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
@@ -640,6 +655,19 @@ model Salary {
   @@unique([employeeId, month, year])
   @@index([employeeId])
   @@index([status])
+}
+
+model AttendanceAudit {
+  id String @id @default(uuid())
+  attendanceId String
+  attendance Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  actorId String
+  action String
+  before Json?
+  after Json
+  reason String
+  createdAt DateTime @default(now())
+  @@index([attendanceId])
 }
 
 model Expense {

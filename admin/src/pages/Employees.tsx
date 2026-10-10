@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   UserCog,
   Plus,
@@ -12,48 +12,37 @@ import {
   CheckCircle2,
   Clock,
   Bike,
-  Printer,
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { Card, Pill, toneFor, Btn, Modal, Field, input, rupees, Loader, EmptyState } from '../components/ui';
 import { errMsg } from '../api/errors';
 
-type Tab = 'team' | 'hierarchy' | 'attendance' | 'salaries' | 'deployments';
+type Tab = 'team' | 'hierarchy' | 'deployments';
 
 export const Employees: React.FC = () => {
   const [tab, setTab] = useState<Tab>('team');
   const [employees, setEmployees] = useState<any[]>([]);
   const [hubs, setHubs] = useState<any[]>([]);
   const [hierarchy, setHierarchy] = useState<any[]>([]);
-  const [attendances, setAttendances] = useState<any[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [salaries, setSalaries] = useState<any[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [deployments, setDeployments] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<null | { mode: 'add' } | { mode: 'edit'; row: any } | { mode: 'mark_att'; row: any }>(null);
-  const [selectedPayslip, setSelectedPayslip] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [empRes, infraRes, hierRes, attRes, salRes, depRes] = await Promise.all([
+      const [empRes, infraRes, hierRes, depRes] = await Promise.all([
         apiClient.get('/admin/api/employees'),
         apiClient.get('/admin/api/infrastructure'),
         apiClient.get('/admin/api/employees/hierarchy'),
-        apiClient.get(`/admin/api/employees/attendance?date=${selectedDate}`),
-        apiClient.get(`/admin/api/employees/salaries?month=${selectedMonth}&year=${selectedYear}`),
         apiClient.get('/admin/api/employees/deployments'),
       ]);
 
       setEmployees(empRes.data.data || []);
       setHubs(infraRes.data.hubs || []);
       setHierarchy(hierRes.data.data || []);
-      setAttendances(attRes.data.data || []);
-      setSalaries(salRes.data.data || []);
       setDeployments(depRes.data.data || []);
     } catch (e) {
       console.error(e);
@@ -64,7 +53,7 @@ export const Employees: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [selectedDate, selectedMonth, selectedYear]);
+  }, []);
 
   const handleSaveEmployee = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -72,11 +61,12 @@ export const Employees: React.FC = () => {
     const body: any = {
       name: f.get('name'),
       phone: f.get('phone'),
-      email: f.get('email') || undefined,
+      email: f.get('email') || null,
       role: f.get('role'),
-      hubId: f.get('hubId') || undefined,
+      hubId: f.get('hubId') || null,
       baseSalary: f.get('baseSalary') ? parseInt(f.get('baseSalary') as string, 10) : 0,
       status: f.get('status') || 'ACTIVE',
+      ...(modal?.mode === 'add' && f.get('joinDate') ? { joinDate: f.get('joinDate') } : {}),
     };
 
     setBusy(true);
@@ -95,60 +85,11 @@ export const Employees: React.FC = () => {
     }
   };
 
-  const handleMarkAttendance = async (employeeId: string, status: string, note?: string) => {
-    setBusy(true);
-    try {
-      await apiClient.post('/admin/api/employees/attendance', {
-        employeeId,
-        date: selectedDate,
-        status,
-        note,
-      });
-      await loadData();
-    } catch (err: any) {
-      alert(errMsg(err, 'Attendance update failed'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleGenerateSalaries = async () => {
-    if (!confirm(`Generate salary payroll records for Month ${selectedMonth}/${selectedYear}?`)) return;
-    setBusy(true);
-    try {
-      await apiClient.post('/admin/api/employees/salaries/generate', {
-        month: selectedMonth,
-        year: selectedYear,
-      });
-      await loadData();
-    } catch (err: any) {
-      alert(errMsg(err, 'Salary generation failed'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handlePaySalary = async (salaryId: string) => {
-    if (!confirm('Mark this salary as PAID? This will automatically register an expense in Finance under SALARY.')) return;
-    setBusy(true);
-    try {
-      await apiClient.post(`/admin/api/employees/salaries/${salaryId}/pay`);
-      await loadData();
-    } catch (err: any) {
-      alert(errMsg(err, 'Payment mark failed'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleExportPayrollCsv = () => {
-    window.open(`/admin/api/employees/salaries/export?month=${selectedMonth}&year=${selectedYear}`, '_blank');
-  };
-
   if (loading) return <Loader />;
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-ink-muted">Use Attendance &amp; Payslips for clock-in, history and payroll. Saving an employee links their phone login. A HUB_MANAGER can review their assigned hub; payroll is managed by administrators.</p>
       {/* Header & Tabs */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex gap-2 flex-wrap">
@@ -156,8 +97,6 @@ export const Employees: React.FC = () => {
             [
               { id: 'team', label: `Staff & Team (${employees.length})`, icon: UserCog },
               { id: 'hierarchy', label: 'Org Hierarchy', icon: GitBranch },
-              { id: 'attendance', label: 'Attendance', icon: Calendar },
-              { id: 'salaries', label: 'Payroll & Salaries', icon: DollarSign },
               { id: 'deployments', label: `Deployments (${deployments.length})`, icon: Bike },
             ] as const
           ).map((t) => {
@@ -326,179 +265,6 @@ export const Employees: React.FC = () => {
         </div>
       )}
 
-      {/* 3. ATTENDANCE TAB */}
-      {tab === 'attendance' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-neo-sm">
-            <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-[#1F6F43]" />
-              <span className="text-sm font-extrabold text-[#16150F]">Select Attendance Date:</span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className={`${input} py-1.5 px-3 text-xs w-auto`}
-              />
-            </div>
-            <div className="text-xs text-[#7A756B]">
-              Showing records for <span className="font-bold text-[#16150F]">{selectedDate}</span>
-            </div>
-          </div>
-
-          <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
-                    <th className="px-5 py-3">Employee</th>
-                    <th className="px-5 py-3">Role & Hub</th>
-                    <th className="px-5 py-3">Check-in</th>
-                    <th className="px-5 py-3">Check-out</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3 text-right">Quick Mark</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {employees.map((emp) => {
-                    const att = attendances.find((a) => a.employeeId === emp.id);
-                    const currentStatus = att ? att.status : 'UNMARKED';
-
-                    return (
-                      <tr key={emp.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7]">
-                        <td className="px-5 py-3 font-extrabold text-[#16150F]">{emp.name}</td>
-                        <td className="px-5 py-3 text-xs text-[#7A756B]">
-                          {emp.role} · {emp.hub?.name || 'HQ'}
-                        </td>
-                        <td className="px-5 py-3 text-xs text-[#4A4740]">
-                          {att?.checkInTime ? new Date(att.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                        </td>
-                        <td className="px-5 py-3 text-xs text-[#4A4740]">
-                          {att?.checkOutTime ? new Date(att.checkOutTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                        </td>
-                        <td className="px-5 py-3">
-                          <Pill
-                            tone={
-                              currentStatus === 'PRESENT'
-                                ? 'green'
-                                : currentStatus === 'HALF_DAY'
-                                ? 'amber'
-                                : currentStatus === 'ABSENT'
-                                ? 'red'
-                                : 'slate'
-                            }
-                          >
-                            {currentStatus}
-                          </Pill>
-                        </td>
-                        <td className="px-5 py-3 text-right space-x-1 whitespace-nowrap">
-                          <Btn onClick={() => handleMarkAttendance(emp.id, 'PRESENT')}>Present</Btn>
-                          <Btn onClick={() => handleMarkAttendance(emp.id, 'HALF_DAY')}>Half Day</Btn>
-                          <Btn variant="danger" onClick={() => handleMarkAttendance(emp.id, 'ABSENT')}>Absent</Btn>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* 4. SALARY & PAYROLL TAB */}
-      {tab === 'salaries' && (
-        <div className="space-y-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-[#E5E2DB] shadow-neo-sm">
-            <div className="flex items-center gap-3">
-              <DollarSign className="w-5 h-5 text-[#1F6F43]" />
-              <span className="text-sm font-extrabold text-[#16150F]">Payroll Period:</span>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
-                className={`${input} py-1.5 px-3 text-xs w-auto`}
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>
-                    {new Date(2026, m - 1).toLocaleString('default', { month: 'long' })}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
-                className={`${input} py-1.5 px-3 text-xs w-auto`}
-              >
-                <option value={2025}>2025</option>
-                <option value={2026}>2026</option>
-                <option value={2027}>2027</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Btn variant="primary" onClick={handleGenerateSalaries}>
-                Generate Payroll
-              </Btn>
-              <Btn onClick={handleExportPayrollCsv}>
-                <Download className="w-3.5 h-3.5" /> Export CSV
-              </Btn>
-            </div>
-          </div>
-
-          <Card>
-            {salaries.length === 0 ? (
-              <EmptyState
-                icon={<FileSpreadsheet className="w-8 h-8 mx-auto text-[#D6D2C8]" />}
-                title="No payroll generated for this period"
-                hint="Click 'Generate Payroll' to automatically compute monthly pay."
-              />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-[10px] font-extrabold text-[#7A756B] uppercase tracking-wide border-b border-[#E5E2DB]">
-                      <th className="px-5 py-3">Employee</th>
-                      <th className="px-5 py-3">Base Salary</th>
-                      <th className="px-5 py-3">Deductions</th>
-                      <th className="px-5 py-3">Bonuses</th>
-                      <th className="px-5 py-3">Net Pay</th>
-                      <th className="px-5 py-3">Status</th>
-                      <th className="px-5 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {salaries.map((s) => (
-                      <tr key={s.id} className="border-b border-[#EFEDE8] last:border-0 hover:bg-[#FAF9F7]">
-                        <td className="px-5 py-3">
-                          <div className="font-extrabold text-[#16150F]">{s.employee?.name}</div>
-                          <div className="text-xs text-[#7A756B]">{s.employee?.role} · {s.employee?.phone}</div>
-                        </td>
-                        <td className="px-5 py-3 font-semibold text-[#16150F]">{rupees(s.baseSalary)}</td>
-                        <td className="px-5 py-3 text-xs text-[#A02724]">- {rupees(s.deductions)}</td>
-                        <td className="px-5 py-3 text-xs text-[#1F6F43]">+ {rupees(s.bonuses)}</td>
-                        <td className="px-5 py-3 font-black text-[#16150F]">{rupees(s.netPaid)}</td>
-                        <td className="px-5 py-3">
-                          <Pill tone={s.status === 'PAID' ? 'green' : 'amber'}>{s.status}</Pill>
-                        </td>
-                        <td className="px-5 py-3 text-right whitespace-nowrap space-x-2">
-                          <Btn onClick={() => setSelectedPayslip(s)}>
-                            <Printer className="w-3.5 h-3.5 mr-1 inline" /> Payslip
-                          </Btn>
-                          {s.status !== 'PAID' && (
-                            <Btn variant="primary" onClick={() => handlePaySalary(s.id)}>
-                              Mark as Paid
-                            </Btn>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
-
       {/* 5. BIKE DEPLOYMENT AUDIT LOGS */}
       {tab === 'deployments' && (
         <Card>
@@ -600,7 +366,7 @@ export const Employees: React.FC = () => {
                   defaultValue={modal.mode === 'edit' ? modal.row.role : 'STAFF'}
                   className={input}
                 >
-                  <option value="SUPER_ADMIN">SUPER_ADMIN (Full Platform Access)</option>
+                  <option value="SUPER_ADMIN">Administrator (job title)</option>
                   <option value="HUB_MANAGER">HUB_MANAGER (Hub Supervisor)</option>
                   <option value="STAFF">STAFF (Floor Executive)</option>
                   <option value="SERVICE_PERSON">SERVICE_PERSON (Mechanic / Technician)</option>
@@ -612,7 +378,7 @@ export const Employees: React.FC = () => {
                   defaultValue={modal.mode === 'edit' ? modal.row.hubId || '' : ''}
                   className={input}
                 >
-                  <option value="">— HQ / All Hubs —</option>
+                  <option value="">— No hub assigned —</option>
                   {hubs.map((h) => (
                     <option key={h.id} value={h.id}>
                       {h.name} ({h.city})
@@ -624,10 +390,22 @@ export const Employees: React.FC = () => {
                 <input
                   name="baseSalary"
                   type="number"
-                  defaultValue={modal.mode === 'edit' ? modal.row.baseSalary || 20000 : 20000}
+                  min="0"
+                  step="1"
+                  required
+                  defaultValue={modal.mode === 'edit' ? modal.row.baseSalary ?? 0 : 20000}
                   className={input}
                 />
               </Field>
+              <Field label="Employment status">
+                <select name="status" className={input} defaultValue={modal.mode === 'edit' ? modal.row.status : 'ACTIVE'}>
+                  <option value="ACTIVE">Active</option>
+                  {modal.mode === 'edit' && <option value="INACTIVE">Inactive</option>}
+                </select>
+              </Field>
+              {modal.mode === 'add' && <Field label="Joining date">
+                <input name="joinDate" type="date" className={input} required defaultValue={new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10)} />
+              </Field>}
             </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-[#E5E2DB]">
@@ -639,124 +417,6 @@ export const Employees: React.FC = () => {
               </Btn>
             </div>
           </form>
-        </Modal>
-      )}
-
-      {selectedPayslip && (
-        <Modal
-          title={`Employee Payslip — ${selectedPayslip.employee?.name} (${selectedMonth}/${selectedYear})`}
-          onClose={() => setSelectedPayslip(null)}
-          wide
-        >
-          <div className="space-y-6 print:p-0">
-            {/* Header */}
-            <div className="flex justify-between items-start border-b border-[#E5E2DB] pb-4">
-              <div>
-                <h2 className="text-lg font-black text-[#16150F]">RIDE FOR YOU MOBILITY PVT LTD</h2>
-                <p className="text-xs text-[#7A756B]">Corporate EV Fleet Operations · Hyderabad, Telangana</p>
-                <p className="text-xs text-[#A8A296]">support@rideforyou.in · +91 40 1234 5678</p>
-              </div>
-              <div className="text-right">
-                <span className="inline-block px-2.5 py-1 text-xs font-bold rounded uppercase bg-[#FAF9F7] border border-[#E5E2DB] text-[#16150F]">
-                  Salary Pay Slip
-                </span>
-                <p className="text-xs text-[#7A756B] mt-1">Period: {selectedMonth}/{selectedYear}</p>
-                <p className="text-xs text-[#7A756B]">
-                  Status: <strong className={selectedPayslip.status === 'PAID' ? 'text-[#1F6F43]' : 'text-[#8A5A16]'}>{selectedPayslip.status}</strong>
-                </p>
-              </div>
-            </div>
-
-            {/* Employee Details Grid */}
-            <div className="grid grid-cols-2 gap-4 bg-[#FAF9F7] border border-[#E5E2DB] p-4 rounded-md text-xs">
-              <div>
-                <span className="text-[#7A756B] block uppercase text-[10px] font-bold">Employee Name</span>
-                <span className="font-bold text-[#16150F] text-sm">{selectedPayslip.employee?.name}</span>
-              </div>
-              <div>
-                <span className="text-[#7A756B] block uppercase text-[10px] font-bold">Designation / Role</span>
-                <span className="font-bold text-[#16150F]">{selectedPayslip.employee?.role}</span>
-              </div>
-              <div>
-                <span className="text-[#7A756B] block uppercase text-[10px] font-bold">Employee ID / Phone</span>
-                <span className="text-[#16150F] font-mono">{selectedPayslip.employee?.phone}</span>
-              </div>
-              <div>
-                <span className="text-[#7A756B] block uppercase text-[10px] font-bold">Hub Location</span>
-                <span className="text-[#16150F]">{selectedPayslip.employee?.hub?.name || 'Central Hyderabad Operations'}</span>
-              </div>
-            </div>
-
-            {/* Earnings & Deductions Table */}
-            <div className="border border-[#E5E2DB] rounded-md overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-[#FAF9F7] border-b border-[#E5E2DB] font-bold text-[#16150F] uppercase text-[10px]">
-                  <tr>
-                    <th className="p-3 text-left">Earnings (Credits)</th>
-                    <th className="p-3 text-right">Amount (₹)</th>
-                    <th className="p-3 text-left border-l border-[#E5E2DB]">Deductions (Debits)</th>
-                    <th className="p-3 text-right">Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EFEDE8]">
-                  <tr>
-                    <td className="p-3 text-[#16150F]">Base Monthly Salary</td>
-                    <td className="p-3 text-right font-mono font-medium">{rupees(selectedPayslip.baseSalary)}</td>
-                    <td className="p-3 text-[#16150F] border-l border-[#E5E2DB]">TDS / Advance Deductions</td>
-                    <td className="p-3 text-right font-mono text-[#A02724]">
-                      {selectedPayslip.deductions ? `- ${rupees(selectedPayslip.deductions)}` : '₹0'}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="p-3 text-[#16150F]">Performance Bonus / Incentives</td>
-                    <td className="p-3 text-right font-mono text-[#1F6F43]">
-                      {selectedPayslip.bonuses ? `+ ${rupees(selectedPayslip.bonuses)}` : '₹0'}
-                    </td>
-                    <td className="p-3 text-[#16150F] border-l border-[#E5E2DB]">PF / ESI Contributions</td>
-                    <td className="p-3 text-right font-mono text-[#7A756B]">₹0</td>
-                  </tr>
-                  <tr className="bg-[#FAF9F7] font-bold border-t border-[#E5E2DB]">
-                    <td className="p-3 text-[#16150F]">Total Gross Pay</td>
-                    <td className="p-3 text-right font-mono">
-                      {rupees((selectedPayslip.baseSalary || 0) + (selectedPayslip.bonuses || 0))}
-                    </td>
-                    <td className="p-3 text-[#16150F] border-l border-[#E5E2DB]">Total Deductions</td>
-                    <td className="p-3 text-right font-mono text-[#A02724]">
-                      {rupees(selectedPayslip.deductions || 0)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Net Salary Payable */}
-            <div className="flex justify-between items-center bg-[#E8F5E9] p-4 rounded-md border border-[#C8E6C9]">
-              <div>
-                <span className="text-xs uppercase font-extrabold text-[#1B5E20] tracking-wider block">
-                  Net Salary Payable
-                </span>
-                <span className="text-[11px] text-[#2E7D32]">
-                  {selectedPayslip.status === 'PAID'
-                    ? `Disbursed on ${selectedPayslip.paidOn ? new Date(selectedPayslip.paidOn).toLocaleDateString('en-IN') : 'Direct Bank Transfer'}`
-                    : 'Pending disbursement approval for this payroll period'}
-                </span>
-              </div>
-              <div className="text-2xl font-black text-[#1B5E20] font-mono">
-                {rupees(selectedPayslip.netPaid)}
-              </div>
-            </div>
-
-            {/* Footer Actions */}
-            <div className="flex justify-between items-center pt-4 border-t border-[#E5E2DB]">
-              <span className="text-[11px] text-[#7A756B]">Official system-generated pay slip. Valid without physical signature.</span>
-              <div className="flex gap-2">
-                <Btn onClick={() => window.print()} variant="primary">
-                  <Printer className="w-3.5 h-3.5 mr-1" /> Print / Save PDF
-                </Btn>
-                <Btn onClick={() => setSelectedPayslip(null)}>Close</Btn>
-              </div>
-            </div>
-          </div>
         </Modal>
       )}
     </div>
