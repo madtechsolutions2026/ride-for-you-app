@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "build": "tsc && npm --prefix ../admin ci && npm --prefix ../admin run build",
-    "start": "prisma db push && node dist/app.js",
+    "start": "prisma db push --accept-data-loss && node dist/app.js",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push",
+    "prisma:push": "prisma db push --accept-data-loss",
     "db:upgrade:payroll": "prisma db execute --file prisma/attendance-payroll-upgrade.sql --schema prisma/schema.prisma",
     "seed": "node prisma/seed.js",
     "seed:demo": "node prisma/seed_demo_data.js",
