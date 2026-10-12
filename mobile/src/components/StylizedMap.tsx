@@ -38,79 +38,9 @@ type StylizedMapProps = {
 
 // Default center: Hyderabad EV Tech Corridor (Madhapur / Hitech City)
 const HYDERABAD_CENTER = {
-  latitude: 17.4480,
-  longitude: 78.3780,
+  latitude: 17.5654,
+  longitude: 78.4379,
 };
-
-// Official physical Hubs and Battery Swap locations in Hyderabad
-export const DEFAULT_EV_LOCATIONS: MapStation[] = [
-  // 1. Vehicle Hubs (Pickup / Return / Inventory)
-  {
-    id: 'hub_kondapur',
-    type: 'HUB',
-    name: 'Kondapur Main Hub',
-    address: 'Near Botanical Garden, Kondapur',
-    lat: 17.4620,
-    lng: 78.3560,
-    available: 14,
-    openTime: '08:00',
-    closeTime: '22:00',
-  },
-  {
-    id: 'hub_hitech',
-    type: 'HUB',
-    name: 'Hitech Metro Hub',
-    address: 'Hitech City Metro Station, Madhapur',
-    lat: 17.4480,
-    lng: 78.3780,
-    available: 18,
-    openTime: '08:00',
-    closeTime: '22:00',
-  },
-  {
-    id: 'hub_gachibowli',
-    type: 'HUB',
-    name: 'Gachibowli Hub',
-    address: 'Financial District, Near Wipro Circle',
-    lat: 17.4320,
-    lng: 78.3450,
-    available: 11,
-    openTime: '08:30',
-    closeTime: '21:30',
-  },
-
-  // 2. Battery Swap Stations (Instant 2-Minute Swaps)
-  {
-    id: 'sw_hitech_metro',
-    type: 'SWAP',
-    name: 'Hitech City Metro Swap',
-    address: 'Pillar 1240, Hitech City Main Rd',
-    lat: 17.4435,
-    lng: 78.3772,
-    openTime: '06:00',
-    closeTime: '23:00',
-  },
-  {
-    id: 'sw_cyber_towers',
-    type: 'SWAP',
-    name: 'Madhapur Cyber Swap',
-    address: 'Opp. Cyber Gateway, Madhapur',
-    lat: 17.4504,
-    lng: 78.3808,
-    openTime: '06:00',
-    closeTime: '23:00',
-  },
-  {
-    id: 'sw_gachibowli',
-    type: 'SWAP',
-    name: 'Bio-Diversity Swap Point',
-    address: 'Bio-Diversity Junction, Gachibowli',
-    lat: 17.4334,
-    lng: 78.3668,
-    openTime: '06:00',
-    closeTime: '23:00',
-  },
-];
 
 export function StylizedMap({
   width: w,
@@ -179,7 +109,7 @@ export function StylizedMap({
   }, []);
 
   const activeCoords = coords || HYDERABAD_CENTER;
-  const stationsToRender = (customStations && customStations.length > 0) ? customStations : DEFAULT_EV_LOCATIONS;
+  const stationsToRender = customStations ?? [];
 
   const handleRecenter = () => {
     if (webViewRef.current) {

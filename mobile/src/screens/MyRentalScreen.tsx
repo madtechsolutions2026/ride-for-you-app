@@ -388,16 +388,7 @@ export default function MyRentalScreen({ navigation, route }: Props) {
               <Text style={styles.actionLabel}>Book return slot</Text>
             </Pressable>
 
-            <Pressable style={styles.action} onPress={() => navigation.navigate('BatterySwap')}>
-              <View style={styles.actionIcon}>
-                <Ionicons
-                  name="battery-charging-outline"
-                  size={18}
-                  color={colors.brand.primary}
-                />
-              </View>
-              <Text style={styles.actionLabel}>Swap battery</Text>
-            </Pressable>
+
 
             <Pressable style={styles.action} onPress={() => navigation.navigate('ReportDamage')}>
               <View style={styles.actionIcon}>

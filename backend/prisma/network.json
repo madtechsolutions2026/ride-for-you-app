@@ -1,0 +1,12 @@
+{
+  "hub": {
+    "id": "hub_bahadurpally",
+    "name": "Ride For You – Bahadurpally Hub",
+    "address": "Bahadurpally, Hyderabad, Telangana",
+    "city": "Hyderabad",
+    "lat": 17.5654,
+    "lng": 78.4379,
+    "status": "ACTIVE"
+  },
+  "swapStations": []
+}

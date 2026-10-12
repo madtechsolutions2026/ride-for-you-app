@@ -10,6 +10,7 @@ import {
 export const Infrastructure: React.FC<{ tab?: 'hubs' | 'stations' }> = ({ tab = 'hubs' }) => {
   const [data, setData] = useState<{ hubs: any[]; swapStations: any[] }>({ hubs: [], swapStations: [] });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [hubModalOpen, setHubModalOpen] = useState(false);
   const [stationModalOpen, setStationModalOpen] = useState(false);
 
@@ -29,11 +30,13 @@ export const Infrastructure: React.FC<{ tab?: 'hubs' | 'stations' }> = ({ tab = 
 
   const fetchInfra = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await apiClient.get('/admin/api/infrastructure');
-      setData(res.data);
+      setData({ hubs: (res.data.hubs || []).filter((h: any) => h.status === 'ACTIVE'), swapStations: (res.data.swapStations || []).filter((s: any) => s.status === 'ACTIVE') });
     } catch (e) {
       console.error('Error fetching infrastructure:', e);
+      setError(errMsg(e, 'Could not load hubs and stations. Sign in again if your session expired.'));
     } finally {
       setLoading(false);
     }
@@ -84,6 +87,7 @@ export const Infrastructure: React.FC<{ tab?: 'hubs' | 'stations' }> = ({ tab = 
   };
 
   if (loading) return <Loader />;
+  if (error) return <Card className="p-5"><p role="alert" className="text-signal-red mb-3">{error}</p><Btn onClick={fetchInfra}>Retry</Btn></Card>;
 
   const totalBikes = data.hubs.reduce((sum, h) => sum + (h._count?.bikes || 0), 0);
 

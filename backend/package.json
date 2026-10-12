@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "build": "tsc && npm --prefix ../admin ci && npm --prefix ../admin run build",
-    "start": "prisma db push --accept-data-loss && node dist/app.js",
+    "start": "prisma db push && node dist/app.js",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push --accept-data-loss",
+    "prisma:push": "prisma db push",
     "db:upgrade:payroll": "prisma db execute --file prisma/attendance-payroll-upgrade.sql --schema prisma/schema.prisma",
     "seed": "node prisma/seed.js",
     "seed:demo": "node prisma/seed_demo_data.js",
@@ -16,6 +16,7 @@
     "verify:roles": "node scripts/seed-dev-roles.cjs --verify-only",
     "trigger-billing": "ts-node scripts/trigger-billing.ts",
     "test": "jest --runInBand",
+    "test:records": "jest --config jest.records.config.js --runInBand",
     "test:watch": "jest --runInBand --watch",
     "postinstall": "prisma generate",
     "migrate:deploy": "prisma migrate deploy"

@@ -10,6 +10,9 @@
       "channel": "development"
     },
     "preview": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ride-for-you-app-production.up.railway.app"
+      },
       "distribution": "internal",
       "android": {
         "buildType": "apk"
@@ -17,6 +20,9 @@
       "channel": "preview"
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ride-for-you-app-production.up.railway.app"
+      },
       "android": {
         "buildType": "apk"
       },

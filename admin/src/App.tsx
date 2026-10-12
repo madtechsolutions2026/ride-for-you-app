@@ -20,6 +20,8 @@ import { Settings } from './pages/Settings';
 import { Reports } from './pages/Reports';
 import { RiderRequests } from './pages/RiderRequests';
 import { Collections } from './pages/Collections';
+import { RecordManager } from './components/RecordManager';
+import { Btn } from './components/ui';
 import { apiClient } from './api/client';
 import { RefreshProvider, useRefresh } from './context/RefreshContext';
 
@@ -85,7 +87,10 @@ const Shell: React.FC<{
   pathname: string;
 }> = ({ stats, statsError, navigate, pathname }) => {
   const { refresh, isRefreshing } = useRefresh();
+  const { user } = useAuth();
+  const [manageRecords, setManageRecords] = useState(false);
   const item = itemForPath(pathname);
+  useEffect(() => { setManageRecords(false); }, [pathname]);
 
   return (
     <div className="min-h-screen bg-paper flex">
@@ -107,7 +112,11 @@ const Shell: React.FC<{
         />
 
         <main className="flex-1 px-7 py-6 min-w-0">
-          <Routes>
+          {user?.role === 'ADMIN' && <div className="flex gap-2 mb-5">
+            <Btn variant={!manageRecords ? 'primary' : 'ghost'} onClick={() => setManageRecords(false)}>Operations</Btn>
+            <Btn variant={manageRecords ? 'primary' : 'ghost'} onClick={() => setManageRecords(true)}>Manage records</Btn>
+          </div>}
+          {manageRecords && user?.role === 'ADMIN' ? <RecordManager key={item?.id || 'overview'} section={item?.id || 'overview'} onChanged={refresh} /> : <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             <Route
@@ -180,7 +189,7 @@ const Shell: React.FC<{
             />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+          </Routes>}
         </main>
       </div>
     </div>

@@ -36,7 +36,7 @@ import {
   type CategoryHub,
   type MapStation,
 } from '../components';
-import { DEFAULT_EV_LOCATIONS } from '../components/StylizedMap';
+
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'> & {
   onLogout: () => void;
@@ -54,8 +54,10 @@ type UserProfile = {
 export default function HomeScreen({ navigation, onLogout }: Props) {
   const { width } = useWindowDimensions();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [mapStations, setMapStations] = useState<MapStation[]>(DEFAULT_EV_LOCATIONS);
+  const [mapStations, setMapStations] = useState<MapStation[]>([]);
 
+  const [availableFleet, setAvailableFleet] = useState({ SWAP: 0, HOME: 0 });
+  const [networkError, setNetworkError] = useState<string | null>(null);
   // Modal & Sheet States
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [hubsSheetVisible, setHubsSheetVisible] = useState(false);
@@ -88,42 +90,17 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
 
   const fetchMapStations = async () => {
     try {
-      const [hubsRes, swapRes] = await Promise.all([
-        apiClient.get('/rental/hubs').catch(() => null),
-        apiClient.get('/rental/swap-stations').catch(() => null),
-      ]);
-
-      const fetchedHubs: MapStation[] = (hubsRes?.data?.hubs || []).map((h: any) => ({
-        id: h.id,
-        type: 'HUB' as const,
-        name: h.name,
-        address: h.address,
-        lat: Number(h.lat),
-        lng: Number(h.lng),
-        available: h.totalAvailable ?? 12,
-        openTime: h.openTime,
-        closeTime: h.closeTime,
-      }));
-
-      const fetchedSwaps: MapStation[] = (swapRes?.data?.stations || []).map((s: any) => ({
-        id: s.id,
-        type: 'SWAP' as const,
-        name: s.name,
-        address: s.address,
-        lat: Number(s.lat),
-        lng: Number(s.lng),
-        openTime: s.openTime,
-        closeTime: s.closeTime,
-      }));
-
-      if (fetchedHubs.length > 0 || fetchedSwaps.length > 0) {
-        setMapStations([...fetchedHubs, ...fetchedSwaps]);
-      }
+      const res = await apiClient.get('/rental/hubs');
+      const hubs = res.data?.hubs;
+      if (!Array.isArray(hubs)) throw new Error('Invalid hub response');
+      setMapStations(hubs.map((h: any) => ({ id: h.id, type: 'HUB', name: h.name, address: h.address, lat: Number(h.lat), lng: Number(h.lng), available: h.totalAvailable ?? 0, openTime: h.openTime, closeTime: h.closeTime })));
+      setAvailableFleet(hubs.reduce((counts: { SWAP: number; HOME: number }, h: any) => ({ SWAP: counts.SWAP + (h.availableByCategory?.SWAP ?? 0), HOME: counts.HOME + (h.availableByCategory?.HOME ?? 0) }), { SWAP: 0, HOME: 0 }));
+      setNetworkError(null);
     } catch {
-      // Keep DEFAULT_EV_LOCATIONS on network fallback
+      setMapStations([]); setAvailableFleet({ SWAP: 0, HOME: 0 });
+      setNetworkError('Could not load pickup hubs. Tap to retry.');
     }
   };
-
   useEffect(() => {
     // 1. Instant hydration from local device cache (< 1ms)
     getStoredUser().then((cached) => {
@@ -160,7 +137,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
     setCategoryHubsVisible(false);
     navigation.navigate('VehiclesList', {
       categoryId: selectedCategory,
-      categoryTitle: selectedCategory === 'swap' ? 'Battery Swap Hubs' : 'Home Charging Hubs',
+      categoryTitle: selectedCategory === 'swap' ? 'Removable Battery Bikes' : 'Home Charging Bikes',
       hubId: hub.id,
       hubName: hub.name,
       hubAddress: hub.address,
@@ -216,33 +193,23 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
 
         {/* ---------------- ENLARGED MAP + QUICK ACTIONS ---------------- */}
         <NeoSurface borderRadius={radius.lg} style={styles.mapCard}>
-          <StylizedMap width={cardInner} height={250} stations={mapStations} />
+          {networkError && <Pressable onPress={fetchMapStations}><Text>{networkError}</Text></Pressable>}<StylizedMap width={cardInner} height={250} stations={mapStations} />
 
           <View style={styles.actionsRow}>
             <QuickAction
               icon="bicycle-outline"
-              label={'Nearby\nStations'}
+              label={'Pickup\nHubs'}
               onPress={() => setHubsSheetVisible(true)}
             />
             <QuickActionDivider />
-            <QuickAction
-              icon="battery-charging-outline"
-              label={'Battery\nSwap'}
-              badge="New"
-              onPress={() => handleOpenCategory('swap')}
-            />
+            <QuickAction icon="bicycle-outline" label={'Browse\nBikes'} onPress={() => handleOpenCategory('swap')} />
             <QuickActionDivider />
             <QuickAction
               icon="headset-outline"
               label={'Support\n24/7'}
               onPress={() => navigation.navigate('Support')}
             />
-            <QuickActionDivider />
-            <QuickAction
-              icon="battery-charging-outline"
-              label={'Battery\nSwap'}
-              onPress={() => navigation.navigate('BatterySwap')}
-            />
+
           </View>
         </NeoSurface>
 
@@ -259,10 +226,10 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
               <View style={styles.catCardHeader}>
                 <View style={styles.catBadgeSwap}>
                   <Ionicons name="flash" size={13} color={colors.brand.primary} />
-                  <Text style={styles.catBadgeSwapText}>Unlimited Swaps</Text>
+                  <Text style={styles.catBadgeSwapText}>Removable Battery</Text>
                 </View>
                 <View style={styles.availFleetBadge}>
-                  <Text style={styles.availFleetText}>29+ Bikes Nearby</Text>
+                  <Text style={styles.availFleetText}>{availableFleet.SWAP} Bikes Available</Text>
                 </View>
               </View>
 
@@ -270,15 +237,15 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
                 <Image source={images.vehicleS1} style={styles.catScooterImg} contentFit="contain" />
 
                 <View style={styles.catInfo}>
-                  <Text style={styles.catTitle}>Battery Swap Hubs</Text>
+                  <Text style={styles.catTitle}>Removable Battery Bikes</Text>
                   <Text style={styles.catDesc}>
-                    Swap drained batteries in 2 minutes at 50+ metro hubs across the city with zero charging wait.
+                    Pick up and return your bike at our hub. Battery stations are not available yet.
                   </Text>
 
                   <View style={styles.catChipsRow}>
                     <View style={styles.catChip}>
                       <Ionicons name="sync" size={11} color={colors.brand.primary} />
-                      <Text style={styles.catChipText}>2-Min Swap</Text>
+                      <Text style={styles.catChipText}>Hub Pickup</Text>
                     </View>
                     <View style={styles.catChip}>
                       <Ionicons name="speedometer-outline" size={11} color={colors.brand.primary} />
@@ -287,7 +254,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
                   </View>
 
                   <View style={styles.catBtnSwap}>
-                    <Text style={styles.catBtnText}>Explore Swap Hubs</Text>
+                    <Text style={styles.catBtnText}>Explore Pickup Hub</Text>
                     <Ionicons name="arrow-forward" size={14} color={colors.common.white} />
                   </View>
                 </View>
@@ -304,7 +271,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
                   <Text style={styles.catBadgeHomeText}>Home Charger Included</Text>
                 </View>
                 <View style={styles.availFleetBadge}>
-                  <Text style={styles.availFleetText}>25+ Bikes Nearby</Text>
+                  <Text style={styles.availFleetText}>{availableFleet.HOME} Bikes Available</Text>
                 </View>
               </View>
 
@@ -312,7 +279,7 @@ export default function HomeScreen({ navigation, onLogout }: Props) {
                 <Image source={images.vehicleX1} style={styles.catScooterImg} contentFit="contain" />
 
                 <View style={styles.catInfo}>
-                  <Text style={styles.catTitle}>Home Charging Hubs</Text>
+                  <Text style={styles.catTitle}>Home Charging Bikes</Text>
                   <Text style={styles.catDesc}>
                     Includes portable 3-pin fast charger. Plug into any normal wall socket overnight at home or office.
                   </Text>

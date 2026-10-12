@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Dimensions,
   Modal,
@@ -18,7 +19,7 @@ import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
 import { ThemedModal } from '../components';
 import { apiClient } from '../api/client';
-import { getAccessToken } from '../api/tokenStore';
+
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - screenPadding * 2 - 12) / 2;
@@ -36,6 +37,7 @@ export type VehicleItem = {
   rangeKm: number;
   topSpeed: number;
   batteryPercent: number;
+  availableCount: number;
   pricePerDay: number;
   pricePerWeek: number;
   pricePerMonth: number;
@@ -45,149 +47,6 @@ export type VehicleItem = {
   image: any;
   features: string[];
 };
-
-const FLEET_DATA: VehicleItem[] = [
-  {
-    id: 'bm_sprinto_hs',
-    name: 'SPRINTO HS',
-    category: 'swap',
-    speedCategory: 'high',
-    tag: '⚡ UNLIMITED SWAPPING',
-    tagBg: colors.brand.mint,
-    tagColor: colors.brand.primary,
-    rangeKm: 90,
-    topSpeed: 45,
-    batteryPercent: 100,
-    pricePerDay: 235,
-    pricePerWeek: 1645,
-    pricePerMonth: 5999,
-    platformFee: 1500,
-    bookingFee: 200,
-    totalDueToday: 3345,
-    image: images.vehicleS1,
-    features: ['Unlimited Free Swaps', 'Delivery Carrier Box', 'Sanitized Helmet', 'Full Insurance'],
-  },
-  {
-    id: 'bm_evtric',
-    name: 'EVTRIC',
-    category: 'swap',
-    speedCategory: 'low',
-    tag: '⚡ UNLIMITED SWAPPING',
-    tagBg: colors.brand.mint,
-    tagColor: colors.brand.primary,
-    rangeKm: 90,
-    topSpeed: 30,
-    batteryPercent: 100,
-    pricePerDay: 230,
-    pricePerWeek: 1610,
-    pricePerMonth: 5899,
-    platformFee: 1500,
-    bookingFee: 200,
-    totalDueToday: 3310,
-    image: images.vehicleZ1,
-    features: ['Unlimited Free Swaps', 'High Efficiency Motor', 'Sanitized Helmet', 'GPS Tracked'],
-  },
-  {
-    id: 'bm_hala_ckd',
-    name: 'HALA CKD',
-    category: 'swap',
-    speedCategory: 'low',
-    tag: '⚡ UNLIMITED SWAPPING',
-    tagBg: colors.brand.mint,
-    tagColor: colors.brand.primary,
-    rangeKm: 90,
-    topSpeed: 35,
-    batteryPercent: 100,
-    pricePerDay: 230,
-    pricePerWeek: 1610,
-    pricePerMonth: 5899,
-    platformFee: 1500,
-    bookingFee: 200,
-    totalDueToday: 3310,
-    image: images.vehicleS1,
-    features: ['Unlimited Free Swaps', 'Lightweight City Frame', 'Sanitized Helmet', 'Full Insurance'],
-  },
-  {
-    id: 'bm_sprinto_hs_sun',
-    name: 'SPRINTO HS SUN',
-    category: 'swap',
-    speedCategory: 'low',
-    tag: '⚡ UNLIMITED SWAPPING',
-    tagBg: colors.brand.mint,
-    tagColor: colors.brand.primary,
-    rangeKm: 75,
-    topSpeed: 30,
-    batteryPercent: 100,
-    pricePerDay: 275,
-    pricePerWeek: 1925,
-    pricePerMonth: 6999,
-    platformFee: 2000,
-    bookingFee: 200,
-    totalDueToday: 4125,
-    image: images.vehicleZ1,
-    features: ['Unlimited Free Swaps', 'Heavy Duty Suspension', 'Sanitized Helmet', 'Zero Downtime'],
-  },
-  {
-    id: 'bm_new_aeroflow',
-    name: 'NEW (Aeroflow)',
-    category: 'swap',
-    speedCategory: 'high',
-    tag: '⚡ UNLIMITED SWAPPING',
-    tagBg: colors.brand.mint,
-    tagColor: colors.brand.primary,
-    rangeKm: 110,
-    topSpeed: 55,
-    batteryPercent: 100,
-    pricePerDay: 275,
-    pricePerWeek: 1925,
-    pricePerMonth: 6999,
-    platformFee: 1500,
-    bookingFee: 200,
-    totalDueToday: 3625,
-    image: images.vehicleS1,
-    features: ['Unlimited Free Swaps', 'Aeroflow Cargo Carrier', 'Sanitized Helmet', 'Full Insurance'],
-  },
-  {
-    id: 'bm_odyssey',
-    name: 'ODYSSEY',
-    category: 'swap',
-    speedCategory: 'high',
-    tag: '⚡ UNLIMITED SWAPPING',
-    tagBg: colors.brand.mint,
-    tagColor: colors.brand.primary,
-    rangeKm: 120,
-    topSpeed: 60,
-    batteryPercent: 100,
-    pricePerDay: 275,
-    pricePerWeek: 1925,
-    pricePerMonth: 6999,
-    platformFee: 2500,
-    bookingFee: 200,
-    totalDueToday: 4625,
-    image: images.vehicleS1,
-    features: ['Unlimited Free Swaps', 'Heavy Duty Cargo Box', 'Dual Disc Brakes', 'Full Insurance'],
-  },
-  {
-    id: 'bm_home_pro_x1',
-    name: 'HOME PRO X1',
-    category: 'home',
-    speedCategory: 'high',
-    tag: '🔌 3-PIN CHARGER INCLUDED',
-    tagBg: colors.status.infoTint,
-    tagColor: colors.status.info,
-    rangeKm: 130,
-    topSpeed: 60,
-    batteryPercent: 100,
-    pricePerDay: 275,
-    pricePerWeek: 1925,
-    pricePerMonth: 6999,
-    platformFee: 2000,
-    bookingFee: 200,
-    totalDueToday: 4125,
-    image: images.vehicleX1,
-    features: ['Fast Home Charger Included', 'Long Distance Battery', 'Dual Disc Brakes', 'Full Insurance'],
-  },
-];
 
 type SpeedFilter = 'all' | 'high' | 'low';
 
@@ -208,10 +67,13 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
   const [creating, setCreating] = useState(false);
   const kycApproved = kycStatus === 'APPROVED';
 
-  const defaultCategoryBikes = FLEET_DATA.filter((b) => b.category === categoryId);
-  const [bikesList, setBikesList] = useState<VehicleItem[]>(defaultCategoryBikes);
+  const [fleetLoading, setFleetLoading] = useState(true);
+  const [fleetError, setFleetError] = useState<string | null>(null);
+  const [bikesList, setBikesList] = useState<VehicleItem[]>([]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    setActiveBooking(null);
+    setKycStatus(null);
     apiClient
       .get('/user/profile')
       .then((res) => setKycStatus(res.data?.user?.kycStatus ?? null))
@@ -242,60 +104,7 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
       })
       .catch(() => {});
 
-    // Fetch dynamic fleet models and prices from dashboard/DB
-    apiClient
-      .get('/rental/bikes')
-      .then((res) => {
-        const models = res.data?.models;
-        if (Array.isArray(models) && models.length > 0) {
-          const categoryModels = models.filter(
-            (m: any) => m.category?.toLowerCase() === categoryId?.toLowerCase()
-          );
-          if (categoryModels.length > 0) {
-            const mapped: VehicleItem[] = categoryModels.map((m: any) => {
-              const weekPlan =
-                m.plans?.find((p: any) => p.duration === 'WEEK') || m.plans?.[0];
-              const dayPlan = m.plans?.find((p: any) => p.duration === 'DAY');
-              const monthPlan = m.plans?.find((p: any) => p.duration === 'MONTH');
-              const deposit = weekPlan?.deposit ?? 1500;
-              const weekPrice = weekPlan?.price ?? 1645;
-              const dayPrice = dayPlan?.price ?? Math.round(weekPrice / 7);
-              const monthPrice = monthPlan?.price ?? (weekPrice * 4 - 500);
-
-              // Matching default image or fallback
-              const defaultMatch = FLEET_DATA.find(
-                (f) => f.id === m.modelId || f.id === m.id || f.name.toLowerCase() === m.name?.toLowerCase()
-              );
-
-              return {
-                id: m.modelId || m.id,
-                name: m.name,
-                category: (m.category?.toLowerCase() === 'swap' ? 'swap' : 'home') as 'swap' | 'home',
-                speedCategory: ((m.topSpeedKmph || 45) > 40 ? 'high' : 'low') as 'high' | 'low',
-                tag: m.category?.toLowerCase() === 'swap' ? '⚡ UNLIMITED SWAPPING' : '🔌 3-PIN CHARGER INCLUDED',
-                tagBg: m.category?.toLowerCase() === 'swap' ? colors.brand.mint : colors.status.infoTint,
-                tagColor: m.category?.toLowerCase() === 'swap' ? colors.brand.primary : colors.status.info,
-                rangeKm: m.rangeKm || 90,
-                topSpeed: m.topSpeedKmph || 45,
-                batteryPercent: 100,
-                pricePerDay: dayPrice,
-                pricePerWeek: weekPrice,
-                pricePerMonth: monthPrice,
-                platformFee: deposit,
-                bookingFee: 200,
-                totalDueToday: weekPrice + deposit + 200,
-                image: m.imageUrl ? { uri: m.imageUrl } : (defaultMatch?.image || images.vehicleS1),
-                features: m.category?.toLowerCase() === 'swap'
-                  ? ['Unlimited Free Swaps', 'Delivery Carrier Box', 'Sanitized Helmet', 'Full Insurance']
-                  : ['Fast Home Charger Included', 'Long Distance Battery', 'Dual Disc Brakes', 'Full Insurance'],
-              };
-            });
-            setBikesList(mapped);
-          }
-        }
-      })
-      .catch(() => {});
-  }, [categoryId]);
+  }, [categoryId]));
 
   const handleBookingConfirm = async () => {
     if (creating || !activeBookingBike) return;
@@ -347,88 +156,31 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
     }
   };
 
-  useEffect(() => {
-    const catQuery = categoryId === 'swap' ? 'SWAP' : 'HOME';
-    getAccessToken().then((t) =>
-      console.log('[VehiclesList] fetching bikes, token present:', !!t)
-    );
-    apiClient
-      .get(`/rental/bikes?category=${catQuery}`)
-      .then((res) => {
-        if (res.data?.bikes && Array.isArray(res.data.bikes) && res.data.bikes.length > 0) {
-          const mapped: VehicleItem[] = res.data.bikes.map((m: any, idx: number) => {
-            const dayPlan = m.plans?.find((p: any) => p.duration === 'DAY');
-            const weekPlan = m.plans?.find((p: any) => p.duration === 'WEEK');
-            const monthPlan = m.plans?.find((p: any) => p.duration === 'MONTH');
-
-            const fallbackImage =
-              m.category === 'SWAP'
-                ? idx % 2 === 0
-                  ? images.vehicleS1
-                  : images.vehicleZ1
-                : idx % 2 === 0
-                ? images.vehicleX1
-                : images.vehicleS1;
-
-            let platformFee = 2000;
-            let totalDue = 4125;
-            if (m.name.toUpperCase().includes('NEW') || m.modelId.includes('new')) {
-              platformFee = 1500;
-              totalDue = 3625;
-            } else if (m.name.toUpperCase().includes('ODYSSEY') || m.modelId.includes('odyssey')) {
-              platformFee = 2500;
-              totalDue = 4625;
-            } else if (
-              m.name.toUpperCase().includes('SPRINTO HS') ||
-              m.name.toUpperCase().includes('EVTRIC') ||
-              m.name.toUpperCase().includes('HALA')
-            ) {
-              platformFee = 1500;
-              totalDue = (weekPlan?.price || 1610) + 1500 + 200;
-            }
-
-            const speed = m.topSpeedKmph || 45;
-            const speedCategory: 'high' | 'low' = speed >= 45 ? 'high' : 'low';
-
-            return {
-              id: m.modelId,
-              name: m.name,
-              category: m.category.toLowerCase() as 'swap' | 'home',
-              speedCategory,
-              tag: m.category === 'SWAP' ? '⚡ UNLIMITED SWAPPING' : '🔌 3-PIN CHARGER INCLUDED',
-              tagBg: m.category === 'SWAP' ? colors.brand.mint : colors.status.infoTint,
-              tagColor: m.category === 'SWAP' ? colors.brand.primary : colors.status.info,
-              rangeKm: m.rangeKm,
-              topSpeed: speed,
-              batteryPercent: 100,
-              pricePerDay: dayPlan ? dayPlan.price : 235,
-              pricePerWeek: weekPlan ? weekPlan.price : 1645,
-              pricePerMonth: monthPlan ? monthPlan.price : 5999,
-              platformFee,
-              bookingFee: 200,
-              totalDueToday: totalDue,
-              image: m.imageUrl ? { uri: m.imageUrl } : fallbackImage,
-              features:
-                m.category === 'SWAP'
-                  ? ['Unlimited Free Swaps', 'Delivery Carrier Box', 'Sanitized Helmet', 'Full Insurance']
-                  : ['Fast Home Charger Included', 'Long Distance Battery', 'Dual Disc Brakes', 'Full Insurance'],
-            };
-          });
-          setBikesList(mapped);
-        } else {
-          console.warn('[VehiclesList] /rental/bikes returned no bikes for', catQuery, res.data);
-        }
-      })
-      .catch((err) => {
-        console.error(
-          '[VehiclesList] /rental/bikes failed:',
-          err?.response?.status,
-          err?.response?.data || err?.message
-        );
-        setBikesList(defaultCategoryBikes);
+  const loadFleet = useCallback(async () => {
+    setFleetLoading(true); setFleetError(null); setBikesList([]);
+    try {
+      const res = await apiClient.get('/rental/bikes', { params: { category: categoryId === 'swap' ? 'SWAP' : 'HOME', hubId: route.params.hubId } });
+      if (!Array.isArray(res.data?.bikes)) throw new Error('Invalid fleet response');
+      const fee = res.data.platformFee ?? 200; // Existing API booking fee contract.
+      if (typeof fee !== 'number') throw new Error('Booking fee is unavailable. Please contact support.');
+      const mapped: VehicleItem[] = res.data.bikes.filter((m: any) => m.plans?.some((p: any) => p.duration === 'WEEK')).map((m: any) => {
+        const week = m.plans.find((p: any) => p.duration === 'WEEK');
+        const day = m.plans.find((p: any) => p.duration === 'DAY');
+        const month = m.plans.find((p: any) => p.duration === 'MONTH');
+        return { id: m.modelId, name: m.name, category: m.category.toLowerCase(), speedCategory: m.topSpeedKmph >= 45 ? 'high' : 'low',
+          tag: m.category === 'SWAP' ? 'Removable Battery' : 'Home Charging', tagBg: colors.brand.mint, tagColor: colors.brand.primary,
+          rangeKm: m.rangeKm, topSpeed: m.topSpeedKmph, batteryPercent: 100, availableCount: m.availableCount ?? 0,
+          pricePerDay: day?.price ?? 0, pricePerWeek: week.price, pricePerMonth: month?.price ?? 0,
+          platformFee: week.deposit, bookingFee: fee, totalDueToday: week.price + week.deposit + fee,
+          image: m.imageUrl ? { uri: m.imageUrl } : m.category === 'HOME' ? images.vehicleX1 : images.vehicleS1,
+          features: m.chargerIncluded ? ['Charger included', 'Pickup / return at hub'] : ['Pickup / return at hub'],
+        };
       });
-  }, [categoryId]);
-
+      setBikesList(mapped);
+    } catch (e: any) { setBikesList([]); setFleetError(e?.message || 'Could not load vehicles.'); }
+    finally { setFleetLoading(false); }
+  }, [categoryId, route.params.hubId]);
+  useFocusEffect(useCallback(() => { void loadFleet(); }, [loadFleet]));
   const filteredBikes = bikesList.filter((b) => {
     if (selectedFilter === 'high') return b.speedCategory === 'high' || b.topSpeed >= 40;
     if (selectedFilter === 'low') return b.speedCategory === 'low' || b.topSpeed < 40;
@@ -511,7 +263,7 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.gridRow}>
-          {filteredBikes.map((bike) => (
+          {fleetLoading && <Text>Loading vehicles…</Text>}{fleetError && <Pressable onPress={loadFleet}><Text>{fleetError} Tap to retry.</Text></Pressable>}{!fleetLoading && !fleetError && filteredBikes.length === 0 && <Text>No weekly rental vehicles are available at this hub.</Text>}{filteredBikes.map((bike) => (
             <Pressable
               key={bike.id}
               style={styles.card}
@@ -552,6 +304,7 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
 
               {/* Weekly Price */}
               <View style={styles.priceContainer}>
+                <Text>{bike.availableCount} available at this hub</Text>
                 <Text style={styles.priceText}>
                   <Text style={styles.priceAmount}>₹{bike.pricePerWeek}</Text>
                   <Text style={styles.priceUnit}>/week</Text>
@@ -650,7 +403,7 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
 
                   <View style={styles.breakdownRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={styles.breakdownLabel}>Platform Fee</Text>
+                      <Text style={styles.breakdownLabel}>Refundable Deposit</Text>
                       <View style={styles.nonRefundTag}>
                         <Text style={styles.nonRefundText}>NON-REFUNDABLE</Text>
                       </View>
@@ -711,14 +464,15 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
                   </Pressable>
                 ) : (
                   <Pressable
-                    style={styles.sheetBookBtn}
+                    style={[styles.sheetBookBtn, selectedBike.availableCount === 0 && { opacity: 0.5 }]}
+                    disabled={selectedBike.availableCount === 0}
                     onPress={() => {
                       const bikeToBook = selectedBike;
                       setSelectedBike(null);
                       setActiveBookingBike(bikeToBook);
                     }}
                   >
-                    <Text style={styles.sheetBookBtnText}>Proceed to Book</Text>
+                    <Text style={styles.sheetBookBtnText}>{selectedBike.availableCount > 0 ? 'Proceed to Book' : 'Unavailable at this hub'}</Text>
                     <Ionicons name="arrow-forward" size={16} color={colors.common.white} />
                   </Pressable>
                 )}
@@ -735,7 +489,7 @@ export default function VehiclesListScreen({ navigation, route }: Props) {
           title={`Confirm ${activeBookingBike.name}`}
           message={
             kycApproved
-              ? `Hub: ${hubName}\n\nWeekly Rental: ₹${activeBookingBike.pricePerWeek}\nPlatform Fee: ₹${activeBookingBike.platformFee}\nBooking Fee: ₹${activeBookingBike.bookingFee}\n\nTotal Due Today: ₹${activeBookingBike.totalDueToday}/-\n\nYou'll pay on the next screen. Helmet, cargo carrier & roadside assistance included.`
+              ? `Hub: ${hubName}\n\nWeekly Rental: ₹${activeBookingBike.pricePerWeek}\nRefundable Deposit: ₹${activeBookingBike.platformFee}\nBooking Fee: ₹${activeBookingBike.bookingFee}\n\nTotal Due Today: ₹${activeBookingBike.totalDueToday}/-\n\nYou'll pay on the next screen. Helmet, cargo carrier & roadside assistance included.`
               : `Hub: ${hubName}\n\nYou need an approved KYC before you can book. We'll take you to your profile to finish it.`
           }
           icon={kycApproved ? (isSwap ? 'flash' : 'home') : 'shield-checkmark-outline'}

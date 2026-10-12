@@ -154,7 +154,7 @@ export async function listHubs(req: AuthRequest, res: Response) {
       where: { status: 'ACTIVE' },
       include: {
         bikes: {
-          where: { status: 'AVAILABLE' },
+          where: { status: 'AVAILABLE', model: { status: 'ACTIVE' } },
           select: { model: { select: { category: true } } },
         },
       },
@@ -301,12 +301,13 @@ export async function listBikes(req: AuthRequest, res: Response) {
     }
 
     const sort = String(req.query.sort || 'priceLow');
+    const hubId = typeof req.query.hubId === 'string' ? req.query.hubId : undefined;
 
     const models = await prisma.bikeModel.findMany({
       where: { category, status: 'ACTIVE' },
       include: {
         plans: true,
-        bikes: { select: { status: true, batteryPercent: true } },
+        bikes: { where: { hub: { status: 'ACTIVE' }, ...(hubId ? { hubId } : {}) }, select: { status: true, batteryPercent: true } },
       },
     });
 
@@ -329,6 +330,7 @@ export async function listBikes(req: AuthRequest, res: Response) {
       category,
       count: bikes.length,
       bikes,
+      platformFee: PLATFORM_FEE,
     });
   } catch (error: any) {
     console.error('Error in listBikes:', error);
@@ -590,6 +592,7 @@ export async function createBooking(req: AuthRequest, res: Response) {
         : null) ||
       (await prisma.hub.findFirst({ where: { status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } }));
     if (!hub) return res.status(409).json({ error: 'No active pickup hub is configured' });
+    if (hubId && hub.id !== String(hubId)) return res.status(409).json({ error: 'The selected pickup hub is no longer active. Please select an available hub.' });
 
     // Strict Single Active Booking / Rental Constraint:
     // A rider can have only ONE active booking or live rental at a time.

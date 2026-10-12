@@ -1,4 +1,5 @@
-﻿import React from 'react';
+import React from 'react';
+import { useRentalHubs, distanceLabel } from '../hooks/useRentalHubs';
 import {
   Linking,
   Modal,
@@ -22,39 +23,6 @@ export type StationHub = {
   longitude: number;
 };
 
-export const NEARBY_HUBS: StationHub[] = [
-  {
-    id: 'hub-1',
-    name: 'Hitech City Metro Hub',
-    address: 'Near Pillar 1240, Hitech City Main Rd',
-    distance: '0.6 km away',
-    availableVehicles: 14,
-    hasFastSwap: true,
-    latitude: 17.4435,
-    longitude: 78.3772,
-  },
-  {
-    id: 'hub-2',
-    name: 'Madhapur Cyber Towers Hub',
-    address: 'Opp. Cyber Gateway, Madhapur',
-    distance: '1.2 km away',
-    availableVehicles: 9,
-    hasFastSwap: true,
-    latitude: 17.4504,
-    longitude: 78.3808,
-  },
-  {
-    id: 'hub-3',
-    name: 'Gachibowli Bio-Diversity Hub',
-    address: 'Near Bio-Diversity Junction, Gachibowli',
-    distance: '2.4 km away',
-    availableVehicles: 6,
-    hasFastSwap: false,
-    latitude: 17.4334,
-    longitude: 78.3668,
-  },
-];
-
 type Props = {
   visible: boolean;
   onClose: () => void;
@@ -62,6 +30,8 @@ type Props = {
 };
 
 export function NearbyHubsSheet({ visible, onClose, onSelectHub }: Props) {
+  const { hubs: liveHubs, loading, error, refresh } = useRentalHubs(visible);
+  const hubs: StationHub[] = liveHubs.map(h => ({ id: h.id, name: h.name, address: h.address, distance: distanceLabel(h.distanceMeters), availableVehicles: h.totalAvailable ?? 0, hasFastSwap: false, latitude: h.lat, longitude: h.lng }));
   const handleNavigate = (hub: StationHub) => {
     const url = `https://www.google.com/maps/dir/?api=1&destination=${hub.latitude},${hub.longitude}&travelmode=driving`;
     Linking.openURL(url).catch(() => {});
@@ -84,7 +54,7 @@ export function NearbyHubsSheet({ visible, onClose, onSelectHub }: Props) {
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Nearby EV Stations</Text>
+              <Text style={styles.title}>Pickup Hubs</Text>
               <Text style={styles.subTitle}>Select a hub to view vehicles or get directions</Text>
             </View>
             <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={6}>
@@ -94,7 +64,7 @@ export function NearbyHubsSheet({ visible, onClose, onSelectHub }: Props) {
 
           {/* Hub List */}
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-            {NEARBY_HUBS.map((hub) => (
+            {loading && <Text>Loading hubs…</Text>}{error && <Pressable onPress={refresh}><Text>{error} Tap to retry.</Text></Pressable>}{!loading && !error && hubs.length === 0 && <Text>No pickup hubs are available.</Text>}{hubs.map((hub) => (
               <View key={hub.id} style={styles.hubCard}>
                 <View style={styles.hubTopRow}>
                   <View style={styles.hubIconBox}>

@@ -1,0 +1,29 @@
+# This repository's EAS project is the standalone mobile app.
+# Keep backend credentials, admin source and local artifacts out of APK uploads.
+/.git/
+/.github/
+/.idea/
+/.vscode/
+/.vscode.zip
+/admin/
+/backend/
+/*.jpg
+/*.md
+/*.txt
+/*.ps1
+/Dockerfile
+/.dockerignore
+**/node_modules/
+**/.expo/
+**/.env
+**/.env.*
+**/.npm-task-cache/
+**/.eas-build-inspect/
+**/.mobile-check-export/
+**/.eas-latest-update.json
+**/.eas-build-result.json
+**/dist/
+**/build/
+**/*.log
+/mobile/android/
+/mobile/ios/

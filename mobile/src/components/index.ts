@@ -23,7 +23,7 @@ export { SideDrawer } from './SideDrawer';
 export { NotificationBell } from './NotificationBell';
 export { BottomNav, BOTTOM_NAV_HEIGHT } from './BottomNav';
 export type { TabKey } from './BottomNav';
-export { NearbyHubsSheet, NEARBY_HUBS, type StationHub } from './NearbyHubsSheet';
+export { NearbyHubsSheet, type StationHub } from './NearbyHubsSheet';
 export { CategoryHubsSheet, type CategoryHub } from './CategoryHubsSheet';
 export { PrivacyPolicyModal } from './PrivacyPolicyModal';
 export { RentPaymentSheet } from './RentPaymentSheet';

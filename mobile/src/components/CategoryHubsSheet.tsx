@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Modal,
   Pressable,
@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fontFamily, radius, shadows, spacing } from '../theme';
-import { apiClient } from '../api/client';
+import { useRentalHubs, distanceLabel } from '../hooks/useRentalHubs';
 
 export type CategoryHub = {
   id: string;
@@ -21,72 +21,6 @@ export type CategoryHub = {
   badgeColor: string;
   badgeBg: string;
 };
-
-const SWAP_HUBS: CategoryHub[] = [
-  {
-    id: 'hub_hitech',
-    name: 'Ride For You – Hitech Metro Hub',
-    address: 'Near Hitech City Metro Station, Madhapur, Hyderabad',
-    distance: '0.6 km away',
-    availableVehicles: 14,
-    badge: '⚡ 2-Min Swap',
-    badgeColor: colors.brand.primary,
-    badgeBg: colors.brand.mint,
-  },
-  {
-    id: 'hub_kondapur',
-    name: 'Ride For You – Kondapur Hub',
-    address: 'RTO Office Road, Near Botanical Garden, Kondapur',
-    distance: '1.2 km away',
-    availableVehicles: 9,
-    badge: '⚡ 2-Min Swap',
-    badgeColor: colors.brand.primary,
-    badgeBg: colors.brand.mint,
-  },
-  {
-    id: 'hub_gachibowli',
-    name: 'Ride For You – Gachibowli Hub',
-    address: 'Financial District, Near Wipro Circle, Gachibowli',
-    distance: '2.4 km away',
-    availableVehicles: 6,
-    badge: '⚡ 2-Min Swap',
-    badgeColor: colors.brand.primary,
-    badgeBg: colors.brand.mint,
-  },
-];
-
-const HOME_HUBS: CategoryHub[] = [
-  {
-    id: 'hub_kondapur',
-    name: 'Ride For You – Kondapur Hub',
-    address: 'RTO Office Road, Near Botanical Garden, Kondapur',
-    distance: '1.1 km away',
-    availableVehicles: 12,
-    badge: '🔌 Charger Included',
-    badgeColor: colors.status.info,
-    badgeBg: colors.status.infoTint,
-  },
-  {
-    id: 'hub_hitech',
-    name: 'Ride For You – Hitech Metro Hub',
-    address: 'Near Hitech City Metro Station, Madhapur, Hyderabad',
-    distance: '1.8 km away',
-    availableVehicles: 8,
-    badge: '🔌 Charger Included',
-    badgeColor: colors.status.info,
-    badgeBg: colors.status.infoTint,
-  },
-  {
-    id: 'hub_gachibowli',
-    name: 'Ride For You – Gachibowli Hub',
-    address: 'Financial District, Near Wipro Circle, Gachibowli',
-    distance: '3.2 km away',
-    availableVehicles: 5,
-    badge: '🔌 Charger Included',
-    badgeColor: colors.status.info,
-    badgeBg: colors.status.infoTint,
-  },
-];
 
 type Props = {
   visible: boolean;
@@ -102,43 +36,15 @@ export function CategoryHubsSheet({
   onSelectHub,
 }: Props) {
   const isSwap = categoryId === 'swap';
-  const defaultHubs = isSwap ? SWAP_HUBS : HOME_HUBS;
-  const [liveHubs, setLiveHubs] = useState<CategoryHub[]>(defaultHubs);
-
-  useEffect(() => {
-    if (!visible) return;
-    apiClient
-      .get('/rental/hubs')
-      .then((res) => {
-        if (res.data?.hubs && Array.isArray(res.data.hubs) && res.data.hubs.length > 0) {
-          const mapped: CategoryHub[] = res.data.hubs.map((h: any, idx: number) => ({
-            id: h.id,
-            name: h.name,
-            address: h.address,
-            distance: h.distanceMeters
-              ? `${(h.distanceMeters / 1000).toFixed(1)} km away`
-              : `${(0.7 + idx * 0.8).toFixed(1)} km away`,
-            availableVehicles: isSwap
-              ? (h.availableByCategory?.SWAP ?? 6)
-              : (h.availableByCategory?.HOME ?? 5),
-            badge: isSwap ? '⚡ 2-Min Swap' : '🔌 Charger Included',
-            badgeColor: isSwap ? colors.brand.primary : colors.status.info,
-            badgeBg: isSwap ? colors.brand.mint : colors.status.infoTint,
-          }));
-          setLiveHubs(mapped);
-        }
-      })
-      .catch(() => {
-        setLiveHubs(defaultHubs);
-      });
-  }, [visible, categoryId]);
-
-  const hubs = liveHubs;
-  const categoryTitle = isSwap ? 'Battery Swap Hubs' : 'Home Charging Hubs';
-  const categorySub = isSwap
-    ? 'Choose a nearby hub with 2-minute instant battery swapping'
-    : 'Choose a hub with portable home chargers included with each bike';
-
+  const { hubs: liveHubs, loading, error, refresh } = useRentalHubs(visible);
+  const hubs: CategoryHub[] = liveHubs.map(h => ({
+    id: h.id, name: h.name, address: h.address,
+    distance: distanceLabel(h.distanceMeters),
+    availableVehicles: h.availableByCategory?.[isSwap ? 'SWAP' : 'HOME'] ?? 0,
+    badge: 'Pickup / Return', badgeColor: colors.brand.primary, badgeBg: colors.brand.mint,
+  }));
+  const categoryTitle = isSwap ? 'Removable Battery Bikes' : 'Home Charging Bikes';
+  const categorySub = 'Choose a pickup hub. Battery stations are not available yet.';
   return (
     <Modal
       visible={visible}
@@ -191,7 +97,7 @@ export function CategoryHubsSheet({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.list}
           >
-            {hubs.map((hub) => (
+            {loading && <Text>Loading hubs…</Text>}{error && <Pressable onPress={refresh}><Text>{error} Tap to retry.</Text></Pressable>}{!loading && !error && hubs.length === 0 && <Text>No pickup hubs are available.</Text>}{hubs.map((hub) => (
               <Pressable
                 key={hub.id}
                 style={styles.hubCard}

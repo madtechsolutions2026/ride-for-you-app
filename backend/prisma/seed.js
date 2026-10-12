@@ -12,71 +12,9 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const HUBS = [
-  {
-    id: 'hub_kondapur',
-    name: 'Ride For You – Kondapur Hub',
-    address: 'RTO Office Road, Near Botanical Garden, Kondapur, Hyderabad',
-    lat: 17.462,
-    lng: 78.356,
-    city: 'Hyderabad',
-    openTime: '09:00',
-    closeTime: '21:00',
-    contactPhone: '+914012345678',
-  },
-  {
-    id: 'hub_hitech',
-    name: 'Ride For You – Hitech Metro Hub',
-    address: 'Near Hitech City Metro Station, Madhapur, Hyderabad',
-    lat: 17.448,
-    lng: 78.378,
-    city: 'Hyderabad',
-    openTime: '08:00',
-    closeTime: '22:00',
-    contactPhone: '+914012345679',
-  },
-  {
-    id: 'hub_gachibowli',
-    name: 'Ride For You – Gachibowli Hub',
-    address: 'Financial District, Near Wipro Circle, Gachibowli, Hyderabad',
-    lat: 17.432,
-    lng: 78.345,
-    city: 'Hyderabad',
-    openTime: '08:30',
-    closeTime: '21:30',
-    contactPhone: '+914012345680',
-  },
-];
-
-const SWAP_STATIONS = [
-  {
-    id: 'sw_hitech_metro',
-    name: 'Hitech City Metro Swap Point',
-    address: 'Near Pillar 1240, Hitech City Main Rd',
-    lat: 17.4435,
-    lng: 78.3772,
-    openTime: '06:00',
-    closeTime: '23:00',
-  },
-  {
-    id: 'sw_cyber_towers',
-    name: 'Madhapur Cyber Towers Swap Point',
-    address: 'Opp. Cyber Gateway, Madhapur',
-    lat: 17.4504,
-    lng: 78.3808,
-    openTime: '06:00',
-    closeTime: '23:00',
-  },
-  {
-    id: 'sw_gachibowli',
-    name: 'Gachibowli Bio-Diversity Swap Point',
-    address: 'Near Bio-Diversity Junction, Gachibowli',
-    lat: 17.4334,
-    lng: 78.3668,
-    openTime: '06:00',
-    closeTime: '23:00',
-  },
-];
+const { hub } = require('./network.json');
+const HUBS = [hub];
+const SWAP_STATIONS = [];
 
 // Official Fleet matching live app & website
 const MODELS = [
@@ -179,7 +117,8 @@ function plateFor(modelIndex, runningSeq) {
 }
 
 async function main() {
-  await prisma.bike.deleteMany({});
+  await prisma.hub.updateMany({ where: { id: { not: hub.id } }, data: { status: 'INACTIVE' } });
+  await prisma.swapStation.updateMany({ data: { status: 'INACTIVE' } });
 
   for (const h of HUBS) {
     await prisma.hub.upsert({

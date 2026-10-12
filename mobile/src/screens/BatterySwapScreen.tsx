@@ -55,6 +55,7 @@ export default function BatterySwapScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [stationCount, setStationCount] = useState(0);
 
   // A camera fires onBarcodeScanned many times a second. Without this guard the
   // same dock would be submitted a dozen times before the first response lands.
@@ -62,10 +63,12 @@ export default function BatterySwapScreen({ navigation }: Props) {
 
   const loadHistory = useCallback(async () => {
     try {
+      const stations = await apiClient.get('/rental/swap-stations');
+      setStationCount(stations.data?.stations?.length ?? 0);
       const res = await apiClient.get('/rental/swaps');
       setSwaps(res.data?.data?.swaps ?? []);
     } catch {
-      // History is secondary — the scanner still works without it.
+      setStationCount(0);
     } finally {
       setLoading(false);
     }
@@ -82,6 +85,7 @@ export default function BatterySwapScreen({ navigation }: Props) {
   );
 
   const startScan = async () => {
+    if (stationCount === 0) { setError('Battery stations are not available yet.'); return; }
     setError(null);
     if (!permission?.granted) {
       const result = await requestPermission();
@@ -164,17 +168,16 @@ export default function BatterySwapScreen({ navigation }: Props) {
             </View>
             <Text style={styles.scanTitle}>Swap a drained battery</Text>
             <Text style={styles.scanSub}>
-              Scan the QR on any swap dock or hub. Exchange your battery for a charged one in
-              under two minutes.
+              {stationCount > 0 ? 'Scan a station QR to record your battery swap.' : 'Battery stations are not available yet. Please contact the pickup hub for assistance.'}
             </Text>
 
-            <Pressable style={styles.scanBtn} onPress={startScan} disabled={submitting}>
+            <Pressable style={[styles.scanBtn, stationCount === 0 && { opacity: 0.5 }]} onPress={startScan} disabled={submitting || loading || stationCount === 0}>
               {submitting ? (
                 <ActivityIndicator size="small" color={colors.common.white} />
               ) : (
                 <>
                   <Ionicons name="qr-code-outline" size={18} color={colors.common.white} />
-                  <Text style={styles.scanBtnText}>Scan dock QR</Text>
+                  <Text style={styles.scanBtnText}>{stationCount > 0 ? 'Scan dock QR' : 'Stations unavailable'}</Text>
                 </>
               )}
             </Pressable>

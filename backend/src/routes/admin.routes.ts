@@ -103,6 +103,7 @@ import {
 } from '../controllers/wallet.controller';
 import { getMrrReport, getIntegrationStatus } from '../controllers/reports.controller';
 import { authenticateToken, requireRole } from '../middleware/auth';
+import { recordCatalog, listRecords, createRecord, updateRecord, deleteRecord } from '../controllers/records.controller';
 
 const router = Router();
 
@@ -111,6 +112,13 @@ const staff = requireRole('ADMIN', 'EXECUTIVE', 'SUPPORT');
 const adminOnly = requireRole('ADMIN');
 
 router.use(authenticateToken, staff);
+
+// Record management is available to Admin only, regardless of screen grants.
+router.get('/records', adminOnly, recordCatalog);
+router.get('/records/:entity', adminOnly, listRecords);
+router.post('/records/:entity', adminOnly, createRecord);
+router.put('/records/:entity/:id', adminOnly, updateRecord);
+router.delete('/records/:entity/:id', adminOnly, deleteRecord);
 
 /* -------- Dashboard -------- */
 router.get('/stats', getAdminStats);
