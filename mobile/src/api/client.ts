@@ -5,7 +5,14 @@ import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './token
 // Backend URL: Railway production with EXPO_PUBLIC_API_URL override support
 const LIVE_BACKEND_URL =
   process.env.EXPO_PUBLIC_API_URL || 'https://ride-for-you-app-production.up.railway.app';
-const BASE_URL = LIVE_BACKEND_URL;
+export const BASE_URL = LIVE_BACKEND_URL;
+
+// Login requests must not wait on saved tokens or session-refresh retries.
+export const publicAuthClient = axios.create({
+  baseURL: BASE_URL,
+  timeout: 15000,
+  headers: { 'Content-Type': 'application/json' },
+});
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

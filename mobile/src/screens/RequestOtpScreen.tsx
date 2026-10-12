@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/types';
-import { apiClient } from '../api/client';
+import { publicAuthClient } from '../api/client';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing, textStyles } from '../theme';
 import { CurvedCardTop, Glass, HeroBlob, NeoSurface, PrimaryButton, PrivacyPolicyModal } from '../components';
 
@@ -70,7 +70,7 @@ export default function RequestOtpScreen({ navigation }: Props) {
 
   useEffect(() => {
     // Eagerly wake up the backend if it was sleeping
-    apiClient.get('/health').catch(() => {});
+    publicAuthClient.get('/health', { timeout: 5000 }).catch(() => {});
 
     const showSub = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -92,26 +92,20 @@ export default function RequestOtpScreen({ navigation }: Props) {
     };
   }, [heroHeight, insets.top]);
 
-  const handleRequestOtp = async () => {
+  const handleRequestOtp = () => {
     setError('');
     Keyboard.dismiss();
 
     const raw = phone.trim();
-    if (raw.length < 10) {
+    if (!/^\d{10}$/.test(raw)) {
       setError('Please enter a valid 10-digit mobile number');
       return;
     }
 
     const fullPhone = `+91${raw}`;
     setLoading(true);
-    try {
-      const res = await apiClient.post('/auth/otp/request', { phone: fullPhone });
-      navigation.navigate('VerifyOtp', { challengeId: res.data.challengeId, phone: fullPhone });
-    } catch (e: any) {
-      setError(e?.response?.data?.error || 'Failed to request OTP. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    navigation.navigate('VerifyOtp', { phone: fullPhone });
+    setLoading(false);
   };
 
   return (

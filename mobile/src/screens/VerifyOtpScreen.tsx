@@ -15,7 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../navigation/types';
-import { apiClient } from '../api/client';
+import { publicAuthClient } from '../api/client';
+import { useOtpChallenge } from '../hooks/useOtpChallenge';
 import { setStoredUser, setTokens } from '../api/tokenStore';
 import { colors, fontFamily, radius, screenPadding, spacing, textStyles } from '../theme';
 import {
@@ -52,11 +53,10 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
   const cardWidth = width - CARD_MARGIN * 2;
 
   const { phone } = route.params;
-  const [challengeId, setChallengeId] = useState(route.params.challengeId);
+  const challenge = useOtpChallenge(phone, route.params.challengeId);
+  const { challengeId, sending: resending, retryAfter: resendTimer } = challenge;
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [resendTimer, setResendTimer] = useState(30);
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
   const [keyboardShown, setKeyboardShown] = useState(false);
@@ -92,20 +92,14 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
     };
   }, [heroHeight]);
 
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-    const id = setInterval(() => setResendTimer((t) => t - 1), 1000);
-    return () => clearInterval(id);
-  }, [resendTimer]);
-
   const handleVerify = async (codeToVerify?: string) => {
     const finalOtp = (typeof codeToVerify === 'string' ? codeToVerify : otp).trim();
-    if (finalOtp.length !== OTP_LENGTH || loading) return;
+    if (finalOtp.length !== OTP_LENGTH || loading || !challengeId || resending) return;
     setError('');
     Keyboard.dismiss();
     setLoading(true);
     try {
-      const res = await apiClient.post('/auth/otp/verify', { challengeId, otp: finalOtp });
+      const res = await publicAuthClient.post('/auth/otp/verify', { challengeId, otp: finalOtp });
       await setTokens(res.data.tokens.accessToken, res.data.tokens.refreshToken);
       if (res.data.user) {
         await setStoredUser(res.data.user);
@@ -121,17 +115,9 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
   const handleResend = async () => {
     if (resendTimer > 0 || resending) return;
     setError('');
-    setResending(true);
-    try {
-      const res = await apiClient.post('/auth/otp/request', { phone });
-      setChallengeId(res.data.challengeId);
-      setResendTimer(res.data.resendAvailableIn || 30);
+    if (await challenge.request()) {
       setOtp('');
       inputRef.current?.focus();
-    } catch (e: any) {
-      setError(e?.response?.data?.error || 'Could not resend the code.');
-    } finally {
-      setResending(false);
     }
   };
 
@@ -176,7 +162,7 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
               <Text style={styles.brand}>Verify</Text>
               <Text style={[styles.brand, styles.brandGreen]}>your{'\n'}number</Text>
 
-              <Text style={styles.heroSub}>We&apos;ve sent a{'\n'}verification code to</Text>
+              <Text style={styles.heroSub}>{resending ? 'Requesting a verification code for' : challengeId ? 'Verification code requested for' : 'Verify your number'}</Text>
               <Pressable style={styles.phoneRow} onPress={() => navigation.goBack()} hitSlop={8}>
                 <Text style={styles.phoneText}>{formatPhone(phone)}</Text>
                 <Ionicons name="create-outline" size={15} color={colors.brand.primary} />
@@ -193,7 +179,7 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
           <View style={styles.grabber} />
 
           <Text style={styles.title}>Enter OTP</Text>
-          <Text style={styles.sub}>Enter the 6-digit code sent to your number</Text>
+          <Text style={styles.sub}>{resending ? 'Requesting code…' : challengeId ? 'Enter the 6-digit code sent to your number' : 'Tap Retry to request your verification code'}</Text>
 
           {/* 6 code boxes over a hidden input */}
           <Pressable style={styles.otpRow} onPress={() => inputRef.current?.focus()}>
@@ -236,13 +222,13 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
             autoFocus
           />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error || challenge.error ? <Text style={styles.error}>{error || challenge.error}</Text> : null}
 
           <View style={styles.resendBlock}>
             <Text style={styles.resendQ}>Didn&apos;t receive the code?</Text>
             <Pressable onPress={handleResend} disabled={resendTimer > 0 || resending} hitSlop={8}>
               <Text style={styles.resendLink}>
-                {resending ? 'Sending…' : 'Resend OTP'}
+                {resending ? 'Requesting…' : challengeId ? 'Resend OTP' : 'Retry'}
                 {resendTimer > 0 ? <Text style={styles.resendTimer}>{`  (${pad2(0)}:${pad2(resendTimer)})`}</Text> : null}
               </Text>
             </Pressable>
@@ -252,7 +238,7 @@ export default function VerifyOtpScreen({ route, navigation, onLoginSuccess }: P
             label={loading ? 'Logging In…' : 'Continue'}
             onPress={() => handleVerify()}
             loading={loading}
-            disabled={otp.length !== OTP_LENGTH || loading}
+            disabled={otp.length !== OTP_LENGTH || loading || !challengeId || resending}
             style={{ marginTop: spacing.md }}
           />
 
