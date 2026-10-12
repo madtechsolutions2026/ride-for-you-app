@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { RootStackParamList } from '../navigation/types';
 import { apiClient } from '../api/client';
+import { loadKyc, submitKyc } from '../api/kyc';
 import { getStoredUser, setStoredUser } from '../api/tokenStore';
 import { images } from '../assets';
 import { colors, fontFamily, radius, screenPadding, shadows, spacing } from '../theme';
@@ -65,6 +66,8 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
 
   // KYC Status State ('Pending' | 'Verified' | 'Submitted' | 'Rejected')
   const [kycStatus, setKycStatus] = useState<'Pending' | 'Verified' | 'Submitted' | 'Rejected'>('Pending');
+  const [kycError, setKycError] = useState<string | null>(null);
+  const kycRequest = useRef(0);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
@@ -105,25 +108,19 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         if (u.avatarUrl) setAvatarUri(u.avatarUrl);
         if (u.aadhaarNumber) setAadhaarNumber(u.aadhaarNumber);
 
-        if (u.kycStatus === 'APPROVED') setKycStatus('Verified');
-        else if (u.kycStatus === 'SUBMITTED') setKycStatus('Submitted');
-        else if (u.kycStatus === 'REJECTED') setKycStatus('Rejected');
-        else setKycStatus('Pending');
-
         setStoredUser(u);
       })
       .catch(() => {});
 
-    apiClient
-      .get('/kyc/me')
-      .then((res) => {
-        if (!res.data) return;
-        if (res.data.kycStatus === 'APPROVED') setKycStatus('Verified');
-        else if (res.data.kycStatus === 'SUBMITTED') setKycStatus('Submitted');
-        else if (res.data.kycStatus === 'REJECTED') setKycStatus('Rejected');
+    const request = ++kycRequest.current;
+    loadKyc()
+      .then((data) => {
+        if (request !== kycRequest.current) return;
+        setKycStatus(data.displayStatus);
+        setKycError(null);
 
-        if (res.data.latestSubmission) {
-          const sub = res.data.latestSubmission;
+        if (data.latestSubmission) {
+          const sub = data.latestSubmission;
           if (sub.aadhaarNumber) setAadhaarNumber(sub.aadhaarNumber);
           if (sub.address) setAddressText(sub.address);
           if (sub.aadhaarFrontUrl) setAadhaarFrontUri(sub.aadhaarFrontUrl);
@@ -132,7 +129,9 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           if (sub.selfieUrl) setSelfieUri(sub.selfieUrl);
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (request === kycRequest.current) setKycError(error.message || 'Unable to refresh KYC status.');
+      });
   };
 
   useEffect(() => {
@@ -165,7 +164,8 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         },
       });
 
-      const uploadedKey = res.data?.key || res.data?.objectKey || `key_${Date.now()}`;
+      const uploadedKey = res.data?.key || res.data?.objectKey;
+      if (!uploadedKey) throw new Error('Upload was not confirmed by the server.');
 
       if (docType === 'aadhaar_front') {
         setAadhaarFrontKey(uploadedKey);
@@ -184,13 +184,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
       Alert.alert('Upload Successful ✓', `${docType.replace('_', ' ').toUpperCase()} uploaded to secure vault.`);
     } catch (err: any) {
       console.error('Document upload error:', err);
-      // Still store preview locally
-      if (docType === 'aadhaar_front') setAadhaarFrontUri(localUri);
-      else if (docType === 'aadhaar_back') setAadhaarBackUri(localUri);
-      else if (docType === 'address_proof') setAddressProofUri(localUri);
-      else if (docType === 'selfie') setSelfieUri(localUri);
-
-      Alert.alert('Document Attached', 'Document selected and saved ready for submission.');
+      Alert.alert('Upload Failed', 'The document has not been saved on the server. Please upload it again before submitting.');
     } finally {
       setUploadingDoc(null);
     }
@@ -280,32 +274,34 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
 
     setSubmitting(true);
     try {
-      await apiClient.post('/kyc/submit', {
+      await submitKyc({
         fullName: fullName.trim(),
         address: addressText || city || 'Hyderabad',
-        aadhaarNumber: aadhaarNumber || '5544 3322 1100',
-        aadhaarFrontKey: aadhaarFrontKey || 'mock_aadhaar_front_key',
-        aadhaarBackKey: aadhaarBackKey || 'mock_aadhaar_back_key',
-        addressProofKey: addressProofKey || 'mock_address_proof_key',
-        selfieKey: selfieKey || 'mock_selfie_key',
+        aadhaarNumber,
+        aadhaarFrontKey,
+        aadhaarBackKey,
+        addressProofKey,
+        selfieKey,
       });
 
       setKycStatus('Submitted');
+      setKycError(null);
+      ++kycRequest.current;
       Alert.alert(
         'KYC Submitted Successfully 🎉',
         'Your documents are now under review. Verification typically completes within 15–30 minutes.',
         [{ text: 'Great!' }]
       );
     } catch (e: any) {
-      const msg = e.response?.data?.error || 'Could not submit KYC documents.';
+      const msg = e.response?.data?.error || e.message || 'Could not submit KYC documents.';
       Alert.alert('Submission Failed', msg, [{ text: 'OK' }]);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const aadhaarUploaded = Boolean(aadhaarFrontUri || aadhaarNumber);
-  const addressUploaded = Boolean(addressProofUri || addressText);
+  const aadhaarUploaded = Boolean(aadhaarFrontUri && aadhaarBackUri);
+  const addressUploaded = Boolean(addressProofUri);
   const selfieUploaded = Boolean(selfieUri);
 
   return (
@@ -481,7 +477,7 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
           <View style={[styles.allGoodBadge, kycStatus === 'Pending' && styles.pendingBadge]}>
             <View style={[styles.badgeDot, kycStatus === 'Pending' && styles.badgeDotPending]} />
             <Text style={[styles.allGoodText, kycStatus === 'Pending' && styles.pendingText]}>
-              {kycStatus === 'Verified' ? 'All Good' : kycStatus === 'Submitted' ? 'Under Review' : 'Action Required'}
+              {kycError ? 'Status unavailable' : kycStatus === 'Verified' ? 'All Good' : kycStatus === 'Submitted' ? 'Under Review' : 'Action Required'}
             </Text>
           </View>
         </View>
@@ -604,15 +600,16 @@ export default function ProfileScreen({ navigation, onLogout }: Props) {
         </Pressable>
 
         {/* ---------------- SUBMIT BUTTON ---------------- */}
+        {kycError && <Text accessibilityRole="alert">{kycError}</Text>}
         <PrimaryButton
           label={
-            kycStatus === 'Submitted'
+            kycError ? 'Refresh KYC Status' : kycStatus === 'Submitted'
               ? 'Under Admin Review ✓'
               : kycStatus === 'Verified'
               ? 'Verified Rider ✓'
               : 'Submit KYC for Verification'
           }
-          onPress={handleSubmitVerification}
+          onPress={kycError ? loadProfile : handleSubmitVerification}
           loading={submitting}
           style={styles.submitBtn}
         />
