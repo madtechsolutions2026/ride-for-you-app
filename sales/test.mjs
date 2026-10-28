@@ -38,6 +38,8 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
       PORT: String(port),
       DATA_DIR: folder,
       BASE_PATH: prefix,
+      PUBLIC_ORIGIN: "https://primary.example",
+      ADDITIONAL_PUBLIC_ORIGINS: "https://dealership.example",
       OTP_HASH_SECRET: "test-only-secret-not-used-in-production",
       OTP_ALLOWED_PHONES: "+919000000001,+919000000002,+919000000003",
       WAY2CHATS_URL: `http://127.0.0.1:${provider.address().port}`,
@@ -81,6 +83,7 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     assert(page.includes(`src="${prefix}/app.js"`));
     assert.equal((await fetch(base + "/logo.png")).status, 200);
     assert.equal((await req("/state")).status, 401);
+    assert.equal((await req("/state", "POST", {}, { Origin: "https://primary.example" })).status, 401);
     assert.equal(
       (await req("/setup", "POST", { password: "OldPassword123!" })).status,
       401,
@@ -106,7 +109,7 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
       403,
     );
     const otp = await (
-      await req("/auth/otp/request", "POST", { phone: "9000000001" })
+      await req("/auth/otp/request", "POST", { phone: "9000000001" }, { Origin: "https://dealership.example" })
     ).json();
     assert(otp.challengeId);
     const code = captured.at(-1).bodyParams[0];

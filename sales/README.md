@@ -38,6 +38,7 @@ Railway sales service settings:
 - Health check: /health. Use one replica with this SQLite volume.
 - NODE_ENV=production, HOST=::, PORT=3050, BASE_PATH=/sales, DATA_DIR=/data.
 - PUBLIC_ORIGIN must be the exact HTTPS origin of the rental domain, without /sales.
+- ADDITIONAL_PUBLIC_ORIGINS is an optional comma-separated list of other exact approved origins. The custom website rideforyouev.com proxies /sales to the public rental backend, so its origin must be explicitly listed here. Wildcard origins are not accepted.
 - Configure the WhatsApp variables and approved numbers privately, as described above.
 - On the rental backend, set SALES_SERVICE_URL=http://ride-for-you-sales.railway.internal:3050.
 

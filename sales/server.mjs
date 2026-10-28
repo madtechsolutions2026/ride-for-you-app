@@ -48,6 +48,16 @@ db.prepare("INSERT OR IGNORE INTO settings VALUES(1,?)").run(
 );
 const app = express();
 app.disable("x-powered-by");
+const publicOrigins = new Set(
+  [process.env.PUBLIC_ORIGIN, ...(process.env.ADDITIONAL_PUBLIC_ORIGINS || "").split(",")]
+    .map((origin) => origin?.trim())
+    .filter(Boolean),
+);
+for (const origin of publicOrigins) {
+  const parsed = new URL(origin);
+  if (parsed.origin !== origin || !["http:", "https:"].includes(parsed.protocol))
+    throw new Error("Public origins must be exact HTTP(S) origins, without paths.");
+}
 app.use(express.json({ limit: "1mb" }));
 app.use((req, res, next) => {
   res.set({
@@ -59,8 +69,9 @@ app.use((req, res, next) => {
   if (
     !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
     req.get("origin") &&
-    req.get("origin") !==
-      (process.env.PUBLIC_ORIGIN || `${req.protocol}://${req.get("host")}`)
+    !(publicOrigins.size
+      ? publicOrigins.has(req.get("origin"))
+      : req.get("origin") === `${req.protocol}://${req.get("host")}`)
   )
     return res.status(403).json({ error: "Request origin is not allowed." });
   next();
