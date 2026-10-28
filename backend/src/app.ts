@@ -12,11 +12,15 @@ import supportRoutes from './routes/support.routes';
 import adminRoutes from './routes/admin.routes';
 import { startWeeklyBilling } from './services/weeklyBilling';
 import { prisma } from './utils/prisma';
+import { salesProxy } from './middleware/sales-proxy';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Mount before body parsing so CSV uploads and PDF streams pass through intact.
+app.use('/sales', salesProxy);
 
 // Enable CORS for all origins (important for Android emulator & Web Dashboard connections)
 app.use(cors());
