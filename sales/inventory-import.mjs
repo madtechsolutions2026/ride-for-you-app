@@ -1,7 +1,8 @@
 import { parse } from "csv-parse/sync";
 import { randomUUID, createHash } from "node:crypto";
+import { DEFAULT_HSN, EV_HSN } from "./public/gst.mjs";
 export const csvTemplate =
-  "brand,model,vin,color,battery,cost,price,notes\r\nRide For You,City EV,REPLACE-WITH-UNIQUE-CHASSIS,Green,,25000.00,35000.00,Replace this example row with your inventory\r\n";
+  "brand,model,vin,color,battery,cost,price,notes,hsn\r\nRide For You,City EV,REPLACE-WITH-UNIQUE-CHASSIS,Green,,25000.00,35000.00,Replace this example row with your inventory,871160\r\n";
 export function inventoryImport(db, app, { text, money }) {
   db.exec(
     "CREATE TABLE IF NOT EXISTS inventory_imports(request_key TEXT PRIMARY KEY,hash TEXT,count INTEGER,created TEXT)",
@@ -63,7 +64,12 @@ export function inventoryImport(db, app, { text, money }) {
           cost: money(b.cost, "purchase cost"),
           price: money(b.price, "selling price"),
           notes: text(b.notes, "notes", 1500, false),
+          hsn: text(b.hsn || DEFAULT_HSN, "HSN", 8),
         };
+        if (!EV_HSN[row.hsn])
+          throw Error(
+            "Select a complete electric two-wheeler HSN; batteries, chargers and parts require separate classification.",
+          );
         if (row.vin === "REPLACE-WITH-UNIQUE-CHASSIS")
           throw Error(
             "Replace the template example with your actual chassis number.",
@@ -107,11 +113,9 @@ export function inventoryImport(db, app, { text, money }) {
       .get(key);
     if (previous) {
       if (previous.hash !== hash)
-        return res
-          .status(409)
-          .json({
-            error: "The file changed. Preview it again before importing.",
-          });
+        return res.status(409).json({
+          error: "The file changed. Preview it again before importing.",
+        });
       return res.json({ imported: previous.count });
     }
     db.exec("BEGIN IMMEDIATE");
@@ -119,15 +123,13 @@ export function inventoryImport(db, app, { text, money }) {
       const result = validate(csv);
       if (result.errors.length) {
         db.exec("ROLLBACK");
-        return res
-          .status(400)
-          .json({
-            error: "Nothing imported. Fix all row errors and preview again.",
-            errors: result.errors,
-          });
+        return res.status(400).json({
+          error: "Nothing imported. Fix all row errors and preview again.",
+          errors: result.errors,
+        });
       }
       const insert = db.prepare(
-        "INSERT INTO bikes(id,model,brand,color,vin,battery,cost,price,notes,created) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO bikes(id,model,brand,color,vin,battery,cost,price,notes,hsn,created) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
       );
       for (const b of result.rows)
         insert.run(
@@ -140,6 +142,7 @@ export function inventoryImport(db, app, { text, money }) {
           b.cost,
           b.price,
           b.notes,
+          b.hsn,
           new Date().toISOString(),
         );
       db.prepare("INSERT INTO inventory_imports VALUES(?,?,?,?)").run(

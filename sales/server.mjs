@@ -1,17 +1,12 @@
 import express from "express";
 import { DatabaseSync } from "node:sqlite";
-import {
-  randomUUID,
-  randomBytes,
-  scryptSync,
-  timingSafeEqual,
-} from "node:crypto";
 import { mkdirSync, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { authRouter, sessionHash } from "./auth.mjs";
 import { inventoryImport } from "./inventory-import.mjs";
 import { invoicePdf } from "./invoice-pdf.mjs";
+import { upgradeGst, gstInvoiceRoutes } from "./gst-invoices.mjs";
 const root = path.dirname(fileURLToPath(import.meta.url));
 if (existsSync(path.join(root, ".env")))
   process.loadEnvFile(path.join(root, ".env"));
@@ -46,17 +41,31 @@ const defaults = {
 db.prepare("INSERT OR IGNORE INTO settings VALUES(1,?)").run(
   JSON.stringify(defaults),
 );
+upgradeGst(db, {
+  backupPath:
+    process.env.NODE_ENV === "production"
+      ? path.join(data, "backups", "before-gst-v2-" + Date.now() + ".sqlite")
+      : undefined,
+});
 const app = express();
 app.disable("x-powered-by");
 const publicOrigins = new Set(
-  [process.env.PUBLIC_ORIGIN, ...(process.env.ADDITIONAL_PUBLIC_ORIGINS || "").split(",")]
+  [
+    process.env.PUBLIC_ORIGIN,
+    ...(process.env.ADDITIONAL_PUBLIC_ORIGINS || "").split(","),
+  ]
     .map((origin) => origin?.trim())
     .filter(Boolean),
 );
 for (const origin of publicOrigins) {
   const parsed = new URL(origin);
-  if (parsed.origin !== origin || !["http:", "https:"].includes(parsed.protocol))
-    throw new Error("Public origins must be exact HTTP(S) origins, without paths.");
+  if (
+    parsed.origin !== origin ||
+    !["http:", "https:"].includes(parsed.protocol)
+  )
+    throw new Error(
+      "Public origins must be exact HTTP(S) origins, without paths.",
+    );
 }
 app.use(express.json({ limit: "1mb" }));
 app.use((req, res, next) => {
@@ -92,8 +101,6 @@ export function money(v, label = "amount") {
   if (!Number.isSafeInteger(n) || n > 1e12) fail(`${label} is too large.`);
   return n;
 }
-const getSettings = () =>
-  JSON.parse(db.prepare("SELECT body FROM settings WHERE id=1").get().body);
 app.use("/api", authRouter(db));
 app.use("/api", (req, res, next) => {
   const token = req.headers.cookie
@@ -116,167 +123,18 @@ app.post("/api/logout", (req, res) => {
   res.clearCookie("rfy_sales", { path: (process.env.BASE_PATH || "") + "/" });
   res.json({ ok: true });
 });
-app.get("/api/state", (_req, res) =>
-  res.json({
-    settings: getSettings(),
-    bikes: db.prepare("SELECT * FROM bikes ORDER BY created DESC").all(),
-    invoices: db
-      .prepare("SELECT * FROM invoices ORDER BY created DESC")
-      .all()
-      .map((i) => ({ ...i, body: JSON.parse(i.body) })),
-  }),
-);
-app.put("/api/settings", (req, res) => {
-  const s = {};
-  for (const k of [
-    "name",
-    "address",
-    "phone",
-    "email",
-    "taxId",
-    "prefix",
-    "footer",
-    "bank",
-  ])
-    s[k] = text(
-      req.body[k],
-      k,
-      k === "address" || k === "footer" || k === "bank" ? 1500 : 150,
-      k === "name" || k === "prefix",
-    );
-  if (!/^[A-Z0-9-]{1,12}$/i.test(s.prefix))
-    fail("Invoice prefix must contain letters, digits or hyphens.");
-  s.logo = true;
-  db.prepare("UPDATE settings SET body=? WHERE id=1").run(JSON.stringify(s));
-  res.json({ ok: true });
-});
-app.post("/api/bikes", (req, res) => saveBike(req, res));
-app.put("/api/bikes/:id", (req, res) => saveBike(req, res, req.params.id));
-function saveBike(req, res, id) {
-  const b = req.body;
-  const old = id ? db.prepare("SELECT * FROM bikes WHERE id=?").get(id) : null;
-  if (id && !old) return res.status(404).json({ error: "Bike not found." });
-  if (old?.status === "sold")
-    fail("Sold bikes cannot be edited. The invoice preserves their details.");
-  const values = [
-    text(b.model, "model", 100),
-    text(b.brand, "brand", 100),
-    text(b.color, "colour", 60, false),
-    text(b.vin, "chassis/frame number", 100).toUpperCase(),
-    text(b.battery, "battery/serial number", 100, false),
-    money(b.cost, "purchase cost"),
-    money(b.price, "selling price"),
-    text(b.notes, "notes", 1500, false),
-  ];
-  if (id)
-    db.prepare(
-      "UPDATE bikes SET model=?,brand=?,color=?,vin=?,battery=?,cost=?,price=?,notes=? WHERE id=?",
-    ).run(...values, id);
-  else
-    db.prepare(
-      "INSERT INTO bikes(id,model,brand,color,vin,battery,cost,price,notes,created) VALUES(?,?,?,?,?,?,?,?,?,?)",
-    ).run(randomUUID(), ...values, new Date().toISOString());
-  res.json({ ok: true });
-}
-app.post("/api/invoices", (req, res) => {
-  const b = req.body;
-  const key = text(b.requestKey, "request key", 80);
-  const previous = db
-    .prepare("SELECT id FROM invoices WHERE request_key=?")
-    .get(key);
-  if (previous) return res.json(previous);
-  const settings = getSettings();
-  if (!settings.address)
-    fail("Add your business address in Settings before issuing invoices.");
-  const customer = {
-    name: text(b.name, "customer name", 150),
-    phone: text(b.phone, "customer phone", 30),
-    address: text(b.address, "customer address", 1000),
-    taxId: text(b.taxId, "customer tax ID", 50, false),
-  };
-  const salesperson = text(b.salesperson, "salesperson", 100, false);
-  const date = text(b.date, "invoice date", 10);
-  if (
-    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-    Number.isNaN(Date.parse(date)) ||
-    new Date(date).toISOString().slice(0, 10) !== date
-  )
-    fail("Invalid invoice date.");
-  if (!Array.isArray(b.lines) || !b.lines.length || b.lines.length > 20)
-    fail("Choose between 1 and 20 bikes.");
-  if (new Set(b.lines.map((l) => l.id)).size !== b.lines.length)
-    fail("A bike cannot appear twice.");
-  const lines = b.lines.map((l) => {
-    const bike = db.prepare("SELECT * FROM bikes WHERE id=?").get(l.id);
-    if (!bike || bike.status !== "available")
-      fail("One of these bikes is no longer available.");
-    return { ...bike, salePrice: money(l.price, "sale price") };
-  });
-  const subtotal = lines.reduce((n, l) => n + l.salePrice, 0);
-  const discount = money(b.discount || 0, "discount");
-  if (discount > subtotal) fail("Discount cannot exceed subtotal.");
-  const taxBps = money(b.taxRate || 0, "tax percentage");
-  if (taxBps > 10000) fail("Tax rate cannot exceed 100%.");
-  const taxable = subtotal - discount;
-  const tax = Math.round((taxable * taxBps) / 10000);
-  const total = taxable + tax;
-  const paid = money(b.paid || 0, "amount received");
-  if (paid > total) fail("Amount received cannot exceed the invoice total.");
-  const invoice = {
-    seller: settings,
-    customer,
-    date,
-    salesperson,
-    lines,
-    subtotal,
-    discount,
-    taxRate: taxBps,
-    tax,
-    total,
-    paid,
-    balance: total - paid,
-    method: text(b.method, "payment method", 30),
-    notes: text(b.notes, "notes", 1500, false),
-  };
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    for (const l of lines) {
-      const result = db
-        .prepare(
-          "UPDATE bikes SET status='sold' WHERE id=? AND status='available'",
-        )
-        .run(l.id);
-      if (!result.changes) fail("Bike was already sold.");
-    }
-    const id = randomUUID();
-    const seq =
-      Number(db.prepare("SELECT COUNT(*) AS n FROM invoices").get().n) + 1;
-    const number = `${settings.prefix}-${String(seq).padStart(5, "0")}`;
-    db.prepare("INSERT INTO invoices VALUES(?,?,?,?,?,?,?)").run(
-      id,
-      number,
-      key,
-      JSON.stringify(invoice),
-      total,
-      paid,
-      new Date().toISOString(),
-    );
-    for (const l of lines)
-      db.prepare("INSERT INTO invoice_bikes VALUES(?,?)").run(id, l.id);
-    db.exec("COMMIT");
-    res.json({ id });
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
-});
+gstInvoiceRoutes(db, app, { text, money, root });
 inventoryImport(db, app, { text, money });
 app.get("/api/invoices/:id/pdf", (req, res) => {
   const row = db
     .prepare("SELECT * FROM invoices WHERE id=?")
     .get(req.params.id);
   if (!row) return res.status(404).json({ error: "Invoice not found." });
-  invoicePdf(res, row, root);
+  invoicePdf(res, row, root, {
+    copy: ["original", "supplier", "transporter"].includes(req.query.copy)
+      ? req.query.copy
+      : "original",
+  });
 });
 app.get(["/", "/index.html"], (_req, res) => {
   res

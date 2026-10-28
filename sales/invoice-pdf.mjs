@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { gstInvoicePdf } from "./gst-pdf.mjs";
 const green = "#155232",
   ink = "#22382b",
   muted = "#647268",
@@ -12,8 +13,9 @@ const cash = (n) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-export function invoicePdf(res, row, root) {
+export function invoicePdf(res, row, root, options) {
   const i = JSON.parse(row.body);
+  if (i.version === 2) return gstInvoicePdf(res, row, root, options);
   const doc = new PDFDocument({
     size: "A4",
     margin: 44,

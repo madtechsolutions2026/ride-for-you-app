@@ -83,7 +83,11 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     assert(page.includes(`src="${prefix}/app.js"`));
     assert.equal((await fetch(base + "/logo.png")).status, 200);
     assert.equal((await req("/state")).status, 401);
-    assert.equal((await req("/state", "POST", {}, { Origin: "https://primary.example" })).status, 401);
+    assert.equal(
+      (await req("/state", "POST", {}, { Origin: "https://primary.example" }))
+        .status,
+      401,
+    );
     assert.equal(
       (await req("/setup", "POST", { password: "OldPassword123!" })).status,
       401,
@@ -109,7 +113,12 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
       403,
     );
     const otp = await (
-      await req("/auth/otp/request", "POST", { phone: "9000000001" }, { Origin: "https://dealership.example" })
+      await req(
+        "/auth/otp/request",
+        "POST",
+        { phone: "9000000001" },
+        { Origin: "https://dealership.example" },
+      )
     ).json();
     assert(otp.challengeId);
     const code = captured.at(-1).bodyParams[0];
@@ -150,11 +159,14 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     assert.equal(
       (
         await req("/settings", "PUT", {
-          name: "Ride For You",
-          address: "Test showroom, Hyderabad",
-          phone: "0000000000",
-          email: "test@example.test",
-          taxId: "",
+          name: "RIDEFORYOU.EV MOBILITY INDIA PRIVATE LIMITED",
+          address:
+            "Door No. 3-76, Dayanand Nagar, Suraram, Hyderabad, Medchal Malkajgiri, Telangana - 500055",
+          phone: "",
+          email: "",
+          taxId: "36AAQCR3663P1ZG",
+          stateCode: "36",
+          eInvoiceMode: "not_required",
           prefix: "TEST",
           footer: "Thank you for choosing Ride For You.",
           bank: "Test bank details only",
@@ -247,7 +259,7 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     const id = state.bikes.find((b) => b.vin === "TEST-001").id;
     const sale = {
       requestKey: crypto.randomUUID(),
-      name: "Customer Test",
+      name: "Sample Customer - Demonstration Only",
       phone: "0000000000",
       address: "Test customer address, Hyderabad",
       taxId: "",
@@ -256,16 +268,114 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
       lines: [{ id, price: "35000" }],
       discount: "500",
       taxRate: "5",
+      priceMode: "exclusive",
+      customerState: "36",
+      placeOfSupply: "36",
+      issueConfirmed: true,
       paid: "10000",
       method: "Bank transfer",
       notes: "Warranty and delivery terms recorded by the seller.",
+      warrantyVehicle: "12 months / 10,000 km, whichever is earlier",
+      warrantyBattery: "24 months, as per manufacturer's terms",
+      warrantyMotor: "12 months",
+      warrantyCharger: "6 months",
+      warrantyProvider: "Example manufacturer - sample only",
+      warrantyStart: "2026-10-28",
+      warrantyTerms:
+        "Demonstration coverage only. Damage, wear and misuse excluded as agreed by the seller.",
     };
     assert.equal(
       (await req("/invoices", "POST", { ...sale, paid: "999999" })).status,
       400,
     );
+    const reviewed = await (
+      await req("/invoices/preview", "POST", sale)
+    ).json();
+    assert.equal(reviewed.invoice.cgst, 86250);
+    assert.equal(reviewed.invoice.sgst, 86250);
+    assert.equal(reviewed.invoice.igst, 0);
+    assert.equal(reviewed.invoice.lines[0].hsn, "871160");
+    assert.equal(reviewed.invoice.warranty.battery, sale.warrantyBattery);
+    assert.equal(reviewed.invoice.warranty.startDate, sale.warrantyStart);
+    assert.equal(
+      (
+        await req("/invoices/preview", "POST", {
+          ...sale,
+          warrantyStart: "2026-02-30",
+        })
+      ).status,
+      400,
+    );
+    assert.equal(reviewed.number, "TEST/2627/00001");
+    assert.equal((await (await req("/state")).json()).invoices.length, 0);
+    const draft = await req("/invoices/preview/pdf", "POST", sale);
+    assert.equal(draft.status, 200);
+    const draftBytes = Buffer.from(await draft.arrayBuffer());
+    if (process.env.PDF_DRAFT_PATH)
+      writeFileSync(process.env.PDF_DRAFT_PATH, draftBytes);
+    assert.equal(
+      (await (await req("/state")).json()).bikes.find((b) => b.id === id)
+        .status,
+      "available",
+    );
+    const interstate = await (
+      await req("/invoices/preview", "POST", { ...sale, placeOfSupply: "29" })
+    ).json();
+    assert.equal(interstate.invoice.igst, 172500);
+    assert.equal(interstate.invoice.cgst, 0);
+    assert.equal(interstate.invoice.sgst, 0);
+    const inclusive = await (
+      await req("/invoices/preview", "POST", {
+        ...sale,
+        priceMode: "inclusive",
+        discount: "0",
+        lines: [{ id, price: "52500" }],
+      })
+    ).json();
+    assert.equal(inclusive.invoice.taxable, 5000000);
+    assert.equal(inclusive.invoice.cgst, 125000);
+    assert.equal(inclusive.invoice.total, 5250000);
+    assert.equal(
+      (await req("/invoices/preview", "POST", { ...sale, priceMode: "" }))
+        .status,
+      400,
+    );
+    assert.equal(
+      (
+        await req("/invoices/preview", "POST", {
+          ...sale,
+          taxId: "36AAQCR3663P1ZA",
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (await req("/invoices/preview", "POST", { ...sale, placeOfSupply: "99" }))
+        .status,
+      400,
+    );
+    assert.equal(
+      (await req("/invoices/preview", "POST", { ...sale, taxRate: "0" }))
+        .status,
+      400,
+    );
+    assert.equal(
+      (await req("/invoices", "POST", { ...sale, previewHash: "stale" }))
+        .status,
+      409,
+    );
+    sale.previewHash = reviewed.previewHash;
     const invoice = await (await req("/invoices", "POST", sale)).json();
     assert(invoice.id);
+    assert.equal(
+      (
+        await req("/invoices", "POST", {
+          ...sale,
+          notes: "Changed after issue",
+        })
+      ).status,
+      409,
+    );
     assert.equal(
       (await (await req("/invoices", "POST", sale)).json()).id,
       invoice.id,
@@ -285,6 +395,10 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     assert.equal(state.bikes.find((b) => b.id === id).status, "sold");
     assert.equal(state.invoices[0].total, 3622500);
     assert.equal(state.invoices[0].body.balance, 2622500);
+    assert.deepEqual(
+      state.invoices[0].body.warranty,
+      reviewed.invoice.warranty,
+    );
     const pdf = await req("/invoices/" + invoice.id + "/pdf");
     assert.equal(pdf.status, 200);
     const bytes = Buffer.from(await pdf.arrayBuffer());
@@ -292,6 +406,112 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     assert(bytes.length > 1000);
     if (process.env.PDF_CHECK_PATH)
       writeFileSync(process.env.PDF_CHECK_PATH, bytes);
+    const supplierCopy = await req(
+      "/invoices/" + invoice.id + "/pdf?copy=supplier",
+    );
+    assert.equal(supplierCopy.status, 200);
+    assert(
+      supplierCopy.headers.get("content-disposition").includes("supplier"),
+    );
+    const settingsAfter = (await (await req("/state")).json()).settings;
+    assert.equal(
+      (await req("/settings", "PUT", { ...settingsAfter, nextNumber: 1 }))
+        .status,
+      400,
+    );
+    const remainingBike = state.bikes.find((b) => b.status === "available");
+    const registeredSale = {
+      ...sale,
+      lines: [{ id: remainingBike.id, price: "10000" }],
+      discount: "0",
+      taxId: "36AAQCR3663P1ZG",
+      issueConfirmed: true,
+      requestKey: crypto.randomUUID(),
+    };
+    assert.equal(
+      (
+        await req("/settings", "PUT", {
+          ...settingsAfter,
+          eInvoiceMode: "required",
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (await req("/invoices/preview", "POST", registeredSale)).status,
+      400,
+    );
+    assert.equal(
+      (
+        await req("/settings", "PUT", {
+          ...settingsAfter,
+          eInvoiceMode: "unconfirmed",
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (await req("/invoices/preview", "POST", registeredSale)).status,
+      400,
+    );
+    assert.equal((await req("/settings", "PUT", settingsAfter)).status, 200);
+    const oldReview = await (
+      await req("/invoices/preview", "POST", registeredSale)
+    ).json();
+    assert.equal(
+      (
+        await req("/settings", "PUT", {
+          ...settingsAfter,
+          footer: "Changed seller terms",
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await req("/invoices", "POST", {
+          ...registeredSale,
+          previewHash: oldReview.previewHash,
+        })
+      ).status,
+      409,
+    );
+    assert.equal(
+      (await (await req("/state")).json()).bikes.find(
+        (b) => b.id === remainingBike.id,
+      ).status,
+      "available",
+    );
+    if (process.env.PDF_STRESS_PATH) {
+      for (let n = 0; n < 20; n++)
+        assert.equal(
+          (
+            await req("/bikes", "POST", {
+              ...bike,
+              vin: "STRESS-" + n,
+              model: "Long-distance electric scooter model " + n,
+              hsn: "87116020",
+            })
+          ).status,
+          200,
+        );
+      const stressState = await (await req("/state")).json();
+      const stress = await req("/invoices/preview/pdf", "POST", {
+        ...sale,
+        requestKey: crypto.randomUUID(),
+        lines: stressState.bikes
+          .filter((b) => b.vin.startsWith("STRESS-"))
+          .map((b) => ({ id: b.id, price: "52500" })),
+        priceMode: "inclusive",
+        placeOfSupply: "29",
+        notes: "Demonstration warranty terms. ".repeat(40),
+      });
+      assert.equal(stress.status, 200);
+      writeFileSync(
+        process.env.PDF_STRESS_PATH,
+        Buffer.from(await stress.arrayBuffer()),
+      );
+    }
     assert.equal((await req("/logout", "POST", {})).status, 200);
     assert.equal((await req("/state")).status, 401);
     const otp2 = await (

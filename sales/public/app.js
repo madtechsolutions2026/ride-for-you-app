@@ -1,3 +1,5 @@
+import { gstInvoiceForm, gstInvoiceView, gstSettingsForm } from "./gst-ui.mjs";
+import { EV_HSN, DEFAULT_HSN } from "./gst.mjs";
 const appBase = document.documentElement.dataset.base || "";
 const app = document.querySelector("#app");
 let state,
@@ -264,7 +266,16 @@ function bikeForm(route) {
       "Enter one physical bike per record. Chassis numbers must be unique.",
       `<a href="#inventory">← Back to inventory</a>`,
     ) +
-      `<form id="bikeform" class="panel"><div class="panelbody"><div id="error"></div><div class="formgrid">${field("Brand *", "brand", b.brand, "text", 'required maxlength="100"')}${field("Model / variant *", "model", b.model, "text", 'required maxlength="100"')}${field("Chassis / frame number *", "vin", b.vin, "text", 'required maxlength="100"')}${field("Colour", "color", b.color)}${field("Battery / motor serial number", "battery", b.battery)}${field("Purchase cost (₹) *", "cost", b.cost != null ? b.cost / 100 : "", "number", 'required min="0" step="0.01"')}${field("Default selling price (₹) *", "price", b.price != null ? b.price / 100 : "", "number", 'required min="0" step="0.01"')}${area("Internal notes", "notes", b.notes, "full")}</div></div><div class="formfooter"><a href="#inventory"><button type="button">Cancel</button></a><button class="primary">${id ? "Save changes" : "Add bike"} ↗</button></div></form>`,
+      `<form id="bikeform" class="panel"><div class="panelbody"><div id="error"></div><div class="formgrid">${field("Brand *", "brand", b.brand, "text", 'required maxlength="100"')}${field("Model / variant *", "model", b.model, "text", 'required maxlength="100"')}${field("Chassis / frame number *", "vin", b.vin, "text", 'required maxlength="100"')}${field("Colour", "color", b.color)}${field("Battery / motor serial number", "battery", b.battery)}${field("Purchase cost (₹) *", "cost", b.cost != null ? b.cost / 100 : "", "number", 'required min="0" step="0.01"')}${field("Default selling price (₹) *", "price", b.price != null ? b.price / 100 : "", "number", 'required min="0" step="0.01"')}<div class="field full"><label for="hsn">Complete EV category / HSN *</label><select name="hsn" id="hsn">${Object.entries(
+        EV_HSN,
+      )
+        .map(
+          ([code, label]) =>
+            `<option value="${code}" ${code === (b.hsn || DEFAULT_HSN) ? "selected" : ""}>${esc(label)} · ${code}</option>`,
+        )
+        .join(
+          "",
+        )}</select><small>Choose the classification that matches the actual vehicle. Batteries, chargers and parts are excluded.</small></div>${area("Internal notes", "notes", b.notes, "full")}</div></div><div class="formfooter"><a href="#inventory"><button type="button">Cancel</button></a><button class="primary">${id ? "Save changes" : "Add bike"} ↗</button></div></form>`,
     route,
   );
   document.querySelector("#bikeform").onsubmit = async (e) => {
@@ -328,6 +339,15 @@ function invoices(route) {
         "Total INR",
         "Received INR",
         "Balance INR",
+        "Document type",
+        "Buyer GSTIN",
+        "Place of supply",
+        "Price basis",
+        "HSN codes",
+        "Taxable INR",
+        "CGST INR",
+        "SGST/UTGST INR",
+        "IGST INR",
       ],
       ...state.invoices.map((i) => [
         i.number,
@@ -339,125 +359,29 @@ function invoices(route) {
         i.total / 100,
         i.paid / 100,
         (i.total - i.paid) / 100,
+        i.body.version === 2 ? "GST tax invoice" : "Legacy sales invoice",
+        i.body.customer.taxId,
+        i.body.placeOfSupply || "",
+        i.body.priceMode || "",
+        [...new Set(i.body.lines.map((l) => l.hsn).filter(Boolean))].join("; "),
+        ...["taxable", "cgst", "sgst", "igst"].map((k) =>
+          i.body[k] === undefined ? "" : i.body[k] / 100,
+        ),
       ]),
     ]);
 }
 function invoiceForm(route) {
-  const available = state.bikes.filter((b) => b.status === "available");
-  if (!available.length) {
-    shell(
-      heading(
-        "NEW INVOICE",
-        "Start with available stock.",
-        "Add a bike before creating your first invoice.",
-      ) +
-        empty(
-          "Your inventory is empty.",
-          "Sold bikes cannot be invoiced again.",
-          "#inventory/new",
-          "Add a bike",
-        ),
-      route,
-    );
-    return;
-  }
-  const key = crypto.randomUUID();
-  shell(
-    heading(
-      "NEW SALES INVOICE",
-      "Create a clear record of the sale.",
-      "Enter customer details, select bikes and review the totals before issuing.",
-      `<a href="#invoices">← Back to invoices</a>`,
-    ) +
-      `<div class="invoice-steps"><span><b>01</b> Customer details</span><span><b>02</b> Bike selection</span><span><b>03</b> Review & issue</span></div><div class="notice">Before issuing: check your business name and address in <a href="#settings">Business settings</a>. This is a sales invoice generator, not a GST filing service. Confirm tax treatment with your accountant.</div><form id="invoiceform"><div class="split"><div><section class="panel"><div class="panelhead"><h2>Customer & sale details</h2></div><div class="panelbody"><div id="error"></div><div class="formgrid">${field("Customer name *", "name", "", "text", 'required maxlength="150"')}${field("Phone *", "phone", "", "tel", 'required maxlength="30"')}${area("Customer address *", "address", "", "full")}${field("Customer tax ID / GSTIN (optional)", "taxId")}${field("Salesperson", "salesperson")}${field("Invoice date *", "date", today(), "date", "required")}<div class="field"><label for="method">Payment method</label><select name="method" id="method"><option>Bank transfer</option><option>UPI</option><option>Cash</option><option>Not received</option></select></div></div></div></section><section class="panel"><div class="panelhead"><h2>Choose bikes</h2><button type="button" id="addline">+ Add bike</button></div><div class="panelbody"><div id="lines"></div><p class="form-note">Selling price is per bike. One chassis number can be sold only once.</p></div></section><section class="panel"><div class="panelbody">${area("Invoice notes / warranty terms", "notes")}</div></section></div><div><section class="panel"><div class="panelhead"><h2>Invoice summary</h2></div><div class="panelbody"><div class="formgrid">${field("Discount (₹)", "discount", 0, "number", 'min="0" step="0.01"')}${field("Tax (%)", "taxRate", 0, "number", 'min="0" max="100" step="0.01"')}${field("Amount received (₹)", "paid", 0, "number", 'min="0" step="0.01"')}</div></div><div class="summary" id="summary"></div><div class="panelbody"><button class="primary" style="width:100%">Issue invoice ↗</button><p class="form-note">Issued invoices are permanent. Review details carefully before saving.</p></div></section></div></div></form>`,
+  return gstInvoiceForm({
+    state,
     route,
-  );
-  document.querySelector("#address").required = true;
-  function line() {
-    const row = document.createElement("div");
-    row.className = "line";
-    row.innerHTML = `<div class="bike-picker"><input class="bike-search" aria-label="Search bikes" type="search" placeholder="Search model, chassis or battery serial…" autocomplete="off"><select aria-label="Choose bike" required></select><small class="bike-matches" role="status"></small></div><input class="bike-price" aria-label="Bike sale price" type="number" min="0" step="0.01" placeholder="Price ₹" required><button type="button" class="remove-bike" aria-label="Remove bike">×</button>`;
-    const picker = row.querySelector("select");
-    const search = row.querySelector(".bike-search");
-    function filterBikes() {
-      const selectedId = picker.value;
-      const terms = search.value
-        .toLowerCase()
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
-      const matches = available.filter((b) => {
-        const haystack =
-          `${b.brand} ${b.model} ${b.vin} ${b.battery || ""} ${b.color || ""}`.toLowerCase();
-        return terms.every((term) => haystack.includes(term));
-      });
-      const selected = available.find((b) => b.id === selectedId);
-      const kept = selected && !matches.some((b) => b.id === selectedId);
-      const label = (b) =>
-        esc(
-          `${b.brand} ${b.model} · ${b.vin}${b.battery ? " · " + b.battery : ""}`,
-        );
-      picker.innerHTML = `<option value="">${matches.length ? "Choose a bike…" : "No matching bikes"}</option>${kept ? `<option value="${selected.id}">Selected: ${label(selected)}</option>` : ""}${matches.map((b) => `<option value="${b.id}">${label(b)}</option>`).join("")}`;
-      picker.value = selectedId;
-      row.querySelector(".bike-matches").textContent =
-        `${matches.length} ${matches.length === 1 ? "bike" : "bikes"} ${terms.length ? "found" : "available"}${kept ? " · Current selection kept" : ""}`;
-    }
-    search.oninput = filterBikes;
-    filterBikes();
-    row.querySelector("select").onchange = (e) => {
-      row.querySelector(".bike-price").value =
-        (available.find((b) => b.id === e.target.value)?.price || 0) / 100;
-      calculate();
-    };
-    row.querySelector("button").onclick = () => {
-      row.remove();
-      calculate();
-    };
-    row.querySelector(".bike-price").oninput = calculate;
-    document.querySelector("#lines").append(row);
-  }
-  function calculate() {
-    const form = document.querySelector("#invoiceform");
-    const sum = [...document.querySelectorAll(".line .bike-price")].reduce(
-      (n, x) => n + Math.round(Number(x.value || 0) * 100),
-      0,
-    );
-    const discount = Math.round(Number(form.discount.value || 0) * 100);
-    const tax = Math.round(
-      (Math.max(0, sum - discount) * Number(form.taxRate.value || 0)) / 100,
-    );
-    const total = sum - discount + tax;
-    document.querySelector("#summary").innerHTML =
-      `<div><span>Subtotal</span><b>${rupee(sum)}</b></div><div><span>Discount</span><b>− ${rupee(discount)}</b></div><div><span>Tax</span><b>${rupee(tax)}</b></div><div class="total"><span>Total</span><span>${rupee(total)}</span></div><div><span>Balance due</span><b>${rupee(total - Math.round(Number(form.paid.value || 0) * 100))}</b></div>`;
-  }
-  document.querySelector("#addline").onclick = () => {
-    line();
-  };
-  line();
-  calculate();
-  ["discount", "taxRate", "paid"].forEach(
-    (id) => (document.querySelector("#" + id).oninput = calculate),
-  );
-  document.querySelector("#invoiceform").onsubmit = async (e) => {
-    e.preventDefault();
-    const button = e.submitter;
-    button.disabled = true;
-    try {
-      const body = Object.fromEntries(new FormData(e.target));
-      body.requestKey = key;
-      body.lines = [...document.querySelectorAll(".line")].map((l) => ({
-        id: l.querySelector("select").value,
-        price: l.querySelector(".bike-price").value,
-      }));
-      const result = await api("/invoices", "POST", body);
-      await load();
-      location.hash = "invoices/" + result.id;
-      toast("Invoice issued. Your PDF is ready.");
-    } catch (x) {
-      error(x);
-      button.disabled = false;
-    }
-  };
+    shell,
+    heading,
+    api,
+    load,
+    toast,
+    error,
+    appBase,
+  });
 }
 function invoiceView(route) {
   const i = state.invoices.find((x) => x.id === route.split("/")[1]);
@@ -465,6 +389,8 @@ function invoiceView(route) {
     location.hash = "invoices";
     return;
   }
+  if (i.body.version === 2)
+    return gstInvoiceView({ row: i, route, shell, heading, appBase });
   const b = i.body,
     seller = b.seller;
   shell(
@@ -493,29 +419,16 @@ function invoiceView(route) {
   );
 }
 function settings(route) {
-  const s = state.settings;
-  shell(
-    heading(
-      "YOUR BUSINESS",
-      "Make every invoice your own.",
-      "Business details are captured on each new invoice. Existing invoices remain unchanged.",
-    ) +
-      `<form id="settings" class="panel"><div class="panelhead"><h2>Dealership details</h2></div><div class="panelbody"><div id="error"></div><div class="formgrid">${field("Business / legal name *", "name", s.name, "text", 'required maxlength="150"')}${field("Contact phone", "phone", s.phone)}${area("Business address *", "address", s.address, "full")}${field("Email", "email", s.email, "email")}${field("Tax ID / GSTIN (optional)", "taxId", s.taxId)}${field("Invoice number prefix *", "prefix", s.prefix, "text", 'required maxlength="12" pattern="[A-Za-z0-9-]+"')}${area("Bank / payment details", "bank", s.bank)}${area("Invoice footer / terms", "footer", s.footer, "full")}</div><p class="form-note">Ride For You branding is included. Tax is entered manually per invoice; GST returns, e-invoices and statutory tax calculations are not automated.</p></div><div class="formfooter"><span class="muted">Your details appear on invoice PDFs.</span><button class="primary">Save business details ↗</button></div></form>`,
+  return gstSettingsForm({
+    state,
     route,
-  );
-  document.querySelector("#address").required = true;
-  document.querySelector("#settings").onsubmit = async (e) => {
-    e.preventDefault();
-    e.submitter.disabled = true;
-    try {
-      await api("/settings", "PUT", Object.fromEntries(new FormData(e.target)));
-      await load();
-      toast("Business details saved");
-    } catch (x) {
-      error(x);
-      e.submitter.disabled = false;
-    }
-  };
+    shell,
+    heading,
+    api,
+    load,
+    toast,
+    error,
+  });
 }
 function bulkImport(route) {
   let savedCsv = "",
