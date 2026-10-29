@@ -22,6 +22,8 @@ Codes expire after five minutes, allow five incorrect attempts and work once. Re
 8. Review the on-screen tax invoice or download a clearly marked draft PDF. Drafts do not consume invoice numbers or change stock. Review shows the proposed PREFIX/FY/00001 number; compare it with invoices issued outside the app.
 9. Confirm the classification, tax basis, place of supply and numbering, then issue. Posting atomically captures immutable invoice/warranty details, increments the financial-year sequence and marks bikes Sold. A review hash rejects changed seller/bike/numbering details; request hashes reject changed retries. Download recipient, transporter or supplier PDFs and obtain the seller's authorised signature.
 
+All invoice PDFs use one printable A4 portrait page, including warranty and signatures. Layout is measured before output, using body text no smaller than 7.5 points. Overlong drafts are rejected with a clear message before stock or numbers change; use fewer bikes or concise terms. Content is never silently truncated or pushed onto another page. Existing invoices are reflowed without altering their stored amounts, tax treatment or terms.
+
 Lists export CSV; invoices filter by month. Data is in data/sales.sqlite. Back up the entire data directory while stopped, including SQLite WAL files, and protect .env. No test sales/inventory are inserted into the real workspace.
 
 ## Scope
@@ -48,7 +50,7 @@ Railway sales service settings:
 
 The public entry point is https://YOUR-RENTAL-DOMAIN/sales/. Session cookies are secure and scoped to /sales/. Keep the sales service private. Its startup creates empty business tables and does not seed bikes or invoices. Back up the volume and verify restores before relying on it for business records.
 
-Before the first production GST schema upgrade, the service saves a consistent SQLite snapshot under /data/backups/ using VACUUM INTO. The schema/profile upgrade runs in a transaction. Existing issued invoice JSON is not rewritten; legacy invoices retain their old layout and amounts. Keep separate ongoing backups and verify restores.
+Before the first production GST schema upgrade, the service saves a consistent SQLite snapshot under /data/backups/ using VACUUM INTO. The schema/profile upgrade runs in a transaction. Existing issued invoice JSON is not rewritten; legacy invoices retain their saved tax treatment and amounts in the compact print layout. Keep separate ongoing backups and verify restores.
 
 Classification and rate references: [DGCI&S Chapter 87](https://www.dgciskol.gov.in/writereaddata/Downloads/20170601190103CHP_87.pdf), [2024 Gazette adding the pedal-assisted subtype](https://egazette.gov.in/WriteReadData/2024/256436.pdf), [PIB EV tax guidance](https://www.pib.gov.in/PressNoteDetails.aspx?ModuleId=3&NoteId=159436&lang=1&reg=3), and [GST invoice particulars](https://tutorial.gst.gov.in/downloads/news/welcome_kit_for_new_taxpyers.pdf). The 871160 preset is an existing classification, not a newly generated per-bike number.
 

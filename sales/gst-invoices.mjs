@@ -10,6 +10,7 @@ import {
   gstTotals,
 } from "./public/gst.mjs";
 import { invoicePdf } from "./invoice-pdf.mjs";
+import { assertSinglePageInvoice } from "./gst-pdf.mjs";
 
 const fail = (message) => {
   throw Object.assign(Error(message), { status: 400 });
@@ -367,7 +368,7 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
         fail("Choose a valid warranty start date.");
       }
     }
-    return {
+    const invoice = {
       version: 2,
       seller,
       customer,
@@ -387,6 +388,8 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
       reverseCharge: false,
       warranty: hasWarranty ? warranty : null,
     };
+    assertSinglePageInvoice(invoice, root);
+    return invoice;
   }
   app.post("/api/invoices/preview", (req, res) => {
     const invoice = build(req.body),

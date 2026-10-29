@@ -6,6 +6,8 @@ import { createServer } from "node:http";
 import { DatabaseSync } from "node:sqlite";
 import os from "node:os";
 import path from "node:path";
+import { PassThrough } from "node:stream";
+import { invoicePdf } from "./invoice-pdf.mjs";
 
 test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", async () => {
   const folder = mkdtempSync(path.join(os.tmpdir(), "rfy-sales-test-"));
@@ -311,6 +313,10 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     const draft = await req("/invoices/preview/pdf", "POST", sale);
     assert.equal(draft.status, 200);
     const draftBytes = Buffer.from(await draft.arrayBuffer());
+    assert.equal(
+      (draftBytes.toString("latin1").match(/\/Type\s*\/Page\b/g) || []).length,
+      1,
+    );
     if (process.env.PDF_DRAFT_PATH)
       writeFileSync(process.env.PDF_DRAFT_PATH, draftBytes);
     assert.equal(
@@ -404,6 +410,10 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     const bytes = Buffer.from(await pdf.arrayBuffer());
     assert.equal(bytes.subarray(0, 4).toString(), "%PDF");
     assert(bytes.length > 1000);
+    assert.equal(
+      (bytes.toString("latin1").match(/\/Type\s*\/Page\b/g) || []).length,
+      1,
+    );
     if (process.env.PDF_CHECK_PATH)
       writeFileSync(process.env.PDF_CHECK_PATH, bytes);
     const supplierCopy = await req(
@@ -482,6 +492,45 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
       ).status,
       "available",
     );
+    const beforeLimitCheck = await (await req("/state")).json();
+    const oversizedSale = {
+      ...registeredSale,
+      requestKey: crypto.randomUUID(),
+      taxId: "",
+      notes: "Additional sale terms. ".repeat(100).slice(0, 1500),
+      warrantyTerms: "Detailed warranty coverage. ".repeat(100).slice(0, 1500),
+      ...Object.fromEntries(
+        ["Vehicle", "Battery", "Motor", "Charger", "Provider"].map((key) => [
+          "warranty" + key,
+          "Extended manufacturer warranty conditions. ".repeat(6).slice(0, 150),
+        ]),
+      ),
+    };
+    assert.equal(
+      (await req("/invoices/preview", "POST", oversizedSale)).status,
+      422,
+    );
+    const oversizedPdf = await req(
+      "/invoices/preview/pdf",
+      "POST",
+      oversizedSale,
+    );
+    assert.equal(oversizedPdf.status, 422);
+    assert((await oversizedPdf.json()).error.includes("one legible A4 page"));
+    assert.equal((await req("/invoices", "POST", oversizedSale)).status, 422);
+    const afterLimitCheck = await (await req("/state")).json();
+    assert.equal(
+      afterLimitCheck.invoices.length,
+      beforeLimitCheck.invoices.length,
+    );
+    assert.equal(
+      afterLimitCheck.numbering.nextNumber,
+      beforeLimitCheck.numbering.nextNumber,
+    );
+    assert.equal(
+      afterLimitCheck.bikes.find((b) => b.id === remainingBike.id).status,
+      "available",
+    );
     if (process.env.PDF_STRESS_PATH) {
       for (let n = 0; n < 20; n++)
         assert.equal(
@@ -506,11 +555,8 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
         placeOfSupply: "29",
         notes: "Demonstration warranty terms. ".repeat(40),
       });
-      assert.equal(stress.status, 200);
-      writeFileSync(
-        process.env.PDF_STRESS_PATH,
-        Buffer.from(await stress.arrayBuffer()),
-      );
+      assert.equal(stress.status, 422);
+      assert((await stress.json()).error.includes("one legible A4 page"));
     }
     assert.equal((await req("/logout", "POST", {})).status, 200);
     assert.equal((await req("/state")).status, 401);
@@ -558,4 +604,63 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     await new Promise((r) => provider.close(r));
     rmSync(folder, { recursive: true, force: true });
   }
+});
+
+test("legacy invoices reflow to one page without changing their saved tax data", async () => {
+  const body = {
+    seller: {
+      name: "Historical Dealership",
+      address: "Historical address",
+      phone: "",
+      email: "",
+      taxId: "",
+      footer: "Saved seller terms",
+      bank: "",
+    },
+    customer: {
+      name: "Historical buyer",
+      address: "Saved buyer address",
+      phone: "9000000000",
+      taxId: "",
+    },
+    date: "2026-10-28",
+    method: "Bank transfer",
+    salesperson: "",
+    lines: [
+      {
+        brand: "Legacy",
+        model: "EV scooter",
+        vin: "HISTORICAL-001",
+        salePrice: 100000,
+      },
+    ],
+    subtotal: 100000,
+    discount: 1000,
+    taxRate: 500,
+    tax: 4950,
+    total: 103950,
+    paid: 10000,
+    balance: 93950,
+    notes: "Historical terms remain unchanged",
+  };
+  const row = { number: "OLD-00001", body: JSON.stringify(body) },
+    original = row.body;
+  const response = new PassThrough(),
+    chunks = [];
+  response.set = () => response;
+  response.on("data", (chunk) => chunks.push(chunk));
+  const complete = new Promise((resolve, reject) => {
+    response.on("end", resolve);
+    response.on("error", reject);
+  });
+  invoicePdf(response, row, import.meta.dirname);
+  await complete;
+  const bytes = Buffer.concat(chunks);
+  assert.equal(
+    (bytes.toString("latin1").match(/\/Type\s*\/Page\b/g) || []).length,
+    1,
+  );
+  assert.equal(row.body, original);
+  if (process.env.PDF_LEGACY_PATH)
+    writeFileSync(process.env.PDF_LEGACY_PATH, bytes);
 });
