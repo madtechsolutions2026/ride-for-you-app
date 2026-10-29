@@ -1,5 +1,6 @@
 import { gstInvoiceForm, gstInvoiceView, gstSettingsForm } from "./gst-ui.mjs";
 import { EV_HSN, DEFAULT_HSN } from "./gst.mjs";
+import { serviceScreen } from "./service-ui.mjs";
 const appBase = document.documentElement.dataset.base || "";
 const app = document.querySelector("#app");
 let state,
@@ -35,7 +36,9 @@ async function api(url, method = "GET", body) {
       state = null;
       auth();
     }
-    throw Error(data.error || "Request failed");
+    throw Object.assign(Error(data.error || "Request failed"), {
+      status: r.status,
+    });
   }
   return data;
 }
@@ -122,7 +125,7 @@ function auth() {
 async function load() {
   try {
     state = await api("/state");
-    render();
+    await render();
   } catch (e) {
     if (!state) {
       const s = await api("/session");
@@ -137,6 +140,8 @@ function shell(content, route) {
     ["overview", "◫", "Overview"],
     ["inventory", "◇", "Bike inventory"],
     ["invoices", "▤", "Invoices"],
+    ["service", "↻", "Service desk"],
+    ["technicians", "♧", "Technicians"],
     ["settings", "⚙", "Business settings"],
   ]
     .map(
@@ -145,7 +150,7 @@ function shell(content, route) {
     )
     .join(
       "",
-    )}</nav><div class="asidefoot"><b>Made for the road ahead.</b>Ride For You · Sales & billing<hr style="border:0;border-top:1px solid #38604a;margin:18px 0">Built by Madtech Solutions</div></aside><div class="content"><header><span>Workspace <span style="margin:0 12px;color:#bcc6bb">/</span> <b style="color:#315c3d">${{ overview: "Overview", inventory: "Bike inventory", invoices: "Invoices", settings: "Business settings" }[active] || "Workspace"}</b></span><div class="user"><span class="avatar">O</span><span class="muted">Owner access</span><button id="logout" class="smallbtn">Sign out</button></div></header><main class="workspace">${content}</main></div></div>`;
+    )}</nav><div class="asidefoot"><b>Made for the road ahead.</b>Ride For You · Sales & billing<hr style="border:0;border-top:1px solid #38604a;margin:18px 0">Built by Madtech Solutions</div></aside><div class="content"><header><span>Workspace <span style="margin:0 12px;color:#bcc6bb">/</span> <b style="color:#315c3d">${{ overview: "Overview", inventory: "Bike inventory", invoices: "Invoices", service: "Service desk", technicians: "Technicians", vehicles: "Vehicle history", settings: "Business settings" }[active] || "Workspace"}</b></span><div class="user"><span class="avatar">O</span><span class="muted">Owner access</span><button id="logout" class="smallbtn">Sign out</button></div></header><main class="workspace">${content}</main></div></div>`;
   document.querySelector("#logout").onclick = async () => {
     await api("/logout", "POST", {});
     state = null;
@@ -172,6 +177,18 @@ function invoiceTable(rows) {
 function render() {
   if (!state) return;
   const route = location.hash.slice(1) || "overview";
+  if (["service", "technicians", "vehicles"].includes(route.split("/")[0]))
+    return serviceScreen({
+      state,
+      route,
+      shell,
+      heading,
+      api,
+      load,
+      toast,
+      error,
+      appBase,
+    });
   if (route === "inventory/import") return bulkImport(route);
   if (route === "inventory/new" || route.startsWith("inventory/edit/"))
     return bikeForm(route);
@@ -216,10 +233,12 @@ function inventory(route) {
     const bikes = state.bikes.filter(
       (b) =>
         (!filter || b.status === filter) &&
-        `${b.model} ${b.brand} ${b.vin}`.toLowerCase().includes(q),
+        `${b.model} ${b.brand} ${b.vin} ${b.battery} ${b.motor} ${b.controller} ${b.charger}`
+          .toLowerCase()
+          .includes(q),
     );
     document.querySelector("#biketable").innerHTML = bikes.length
-      ? `<div class="scroll"><table><thead><tr><th>Bike</th><th>Chassis / frame</th><th>Purchase cost</th><th>Selling price</th><th>Status</th><th></th></tr></thead><tbody>${bikes.map((b) => `<tr><td><b>${esc(b.brand)} ${esc(b.model)}</b><small>${esc(b.color || "Colour not entered")}</small></td><td>${esc(b.vin)}<small>${esc(b.battery)}</small></td><td>${rupee(b.cost)}</td><td>${rupee(b.price)}</td><td><span class="tag ${b.status}">${b.status === "sold" ? "Sold" : "Available"}</span></td><td>${b.status === "available" ? `<a href="#inventory/edit/${b.id}">Edit ↗</a>` : "—"}</td></tr>`).join("")}</tbody></table></div>`
+      ? `<div class="scroll"><table><thead><tr><th>Bike</th><th>Chassis / frame</th><th>Purchase cost</th><th>Selling price</th><th>Status</th><th></th></tr></thead><tbody>${bikes.map((b) => `<tr><td><b>${esc(b.brand)} ${esc(b.model)}</b><small>${esc(b.color || "Colour not entered")}</small></td><td>${esc(b.vin)}<small>${esc(b.battery)}</small></td><td>${rupee(b.cost)}</td><td>${rupee(b.price)}</td><td><span class="tag ${b.status}">${b.status === "sold" ? "Sold" : "Available"}</span></td><td>${b.status === "available" ? `<a href="#inventory/edit/${b.id}">Edit ↗</a>` : `<a href="#vehicles/${b.id}">History & service ↗</a>`}</td></tr>`).join("")}</tbody></table></div>`
       : empty(
           "No bikes to show.",
           "Add your first bike or adjust your search.",
@@ -237,6 +256,10 @@ function inventory(route) {
         "Model",
         "Chassis",
         "Colour",
+        "Battery number",
+        "Motor number",
+        "Controller number",
+        "Charger number",
         "Purchase cost INR",
         "Selling price INR",
         "Status",
@@ -246,6 +269,10 @@ function inventory(route) {
         b.model,
         b.vin,
         b.color,
+        b.battery,
+        b.motor,
+        b.controller,
+        b.charger,
         b.cost / 100,
         b.price / 100,
         b.status,
@@ -266,7 +293,7 @@ function bikeForm(route) {
       "Enter one physical bike per record. Chassis numbers must be unique.",
       `<a href="#inventory">← Back to inventory</a>`,
     ) +
-      `<form id="bikeform" class="panel"><div class="panelbody"><div id="error"></div><div class="formgrid">${field("Brand *", "brand", b.brand, "text", 'required maxlength="100"')}${field("Model / variant *", "model", b.model, "text", 'required maxlength="100"')}${field("Chassis / frame number *", "vin", b.vin, "text", 'required maxlength="100"')}${field("Colour", "color", b.color)}${field("Battery / motor serial number", "battery", b.battery)}${field("Purchase cost (₹) *", "cost", b.cost != null ? b.cost / 100 : "", "number", 'required min="0" step="0.01"')}${field("Default selling price (₹) *", "price", b.price != null ? b.price / 100 : "", "number", 'required min="0" step="0.01"')}<div class="field full"><label for="hsn">Complete EV category / HSN *</label><select name="hsn" id="hsn">${Object.entries(
+      `<form id="bikeform" class="panel"><div class="panelbody"><div id="error"></div><div class="formgrid">${field("Brand *", "brand", b.brand, "text", 'required maxlength="100"')}${field("Model / variant *", "model", b.model, "text", 'required maxlength="100"')}${field("Chassis / frame number *", "vin", b.vin, "text", 'required maxlength="100"')}${field("Colour", "color", b.color)}${field("Battery number", "battery", b.battery, "text", 'maxlength="100"')}${field("Motor number", "motor", b.motor, "text", 'maxlength="100"')}${field("Controller number", "controller", b.controller, "text", 'maxlength="100"')}${field("Charger number", "charger", b.charger, "text", 'maxlength="100"')}${field("Purchase cost (₹) *", "cost", b.cost != null ? b.cost / 100 : "", "number", 'required min="0" step="0.01"')}${field("Default selling price (₹) *", "price", b.price != null ? b.price / 100 : "", "number", 'required min="0" step="0.01"')}<div class="field full"><label for="hsn">Complete EV category / HSN *</label><select name="hsn" id="hsn">${Object.entries(
         EV_HSN,
       )
         .map(
@@ -440,7 +467,7 @@ function bulkImport(route) {
       "Upload up to 500 bikes from a CSV. Preview and correct errors before saving.",
       `<a href="#inventory">← Back to inventory</a>`,
     ) +
-      `<div class="invoice-steps"><span><b>01</b> Download template</span><span><b>02</b> Upload & preview</span><span><b>03</b> Import inventory</span></div><section class="panel"><div class="panelhead"><h2>Prepare your inventory file</h2><a href="${appBase}/api/inventory/template"><button>↓ CSV template</button></a></div><div class="panelbody"><p class="muted">Use these columns: <b>brand, model, vin, color, battery, cost, price, notes</b>. Brand, model, unique chassis/frame number (vin), purchase cost and selling price are required. Amounts are in rupees without currency symbols or commas. Optional fields may be empty.</p><div class="upload-zone"><label for="csvfile"><b>Choose your inventory CSV</b><span>Export Excel / Google Sheets as CSV · max 800 KB · 500 bikes</span></label><input type="file" id="csvfile" accept=".csv,text/csv"><button class="primary" id="previewcsv">Preview inventory →</button></div><p class="form-note">Replace the template example row. Every imported bike starts as Available. No bikes are added until you confirm the preview.</p><div id="error"></div></div></section><section id="importpreview"></section>`,
+      `<div class="invoice-steps"><span><b>01</b> Download template</span><span><b>02</b> Upload & preview</span><span><b>03</b> Import inventory</span></div><section class="panel"><div class="panelhead"><h2>Prepare your inventory file</h2><a href="${appBase}/api/inventory/template"><button>↓ CSV template</button></a></div><div class="panelbody"><p class="muted">Use these columns: <b>brand, model, vin, color, battery, motor, controller, charger, cost, price, notes, hsn</b>. Brand, model, unique chassis/frame number (vin), purchase cost and selling price are required. Amounts are in rupees without currency symbols or commas. Optional fields may be empty.</p><div class="upload-zone"><label for="csvfile"><b>Choose your inventory CSV</b><span>Export Excel / Google Sheets as CSV · max 800 KB · 500 bikes</span></label><input type="file" id="csvfile" accept=".csv,text/csv"><button class="primary" id="previewcsv">Preview inventory →</button></div><p class="form-note">Replace the template example row. Every imported bike starts as Available. No bikes are added until you confirm the preview.</p><div id="error"></div></div></section><section id="importpreview"></section>`,
     route,
   );
   document.querySelector("#csvfile").onchange = () => {

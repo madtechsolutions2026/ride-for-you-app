@@ -6,6 +6,7 @@ import { upgradeGst } from "./gst-invoices.mjs";
 import { mkdtempSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { upgradeService } from "./service.mjs";
 
 test("5% EV GST: inclusive/exclusive, intra/interstate, discounts and paise rounding", () => {
   const input = [{ salePrice: 5000000, hsn: "87116020" }];
@@ -146,4 +147,44 @@ test("upgrade preserves existing invoices and other business identities; is repe
       .some((c) => c.name === "hsn"),
   );
   db.close();
+});
+
+test("service migration snapshots and preserves issued sales, existing component data and stock", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec(
+    "PRAGMA foreign_keys=ON; CREATE TABLE app_meta(key TEXT PRIMARY KEY,value TEXT); CREATE TABLE bikes(id TEXT PRIMARY KEY,battery TEXT,status TEXT); CREATE TABLE invoices(id TEXT PRIMARY KEY,body TEXT); INSERT INTO bikes VALUES('sold-bike','LEGACY-BATTERY','sold'); INSERT INTO invoices VALUES('original-invoice','immutable historical invoice');",
+  );
+  const folder = mkdtempSync(path.join(os.tmpdir(), "rfy-service-upgrade-")),
+    backupPath = path.join(folder, "before-service.sqlite");
+  try {
+    upgradeService(db, { backupPath });
+    upgradeService(db);
+    const original = new DatabaseSync(backupPath, { readOnly: true });
+    assert(
+      !original
+        .prepare("PRAGMA table_info(bikes)")
+        .all()
+        .some((c) => c.name === "motor"),
+    );
+    original.close();
+    assert.equal(
+      db.prepare("SELECT body FROM invoices").get().body,
+      "immutable historical invoice",
+    );
+    assert.deepEqual(
+      { ...db.prepare("SELECT * FROM bikes").get() },
+      {
+        id: "sold-bike",
+        battery: "LEGACY-BATTERY",
+        status: "sold",
+        motor: "",
+        controller: "",
+        charger: "",
+      },
+    );
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM service_jobs").get().n, 0);
+  } finally {
+    db.close();
+    rmSync(folder, { recursive: true, force: true });
+  }
 });

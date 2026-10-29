@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { invoicePdf } from "./invoice-pdf.mjs";
+import { serviceChecks } from "./service-checks.mjs";
 
 test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", async () => {
   const folder = mkdtempSync(path.join(os.tmpdir(), "rfy-sales-test-"));
@@ -85,6 +86,8 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     assert(page.includes(`src="${prefix}/app.js"`));
     assert.equal((await fetch(base + "/logo.png")).status, 200);
     assert.equal((await req("/state")).status, 401);
+    assert.equal((await req("/services")).status, 401);
+    assert.equal((await req("/technicians")).status, 401);
     assert.equal(
       (await req("/state", "POST", {}, { Origin: "https://primary.example" }))
         .status,
@@ -182,6 +185,9 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
       vin: "TEST-001",
       color: "Forest green",
       battery: "BAT-001",
+      motor: "MOTOR-001",
+      controller: "CONTROLLER-001",
+      charger: "CHARGER-001",
       cost: "25000",
       price: "35000",
       notes: "",
@@ -280,6 +286,7 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
       warrantyVehicle: "12 months / 10,000 km, whichever is earlier",
       warrantyBattery: "24 months, as per manufacturer's terms",
       warrantyMotor: "12 months",
+      warrantyController: "12 months",
       warrantyCharger: "6 months",
       warrantyProvider: "Example manufacturer - sample only",
       warrantyStart: "2026-10-28",
@@ -298,6 +305,10 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     assert.equal(reviewed.invoice.igst, 0);
     assert.equal(reviewed.invoice.lines[0].hsn, "871160");
     assert.equal(reviewed.invoice.warranty.battery, sale.warrantyBattery);
+    assert.equal(reviewed.invoice.warranty.controller, sale.warrantyController);
+    assert.equal(reviewed.invoice.lines[0].motor, bike.motor);
+    assert.equal(reviewed.invoice.lines[0].controller, bike.controller);
+    assert.equal(reviewed.invoice.lines[0].charger, bike.charger);
     assert.equal(reviewed.invoice.warranty.startDate, sale.warrantyStart);
     assert.equal(
       (
@@ -538,6 +549,10 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
             await req("/bikes", "POST", {
               ...bike,
               vin: "STRESS-" + n,
+              battery: "STRESS-BAT-" + n,
+              motor: "STRESS-MOTOR-" + n,
+              controller: "STRESS-CTRL-" + n,
+              charger: "STRESS-CHG-" + n,
               model: "Long-distance electric scooter model " + n,
               hsn: "87116020",
             })
@@ -558,6 +573,7 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
       assert.equal(stress.status, 422);
       assert((await stress.json()).error.includes("one legible A4 page"));
     }
+    await serviceChecks(req, id, invoice.id, bike);
     assert.equal((await req("/logout", "POST", {})).status, 200);
     assert.equal((await req("/state")).status, 401);
     const otp2 = await (

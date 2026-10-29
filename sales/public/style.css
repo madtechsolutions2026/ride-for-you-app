@@ -1063,6 +1063,113 @@ a.primary.download-link {
   font-weight: 600;
   line-height: 1.6;
 }
+.serial-fields {
+  grid-column: 1 / -1;
+  background: #f5f8f3;
+  padding: 16px;
+  border: 1px solid #dce5dc;
+  border-radius: 5px;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.service-parts {
+  min-width: 900px;
+}
+#saveService {
+  width: 100%;
+  margin-top: 20px;
+}
+details > summary {
+  cursor: pointer;
+  padding: 14px 0;
+  font-weight: 600;
+}
+details .warranty-grid {
+  margin-top: 12px;
+}
+.serial-fields:empty {
+  display: none;
+}
+.serial-heading {
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.serial-heading small {
+  display: block;
+  font-weight: 400;
+  color: #526756;
+  margin-top: 5px;
+}
+.service-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 22px 0;
+}
+.service-summary > div {
+  background: white;
+  border: 1px solid #dde5da;
+  padding: 20px;
+  border-radius: 7px;
+}
+.service-summary strong {
+  display: block;
+  font-size: 25px;
+  margin-top: 9px;
+}
+.service-timeline {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.service-event {
+  border-left: 3px solid #7fbaa0;
+  padding: 2px 0 2px 14px;
+}
+.service-event small {
+  display: block;
+  margin-top: 6px;
+  color: #526756;
+}
+.component-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+.component-cards > div {
+  border: 1px solid #dce5dc;
+  background: #f7faf5;
+  border-radius: 6px;
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+.component-cards small {
+  display: block;
+  color: #526756;
+  margin-bottom: 5px;
+}
+.service-parts input,
+.service-parts select {
+  min-width: 90px;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #dce5dc;
+  border-radius: 4px;
+}
+.service-parts .part-description {
+  min-width: 170px;
+}
+@media (max-width: 700px) {
+  .service-summary,
+  .component-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 @media (max-width: 650px) {
   .warranty-grid {
     grid-template-columns: 1fr;

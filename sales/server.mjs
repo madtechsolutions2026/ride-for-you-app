@@ -7,6 +7,7 @@ import { authRouter, sessionHash } from "./auth.mjs";
 import { inventoryImport } from "./inventory-import.mjs";
 import { invoicePdf } from "./invoice-pdf.mjs";
 import { upgradeGst, gstInvoiceRoutes } from "./gst-invoices.mjs";
+import { upgradeService, serviceRoutes } from "./service.mjs";
 const root = path.dirname(fileURLToPath(import.meta.url));
 if (existsSync(path.join(root, ".env")))
   process.loadEnvFile(path.join(root, ".env"));
@@ -48,6 +49,16 @@ upgradeGst(db, {
       : undefined,
 });
 const app = express();
+upgradeService(db, {
+  backupPath:
+    process.env.NODE_ENV === "production"
+      ? path.join(
+          data,
+          "backups",
+          "before-service-v1-" + Date.now() + ".sqlite",
+        )
+      : undefined,
+});
 app.disable("x-powered-by");
 const publicOrigins = new Set(
   [
@@ -124,6 +135,7 @@ app.post("/api/logout", (req, res) => {
   res.json({ ok: true });
 });
 gstInvoiceRoutes(db, app, { text, money, root });
+serviceRoutes(db, app, { text, money });
 inventoryImport(db, app, { text, money });
 app.get("/api/invoices/:id/pdf", (req, res) => {
   const row = db

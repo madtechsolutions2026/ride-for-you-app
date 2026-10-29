@@ -230,7 +230,12 @@ function planPage(doc, b, number, root, copy, p) {
       ]
         .filter(Boolean)
         .join(" | "),
-      item.battery ? "Battery / motor: " + item.battery : "",
+      ...(gst
+        ? ["battery", "motor", "controller", "charger"].map(
+            (type) =>
+              `${type[0].toUpperCase() + type.slice(1)}: ${item[type] || "Not recorded"}`,
+          )
+        : [item.battery ? "Battery / motor: " + item.battery : ""]),
       item.discount ? "Line discount: INR " + money(item.discount) : "",
     ].filter(Boolean);
     const descHeight =
@@ -305,6 +310,7 @@ function planPage(doc, b, number, root, copy, p) {
         ["Vehicle", b.warranty.vehicle],
         ["Battery", b.warranty.battery],
         ["Motor", b.warranty.motor],
+        ["Controller", b.warranty.controller],
         ["Charger", b.warranty.charger],
         ["Provided by", b.warranty.provider],
         ["Start date", b.warranty.startDate],

@@ -1,8 +1,9 @@
 import { parse } from "csv-parse/sync";
 import { randomUUID, createHash } from "node:crypto";
 import { DEFAULT_HSN, EV_HSN } from "./public/gst.mjs";
+import { componentValues, assertComponentsAvailable } from "./components.mjs";
 export const csvTemplate =
-  "brand,model,vin,color,battery,cost,price,notes,hsn\r\nRide For You,City EV,REPLACE-WITH-UNIQUE-CHASSIS,Green,,25000.00,35000.00,Replace this example row with your inventory,871160\r\n";
+  "brand,model,vin,color,battery,motor,controller,charger,cost,price,notes,hsn\r\nRide For You,City EV,REPLACE-WITH-UNIQUE-CHASSIS,Green,,,,,25000.00,35000.00,Replace this example row with your inventory,871160\r\n";
 export function inventoryImport(db, app, { text, money }) {
   db.exec(
     "CREATE TABLE IF NOT EXISTS inventory_imports(request_key TEXT PRIMARY KEY,hash TEXT,count INTEGER,created TEXT)",
@@ -60,7 +61,7 @@ export function inventoryImport(db, app, { text, money }) {
           model: text(b.model, "model", 100),
           vin: text(b.vin, "chassis/frame number", 100).toUpperCase(),
           color: text(b.color, "colour", 60, false),
-          battery: text(b.battery, "battery/serial", 100, false),
+          ...componentValues(b),
           cost: money(b.cost, "purchase cost"),
           price: money(b.price, "selling price"),
           notes: text(b.notes, "notes", 1500, false),
@@ -74,6 +75,14 @@ export function inventoryImport(db, app, { text, money }) {
           throw Error(
             "Replace the template example with your actual chassis number.",
           );
+        for (const type of ["battery", "motor", "controller", "charger"])
+          if (row[type]) {
+            const key = type + ":" + row[type];
+            if (seen.has(key))
+              throw Error(`Duplicate ${type} number within this CSV.`);
+            seen.add(key);
+          }
+        assertComponentsAvailable(db, "new-import", row);
         if (seen.has(row.vin))
           throw Error("Duplicate chassis/frame number within this CSV.");
         seen.add(row.vin);
@@ -129,7 +138,7 @@ export function inventoryImport(db, app, { text, money }) {
         });
       }
       const insert = db.prepare(
-        "INSERT INTO bikes(id,model,brand,color,vin,battery,cost,price,notes,hsn,created) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO bikes(id,model,brand,color,vin,battery,motor,controller,charger,cost,price,notes,hsn,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       );
       for (const b of result.rows)
         insert.run(
@@ -139,6 +148,9 @@ export function inventoryImport(db, app, { text, money }) {
           b.color,
           b.vin,
           b.battery,
+          b.motor,
+          b.controller,
+          b.charger,
           b.cost,
           b.price,
           b.notes,

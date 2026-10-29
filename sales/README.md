@@ -1,6 +1,6 @@
 # Ride For You Sales
 
-Owner dashboard for individual bike inventory and branded PDF invoices. The database is independent from the rental app. Uses the mobile logo from ride-for-you/mobile/assets/icon.png.
+Owner dashboard for individual bike inventory, branded PDF invoices and after-sales service. The database is independent from the rental app. Uses the Ride For You EV logo supplied by the client, stored at public/logo.png.
 
 ## Start
 
@@ -14,11 +14,11 @@ Codes expire after five minutes, allow five incorrect attempts and work once. Re
 
 1. Review Business settings: legal dealership name, GSTIN, registered state/address, contact, prefix, next number and terms. The supplied Ride For You company details are prefilled for a new/default workspace. Other existing seller identities are not replaced.
 2. Add bikes individually, or select Bike inventory > Bulk upload.
-3. Download the CSV template. Required columns: brand,model,vin,cost,price. Optional: color,battery,notes,hsn. Replace the example row with your actual inventory. The HSN default is 871160 for complete electric two-wheelers; confirm the actual classification and choose a more specific subtype where appropriate.
+3. Download the CSV template. Required columns: brand,model,vin,cost,price. Optional: color,battery,motor,controller,charger,notes,hsn. Replace the example row with your actual inventory. Component serials are separate fields and checked for duplicates per component type. The HSN default is 871160 for complete electric two-wheelers; confirm the actual classification and choose a more specific subtype where appropriate.
 4. Export Excel/Google Sheets to CSV. Use unique chassis numbers and rupee amounts without currency symbols or thousands separators. Preserve leading zeroes in chassis fields as text in the spreadsheet.
 5. Preview up to 500 rows / 800 KB. Correct all errors. Import saves all rows or none. Existing/duplicate chassis and invalid amounts are rejected. Imported bikes start Available.
 6. Create an invoice with buyer billing state, optional buyer GSTIN, delivery address and actual place of supply. Explicitly choose GST-inclusive or exclusive prices. Complete EV GST is fixed at 5%; the server calculates 2.5% CGST plus 2.5% SGST/UTGST for same-state supplies, or 5% IGST for interstate supplies. It allocates discounts proportionally in paise and shows rounding adjustments explicitly.
-7. Add the vehicle, battery, motor and charger warranty, provider, start date and coverage/exclusions promised by the seller. No warranty periods are assumed. Common terms apply to every bike on that invoice; issue separately if warranties differ.
+7. Select the actual chassis and enter or confirm separate battery, motor, controller and charger numbers on each invoice line. Add the vehicle/component warranties, provider, start date and coverage/exclusions promised by the seller. Missing serials show Not recorded; no identifiers or warranty periods are invented. Common warranty terms apply to every bike on that invoice; issue separately if warranties differ.
 8. Review the on-screen tax invoice or download a clearly marked draft PDF. Drafts do not consume invoice numbers or change stock. Review shows the proposed PREFIX/FY/00001 number; compare it with invoices issued outside the app.
 9. Confirm the classification, tax basis, place of supply and numbering, then issue. Posting atomically captures immutable invoice/warranty details, increments the financial-year sequence and marks bikes Sold. A review hash rejects changed seller/bike/numbering details; request hashes reject changed retries. Download recipient, transporter or supplier PDFs and obtain the seller's authorised signature.
 
@@ -28,7 +28,21 @@ Lists export CSV; invoices filter by month. Data is in data/sales.sqlite. Back u
 
 ## Scope
 
-Single shared owner workspace: all allowed numbers have full access. Regular domestic sales of complete electric two-wheelers only. Separate batteries, chargers, spare parts, exports, SEZ and reverse-charge sales are excluded. No customer app, rental integration, payroll, online payments, cancellation/refunds, post-invoice payment editing, GST returns or IRP integration. Outstanding amounts reflect payments recorded at issue.
+Single shared owner workspace: all allowed numbers have full access. Regular domestic sales of complete electric two-wheelers only. Separate batteries, chargers, spare parts, exports, SEZ and reverse-charge sales are excluded from tax invoicing. No customer app, technician login, rental integration, payroll, online payments, cancellation/refunds of invoices, post-invoice payment editing, GST returns or IRP integration. Sale invoice balances reflect payments recorded at issue; service receipts have their own balance ledger.
+
+## After-sales service
+
+1. Add technicians in Technicians. The owner assigns and manages their work. Deactivation preserves history and prevents further assignment.
+2. Open a sold bike through Inventory > History & service, or from its original invoice. The vehicle passport shows the original sale, warranty, currently installed component numbers and all service visits.
+3. Service desk > Receive a bike starts one visit for a bike with an issued invoice. Search by chassis/model/component number. Enter the complaint, odometer, due date and technician. Missing component numbers can be filled at intake; existing numbers cannot be silently overwritten.
+4. Progress Received > Diagnosing > In progress > Ready for delivery > Delivered. Waiting for parts can pause diagnosis/repair and returns to In progress. An active technician is required when work starts. Diagnosis and work performed are required before readiness. Early cancellation is allowed only without recorded payments.
+5. Record parts, internal cost, customer charge and labour separately. For a serialized replacement choose the component type, quantity one and actual new number. Warranty/goodwill jobs have zero customer charge while retaining internal costs; coverage is reviewed by the owner against original terms.
+6. Record actual service receipts using Cash, UPI or Bank transfer. Overpayments and reducing charges below recorded receipts are rejected. Delivery requires full service payment or explicit owner approval of an outstanding balance. Later receipts may settle that balance.
+7. At delivery, replacements update the bike's current numbers atomically and preserve removed serials and a before/after event. The original sale invoice is never rewritten. Closed jobs are read-only; another visit starts a new job. A component number cannot move silently to another bike.
+
+Service charges/receipts are operational job records, not GST service tax invoices. No EV sales tax rate is applied to labour or repairs. Dedicated GST service billing, spare-parts stock deduction, refunds and customer notifications are outside this version. Parts here are a job usage/cost record, not a spare-parts stock ledger.
+
+Each update requires the latest job revision to prevent stale overwrites. Job and receipt creation have idempotency keys and request hashes. One open job per bike is enforced in SQLite. Service events preserve work changes and assignments. Before the first production service upgrade a consistent snapshot is saved under /data/backups; existing invoice bodies, stock and seller settings are preserved. Unknown historic component numbers remain blank.
 
 B2C invoices are supported. For GST-registered buyers, the owner must confirm B2B e-invoicing applicability with their accountant in Business settings. If an IRN is required, posting is blocked until an appropriate IRP workflow is available; the software does not invent an IRN or signature. Check GSTINs, actual HSN classification, numbering and tax treatment with the accountant. GSTIN checksum validation does not verify live registration status.
 
@@ -57,3 +71,5 @@ Classification and rate references: [DGCI&S Chapter 87](https://www.dgciskol.gov
 ## Verification
 
 npm test creates disposable SQLite databases and a mock WhatsApp endpoint. It covers auth, CSV atomicity/retries, inclusive/exclusive GST, 500 discount/rounding scenarios, state and GSTIN validation, FY boundaries, migration snapshots, stock locks, numbering, stale reviews, idempotency, warranty snapshots, B2B IRN guards and PDFs. Automated tests do not send real messages or insert demo records into production.
+
+The service checks also cover assignments, permitted transitions, optimistic locking, paid/warranty visits, idempotent receipts, overpayment guards, delivery balances, tracked replacement history, duplicate component prevention and original-invoice immutability. Browser QA uses a separate disposable database and mock provider.

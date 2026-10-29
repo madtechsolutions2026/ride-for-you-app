@@ -11,6 +11,11 @@ import {
 } from "./public/gst.mjs";
 import { invoicePdf } from "./invoice-pdf.mjs";
 import { assertSinglePageInvoice } from "./gst-pdf.mjs";
+import {
+  componentValues,
+  assertComponentsAvailable,
+  registerComponents,
+} from "./components.mjs";
 
 const fail = (message) => {
   throw Object.assign(Error(message), { status: 400 });
@@ -239,25 +244,43 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
       fail(
         "Select an HSN for a complete electric two-wheeler. This workspace does not classify separate batteries, chargers or parts.",
       );
+    const components = componentValues(body, old || {});
+    const bikeId = id || randomUUID();
     const values = [
       text(body.model, "model", 100),
       text(body.brand, "brand", 100),
       text(body.color, "colour", 60, false),
       text(body.vin, "chassis/frame number", 100).toUpperCase(),
-      text(body.battery, "battery/serial", 100, false),
+      components.battery,
       money(body.cost, "purchase cost"),
       money(body.price, "selling price"),
       text(body.notes, "notes", 1500, false),
       hsn,
     ];
-    if (id)
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      assertComponentsAvailable(db, bikeId, components);
+      if (id)
+        db.prepare(
+          "UPDATE bikes SET model=?,brand=?,color=?,vin=?,battery=?,cost=?,price=?,notes=?,hsn=? WHERE id=?",
+        ).run(...values, id);
+      else
+        db.prepare(
+          "INSERT INTO bikes(id,model,brand,color,vin,battery,cost,price,notes,hsn,created) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        ).run(bikeId, ...values, new Date().toISOString());
       db.prepare(
-        "UPDATE bikes SET model=?,brand=?,color=?,vin=?,battery=?,cost=?,price=?,notes=?,hsn=? WHERE id=?",
-      ).run(...values, id);
-    else
-      db.prepare(
-        "INSERT INTO bikes(id,model,brand,color,vin,battery,cost,price,notes,hsn,created) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-      ).run(randomUUID(), ...values, new Date().toISOString());
+        "UPDATE bikes SET motor=?,controller=?,charger=? WHERE id=?",
+      ).run(
+        components.motor,
+        components.controller,
+        components.charger,
+        bikeId,
+      );
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
     res.json({ ok: true });
   };
   app.post("/api/bikes", (req, res) => saveBike(req, res));
@@ -315,8 +338,15 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
         fail("One of these bikes is no longer available.");
       const salePrice = money(line.price, "sale price");
       if (!salePrice) fail("Bike sale price must be greater than zero.");
-      return { ...bike, salePrice };
+      const components = componentValues(line.components || {}, bike);
+      assertComponentsAvailable(db, bike.id, components);
+      return { ...bike, ...components, salePrice };
     });
+    for (const type of ["battery", "motor", "controller", "charger"]) {
+      const numbers = input.map((b) => b[type]).filter(Boolean);
+      if (new Set(numbers).size !== numbers.length)
+        fail(`Each bike needs a different ${type} number.`);
+    }
     let totals;
     try {
       totals = gstTotals(
@@ -343,6 +373,7 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
       "vehicle",
       "battery",
       "motor",
+      "controller",
       "charger",
       "provider",
       "terms",
@@ -458,6 +489,17 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
             .run(line.id).changes
         )
           fail("Bike was already sold.");
+      for (const line of invoice.lines) {
+        registerComponents(
+          db,
+          line.id,
+          componentValues(line),
+          "Sale " + number,
+        );
+        db.prepare(
+          "UPDATE bikes SET battery=?,motor=?,controller=?,charger=? WHERE id=?",
+        ).run(line.battery, line.motor, line.controller, line.charger, line.id);
+      }
       db.prepare(
         "INSERT INTO invoices(id,number,request_key,body,total,paid,created,request_hash) VALUES(?,?,?,?,?,?,?,?)",
       ).run(
