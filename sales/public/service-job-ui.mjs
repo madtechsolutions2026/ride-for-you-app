@@ -80,7 +80,7 @@ export async function serviceJobScreen(ctx, id, preselected) {
     : record && !received
       ? panel(
           "2. Services carried out",
-          `<p class="prewrap service-completed-work">${esc(body.workPerformed || (closed ? "No completed work recorded." : "Service work has not been recorded yet."))}</p>${body.diagnosis ? `<p><b>Inspection notes</b><br>${esc(body.diagnosis)}</p>` : ""}${body.completedAt ? `<p class="muted">Completed ${stamp(body.completedAt)} · ${esc(body.completedByTechnician || record.technician?.name || "")}</p>` : ""}${readOnlyParts(body.parts)}${body.replacements?.length ? `<p>${body.replacements.map((r) => `${esc(COMPONENTS[r.type])}: ${esc(r.oldSerial || "Not recorded")} → ${esc(r.newSerial)}`).join("<br>")}</p>` : ""}`,
+          `<p class="prewrap service-completed-work">${esc(body.workPerformed || (closed ? "No completed work recorded." : "Service work has not been recorded yet."))}</p>${body.diagnosis ? `<p><b>Inspection notes</b><br>${esc(body.diagnosis)}</p>` : ""}${body.notes ? `<details><summary>Internal notes</summary><p class="prewrap">${esc(body.notes)}</p></details>` : ""}${body.completedAt ? `<p class="muted">Completed ${stamp(body.completedAt)} · ${esc(body.completedByTechnician || record.technician?.name || "")}</p>` : ""}${readOnlyParts(body.parts)}${body.replacements?.length ? `<p>${body.replacements.map((r) => `${esc(COMPONENTS[r.type])}: ${esc(r.oldSerial || "Not recorded")} → ${esc(r.newSerial)}`).join("<br>")}</p>` : ""}`,
         )
       : "";
   const summary = received
