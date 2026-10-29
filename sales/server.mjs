@@ -1,13 +1,18 @@
+import { batteryRoutes } from "./modules/batteries/routes.mjs";
+import { batteryInvoiceRoutes } from "./modules/batteries/invoices.mjs";
+import { quotationRoutes } from "./modules/quotations/routes.mjs";
+import { openDatabase } from "./db/database.mjs";
+import { text, money } from "./core/validation.mjs";
+export { money } from "./core/validation.mjs";
 import express from "express";
-import { DatabaseSync } from "node:sqlite";
-import { mkdirSync, existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { authRouter, sessionHash } from "./auth.mjs";
 import { inventoryImport } from "./inventory-import.mjs";
 import { invoicePdf } from "./invoice-pdf.mjs";
-import { upgradeGst, gstInvoiceRoutes } from "./gst-invoices.mjs";
-import { upgradeService, serviceRoutes } from "./service.mjs";
+import { gstInvoiceRoutes } from "./gst-invoices.mjs";
+import { serviceRoutes } from "./service.mjs";
 const root = path.dirname(fileURLToPath(import.meta.url));
 if (existsSync(path.join(root, ".env")))
   process.loadEnvFile(path.join(root, ".env"));
@@ -19,46 +24,8 @@ if (basePath && !/^\/[a-z0-9-]+$/.test(basePath))
 if (process.env.NODE_ENV === "production" && !process.env.DATA_DIR)
   throw new Error("Production requires DATA_DIR on a persistent volume.");
 const data = process.env.DATA_DIR || path.join(root, "data");
-mkdirSync(data, { recursive: true });
-const db = new DatabaseSync(path.join(data, "sales.sqlite"));
-db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
-CREATE TABLE IF NOT EXISTS settings(id INTEGER PRIMARY KEY CHECK(id=1),body TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS owner(id INTEGER PRIMARY KEY CHECK(id=1),salt TEXT,hash TEXT);
-CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY,expires INTEGER);
-CREATE TABLE IF NOT EXISTS bikes(id TEXT PRIMARY KEY,model TEXT NOT NULL,brand TEXT NOT NULL,color TEXT,vin TEXT UNIQUE NOT NULL,battery TEXT,cost INTEGER NOT NULL,price INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'available',notes TEXT,created TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS invoices(id TEXT PRIMARY KEY,number TEXT UNIQUE NOT NULL,request_key TEXT UNIQUE NOT NULL,body TEXT NOT NULL,total INTEGER NOT NULL,paid INTEGER NOT NULL,created TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS invoice_bikes(invoice_id TEXT REFERENCES invoices(id),bike_id TEXT UNIQUE REFERENCES bikes(id));`);
-const defaults = {
-  name: "Ride For You",
-  address: "",
-  phone: "",
-  email: "",
-  taxId: "",
-  prefix: "RFY",
-  footer: "Thank you for choosing Ride For You.",
-  bank: "",
-  logo: true,
-};
-db.prepare("INSERT OR IGNORE INTO settings VALUES(1,?)").run(
-  JSON.stringify(defaults),
-);
-upgradeGst(db, {
-  backupPath:
-    process.env.NODE_ENV === "production"
-      ? path.join(data, "backups", "before-gst-v2-" + Date.now() + ".sqlite")
-      : undefined,
-});
+const db = openDatabase(data);
 const app = express();
-upgradeService(db, {
-  backupPath:
-    process.env.NODE_ENV === "production"
-      ? path.join(
-          data,
-          "backups",
-          "before-service-v1-" + Date.now() + ".sqlite",
-        )
-      : undefined,
-});
 app.disable("x-powered-by");
 const publicOrigins = new Set(
   [
@@ -96,22 +63,6 @@ app.use((req, res, next) => {
     return res.status(403).json({ error: "Request origin is not allowed." });
   next();
 });
-const fail = (m) => {
-  throw Object.assign(new Error(m), { status: 400 });
-};
-const text = (v, label, max = 300, required = true) => {
-  const s = typeof v === "string" ? v.trim() : "";
-  if ((required && !s) || s.length > max) fail(`Check ${label}.`);
-  return s;
-};
-export function money(v, label = "amount") {
-  if (!/^\d+(\.\d{1,2})?$/.test(String(v)))
-    fail(`Enter a valid ${label} (up to two decimal places).`);
-  const [a, b = ""] = String(v).split(".");
-  const n = Number(a) * 100 + Number(b.padEnd(2, "0"));
-  if (!Number.isSafeInteger(n) || n > 1e12) fail(`${label} is too large.`);
-  return n;
-}
 app.use("/api", authRouter(db));
 app.use("/api", (req, res, next) => {
   const token = req.headers.cookie
@@ -135,6 +86,9 @@ app.post("/api/logout", (req, res) => {
   res.json({ ok: true });
 });
 gstInvoiceRoutes(db, app, { text, money, root });
+batteryRoutes(db, app);
+batteryInvoiceRoutes(db, app, { root });
+quotationRoutes(db, app, { root });
 serviceRoutes(db, app, { text, money });
 inventoryImport(db, app, { text, money });
 app.get("/api/invoices/:id/pdf", (req, res) => {

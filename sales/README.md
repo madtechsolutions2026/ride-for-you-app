@@ -2,6 +2,8 @@
 
 Owner dashboard for individual bike inventory, branded PDF invoices and after-sales service. The database is independent from the rental app. Uses the Ride For You EV logo supplied by the client, stored at public/logo.png.
 
+Separate battery inventory/sales and printable bike quotations are included. See [ARCHITECTURE.md](ARCHITECTURE.md) for the module structure, shared business rules and upgrade process.
+
 ## Start
 
 Requires Node.js 24+. Run npm ci, then npm start in this sales directory. Open http://127.0.0.1:3050 and sign in with your approved WhatsApp number.
@@ -28,7 +30,14 @@ Lists export CSV; invoices filter by month. Data is in data/sales.sqlite. Back u
 
 ## Scope
 
-Single shared owner workspace: all allowed numbers have full access. Regular domestic sales of complete electric two-wheelers only. Separate batteries, chargers, spare parts, exports, SEZ and reverse-charge sales are excluded from tax invoicing. No customer app, technician login, rental integration, payroll, online payments, cancellation/refunds of invoices, post-invoice payment editing, GST returns or IRP integration. Sale invoice balances reflect payments recorded at issue; service receipts have their own balance ledger.
+Single shared owner workspace: all allowed numbers have full access. Regular domestic sales of complete electric two-wheelers and separately tracked batteries are supported. Separate chargers/other spare parts, exempt/nil-rated bill-of-supply, cess, exports, SEZ and reverse-charge sales are excluded from this tax-invoice workflow. No customer app, technician login, rental integration, payroll, online payments, cancellation/refunds of invoices, post-invoice payment editing, GST returns or IRP integration. Sale invoice balances reflect payments recorded at issue; service receipts have their own balance ledger.
+
+## Batteries and quotations
+
+- Batteries > Add battery records one physical pack with its serial, specification, cost, price and warranty. Enter HSN and GST manually from the actual product classification. These may be left incomplete in inventory, but must be filled and explicitly confirmed before issuing a separate battery invoice. A battery invoice preserves the chosen tax, serial and warranty details and uses the same legal invoice sequence as bike sales.
+- Battery history shows available, sold or installed stock, the sale customer/invoice or installed bike, and stock events. Bike service parts can select an available stock battery; handover consumes it as installed. Used stock cannot be sold again.
+- Quotations > Create quotation selects one available bike, customer details, price basis, discount, validity, warranty and terms. Review, generate, then print or download its one-page PDF. Quotations are clearly marked as price offers, not tax invoices. They do not reserve stock or consume sales invoice numbers.
+- A valid issued/accepted quotation can prepare a bike invoice. Customer, price, warranty and terms are prefilled, then reviewed again before issue. Conversion rechecks availability and links the quotation atomically. Cancelled, expired and converted quotes cannot be reused for another invoice.
 
 ## After-sales service
 

@@ -9,6 +9,10 @@ import {
   serial,
 } from "./components.mjs";
 import { financialYear } from "./public/gst.mjs";
+import {
+  serviceBattery,
+  consumeServiceBattery,
+} from "./modules/batteries/stock.mjs";
 const fail = (message, status = 400) => {
   throw Object.assign(Error(message), { status });
 };
@@ -159,13 +163,20 @@ export function serviceRoutes(db, app, { text, money }) {
         fail(
           "A tracked replacement needs a component type, one unit, and its new serial number.",
         );
-      return {
+      const part = {
         description: text(p.description, "part description", 150),
         quantity,
         unitCost: money(p.unitCost || 0, "part cost"),
         unitCharge: money(p.unitCharge || 0, "part charge"),
         componentType: type,
         newSerial,
+      };
+      return {
+        ...part,
+        ...serviceBattery(db, {
+          ...part,
+          batteryId: text(p.batteryId, "battery stock", 80, false),
+        }),
       };
     });
     const replacements = normalized.filter((p) => p.componentType);
@@ -450,6 +461,7 @@ export function serviceRoutes(db, app, { text, money }) {
               fail(
                 "Replacement serial must differ from the current component number.",
               );
+            consumeServiceBattery(db, part, bike.id, row.number);
             assertComponentsAvailable(db, bike.id, { [type]: part.newSerial });
             if (bike[type])
               db.prepare(

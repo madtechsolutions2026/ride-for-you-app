@@ -1,3 +1,5 @@
+import { batteryScreen } from "./modules/batteries/ui.mjs";
+import { quotationScreen } from "./modules/quotations/ui.mjs";
 import { gstInvoiceForm, gstInvoiceView, gstSettingsForm } from "./gst-ui.mjs";
 import { EV_HSN, DEFAULT_HSN } from "./gst.mjs";
 import { serviceScreen } from "./service-ui.mjs";
@@ -139,6 +141,8 @@ function shell(content, route) {
   app.innerHTML = `<div class="shell"><aside>${brand()}<nav class="nav">${[
     ["overview", "◫", "Overview"],
     ["inventory", "◇", "Bike inventory"],
+    ["batteries", "▱", "Batteries"],
+    ["quotations", "≡", "Quotations"],
     ["invoices", "▤", "Invoices"],
     ["service", "↻", "Service desk"],
     ["technicians", "♧", "Technicians"],
@@ -150,7 +154,7 @@ function shell(content, route) {
     )
     .join(
       "",
-    )}</nav><div class="asidefoot"><b>Made for the road ahead.</b>Ride For You · Sales & billing<hr style="border:0;border-top:1px solid #38604a;margin:18px 0">Built by Madtech Solutions</div></aside><div class="content"><header><span>Workspace <span style="margin:0 12px;color:#bcc6bb">/</span> <b style="color:#315c3d">${{ overview: "Overview", inventory: "Bike inventory", invoices: "Invoices", service: "Service desk", technicians: "Technicians", vehicles: "Vehicle history", settings: "Business settings" }[active] || "Workspace"}</b></span><div class="user"><span class="avatar">O</span><span class="muted">Owner access</span><button id="logout" class="smallbtn">Sign out</button></div></header><main class="workspace">${content}</main></div></div>`;
+    )}</nav><div class="asidefoot"><b>Made for the road ahead.</b>Ride For You · Sales & billing<hr style="border:0;border-top:1px solid #38604a;margin:18px 0">Built by Madtech Solutions</div></aside><div class="content"><header><span>Workspace <span style="margin:0 12px;color:#bcc6bb">/</span> <b style="color:#315c3d">${{ overview: "Overview", inventory: "Bike inventory", invoices: "Invoices", batteries: "Batteries", quotations: "Quotations", service: "Service desk", technicians: "Technicians", vehicles: "Vehicle history", settings: "Business settings" }[active] || "Workspace"}</b></span><div class="user"><span class="avatar">O</span><span class="muted">Owner access</span><button id="logout" class="smallbtn">Sign out</button></div></header><main class="workspace">${content}</main></div></div>`;
   document.querySelector("#logout").onclick = async () => {
     await api("/logout", "POST", {});
     state = null;
@@ -166,7 +170,7 @@ function empty(title, desc, href, button) {
 }
 function invoiceTable(rows) {
   return rows.length
-    ? `<div class="scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Total</th><th>Balance</th><th></th></tr></thead><tbody>${rows.map((i) => `<tr><td><b>${esc(i.number)}</b><small>${i.body.lines.length} bike${i.body.lines.length > 1 ? "s" : ""}</small></td><td>${esc(i.body.customer.name)}<small>${esc(i.body.customer.phone)}</small></td><td>${esc(i.body.date)}</td><td>${rupee(i.total)}</td><td>${i.total - i.paid ? `<span class="balance">${rupee(i.total - i.paid)}</span>` : '<span class="tag">Paid</span>'}</td><td><a href="#invoices/${i.id}">View ↗</a></td></tr>`).join("")}</tbody></table></div>`
+    ? `<div class="scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Total</th><th>Balance</th><th></th></tr></thead><tbody>${rows.map((i) => `<tr><td><b>${esc(i.number)}</b><small>${i.body.lines.length} ${i.body.saleType === "battery" ? (i.body.lines.length === 1 ? "battery" : "batteries") : i.body.lines.length === 1 ? "bike" : "bikes"}</small></td><td>${esc(i.body.customer.name)}<small>${esc(i.body.customer.phone)}</small></td><td>${esc(i.body.date)}</td><td>${rupee(i.total)}</td><td>${i.total - i.paid ? `<span class="balance">${rupee(i.total - i.paid)}</span>` : '<span class="tag">Paid</span>'}</td><td><a href="#invoices/${i.id}">View ↗</a></td></tr>`).join("")}</tbody></table></div>`
     : empty(
         "Your next sale starts here.",
         "Create an invoice to build your sales history.",
@@ -189,10 +193,24 @@ function render() {
       error,
       appBase,
     });
+  const context = {
+    state,
+    route,
+    shell,
+    heading,
+    api,
+    load,
+    toast,
+    error,
+    appBase,
+  };
+  if (route.split("/")[0] === "batteries") return batteryScreen(context);
+  if (route.split("/")[0] === "quotations") return quotationScreen(context);
   if (route === "inventory/import") return bulkImport(route);
   if (route === "inventory/new" || route.startsWith("inventory/edit/"))
     return bikeForm(route);
-  if (route === "invoices/new") return invoiceForm(route);
+  if (route === "invoices/new" || route.startsWith("invoices/new/"))
+    return invoiceForm(route);
   if (route.startsWith("invoices/")) return invoiceView(route);
   if (route === "settings") return settings(route);
   if (route === "inventory") return inventory(route);
@@ -203,6 +221,9 @@ function overview(route) {
   const bikes = state.bikes,
     inv = state.invoices;
   const available = bikes.filter((b) => b.status === "available");
+  const availableBatteries = (state.batteries || []).filter(
+    (b) => b.status === "available",
+  );
   const month = new Date().toLocaleDateString("en-CA").slice(0, 7);
   const recent = inv.filter((i) => i.body.date.startsWith(month));
   shell(
@@ -212,7 +233,7 @@ function overview(route) {
       "Your bikes, sales and invoices, all in one place.",
       `<a href="#inventory/new"><button>+ Add bike</button></a><a href="#invoices/new"><button class="primary">Create invoice ↗</button></a>`,
     ) +
-      `<div class="stats"><div class="stat"><small>Available bikes</small><strong>${available.length.toString().padStart(2, "0")}</strong><em>Ready for their next owner</em></div><div class="stat"><small>Inventory at cost</small><strong>${rupee(available.reduce((n, b) => n + b.cost, 0))}</strong><em>Available stock purchase value</em></div><div class="stat"><small>Sales this month</small><strong>${rupee(recent.reduce((n, i) => n + i.total, 0))}</strong><em>${recent.reduce((n, i) => n + i.body.lines.length, 0)} bikes invoiced · incl. entered tax</em></div><div class="stat"><small>Outstanding balance</small><strong>${rupee(inv.reduce((n, i) => n + i.total - i.paid, 0))}</strong><em>As recorded when invoiced</em></div></div><div class="hero"><div><div class="eyebrow">READY, SET, RIDE</div><h2>A smooth handover starts here.</h2><p>Add your bikes, enter the customer's details, and download an invoice carrying your dealership's name.</p><a href="#settings">Complete business details →</a></div><div class="art">↗</div></div><section class="panel"><div class="panelhead"><h2>Recent invoices</h2><a href="#invoices">View all →</a></div>${invoiceTable(inv.slice(0, 6))}</section>`,
+      `<div class="stats"><div class="stat"><small>Available bikes</small><strong>${available.length.toString().padStart(2, "0")}</strong><em>Ready for their next owner</em></div><div class="stat"><small>Inventory at cost</small><strong>${rupee(available.reduce((n, b) => n + b.cost, 0) + availableBatteries.reduce((n, b) => n + b.cost, 0))}</strong><em>Available bike and battery purchase value</em></div><div class="stat"><small>Sales this month</small><strong>${rupee(recent.reduce((n, i) => n + i.total, 0))}</strong><em>${recent.filter((i) => i.body.saleType !== "battery").reduce((n, i) => n + i.body.lines.length, 0)} bikes · ${recent.filter((i) => i.body.saleType === "battery").reduce((n, i) => n + i.body.lines.length, 0)} batteries invoiced · incl. entered tax</em></div><div class="stat"><small>Outstanding balance</small><strong>${rupee(inv.reduce((n, i) => n + i.total - i.paid, 0))}</strong><em>As recorded when invoiced</em></div></div><div class="hero"><div><div class="eyebrow">READY, SET, RIDE</div><h2>A smooth handover starts here.</h2><p>Add your bikes, enter the customer's details, and download an invoice carrying your dealership's name.</p><a href="#settings">Complete business details →</a></div><div class="art">↗</div></div><section class="panel"><div class="panelhead"><h2>Recent invoices</h2><a href="#invoices">View all →</a></div>${invoiceTable(inv.slice(0, 6))}</section>`,
     route,
   );
 }
@@ -329,8 +350,8 @@ function invoices(route) {
     heading(
       "SALES & BILLING",
       "Invoices, neatly in order.",
-      "Branded PDF invoices with customer and individual bike details.",
-      `<button id="export">Export CSV</button><a href="#invoices/new"><button class="primary">+ Create invoice</button></a>`,
+      "Bike and battery invoices with customer, serial and warranty details.",
+      `<button id="export">Export CSV</button><a href="#batteries/sale"><button>Battery invoice</button></a><a href="#invoices/new"><button class="primary">+ Bike invoice</button></a>`,
     ) +
       `<div class="search"><input id="search" placeholder="Search invoice number or customer…" aria-label="Search invoices"><div class="datefilters">Month <input id="month" type="month"><button id="clear" class="smallbtn">Clear</button></div></div><section class="panel" id="invoicetable"></section>`,
     route,
@@ -362,7 +383,7 @@ function invoices(route) {
         "Customer",
         "Phone",
         "Salesperson",
-        "Bikes",
+        "Items",
         "Total INR",
         "Received INR",
         "Balance INR",

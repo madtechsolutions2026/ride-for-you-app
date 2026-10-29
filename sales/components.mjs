@@ -34,6 +34,30 @@ export function assertComponentsAvailable(db, bikeId, values) {
         "SELECT bike_id FROM component_records WHERE type=? AND serial=?",
       )
       .get(type, value);
+    if (
+      type === "battery" &&
+      db
+        .prepare(
+          "SELECT 1 FROM sqlite_master WHERE type='table' AND name='batteries'",
+        )
+        .get()
+    ) {
+      const stock = db
+        .prepare(
+          "SELECT id,status,installed_bike_id FROM batteries WHERE serial=?",
+        )
+        .get(value);
+      if (
+        stock &&
+        !(stock.status === "installed" && stock.installed_bike_id === bikeId)
+      )
+        throw Object.assign(
+          Error(
+            `Battery ${value} is tracked in separate stock. Select it from battery inventory for a service replacement; sold batteries cannot be assigned as new stock.`,
+          ),
+          { status: 409 },
+        );
+    }
     if (bike || (history && history.bike_id !== bikeId))
       throw Object.assign(
         Error(

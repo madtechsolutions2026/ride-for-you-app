@@ -1,3 +1,4 @@
+import { documentHtml } from "./modules/documents/view.mjs";
 import {
   DEFAULT_HSN,
   EV_HSN,
@@ -65,6 +66,8 @@ export function gstInvoiceHtml(
   b,
   { preview = false, logoBase = "" } = {},
 ) {
+  if (b.saleType === "battery" || b.documentType === "quotation")
+    return documentHtml(number, b, { preview, logoBase });
   return `<article class="invoice-sheet gst-sheet"><div class="invoice-top"><div class="invoice-identity"><img src="${logoBase}/logo.png" alt="Ride For You logo"><div><h2>${esc(b.seller.name)}</h2><p>${esc(b.seller.address)}<br><b>GSTIN: ${esc(b.seller.taxId)}</b><br>${esc(stateName(b.seller.stateCode))}${b.seller.phone ? " · " + esc(b.seller.phone) : ""}</p></div></div><div class="invoice-ref"><div class="eyebrow">${preview ? "DRAFT · NOT ISSUED" : "TAX INVOICE"}</div><h2>${esc(number)}</h2><p>${esc(b.date)} · FY ${b.financialYear.slice(0, 2)}-${b.financialYear.slice(2)}</p><span class="tag">${b.priceMode === "inclusive" ? "GST included in price" : "GST added to price"}</span></div></div><div class="invoice-parties"><section><div class="eyebrow">BILLED TO</div><h3>${esc(b.customer.name)}</h3><p class="prewrap">${esc(b.customer.address)}</p><p>${esc(stateName(b.customer.stateCode))}<br>Phone: ${esc(b.customer.phone)}<br>${b.customer.taxId ? "GSTIN: " + esc(b.customer.taxId) : "Unregistered customer (B2C)"}</p></section><section><div class="eyebrow">DELIVERY & SUPPLY</div><p class="prewrap">${esc(b.deliveryAddress)}</p><p><b>Place of supply: ${esc(stateName(b.placeOfSupply))}</b><br>Reverse charge: No<br>Payment: ${esc(b.method)}${b.salesperson ? "<br>Salesperson: " + esc(b.salesperson) : ""}</p></section></div><div class="scroll"><table class="invoice-items"><thead><tr><th>Vehicle / HSN</th><th>Qty / unit</th><th>Quoted price</th><th>Discount</th><th>Taxable</th><th>GST · 5%</th><th>Total</th></tr></thead><tbody>${b.lines.map((line) => `<tr><td><b>${esc(line.brand + " " + line.model)}</b><small>Chassis: ${esc(line.vin)}</small><small>HSN: ${esc(line.hsn)}</small>${["battery", "motor", "controller", "charger"].map((type) => `<small>${type[0].toUpperCase() + type.slice(1)}: ${esc(line[type] || "Not recorded")}</small>`).join("")}${!preview ? `<small><a href="#vehicles/${line.id}">Vehicle & service history ↗</a></small>` : ""}</td><td>1 NOS</td><td>${cash(line.salePrice)}</td><td>${cash(line.discount)}</td><td>${cash(line.taxable)}</td><td>${cash(line.tax)}<small>${b.intraState ? `CGST ${cash(line.cgst)}<br>${b.stateTaxLabel} ${cash(line.sgst)}` : `IGST ${cash(line.igst)}`}</small></td><td><b>${cash(line.total)}</b></td></tr>`).join("")}</tbody></table></div><div class="invoice-bottom"><section><div class="eyebrow">COMPLETE ELECTRIC TWO-WHEELERS</div><p>${b.priceMode === "inclusive" ? "Quoted prices include GST. Tax is extracted from the discounted price." : "GST is added to the quoted price after discount."}</p>${b.seller.bank ? `<h3>Payment details</h3><p class="prewrap">${esc(b.seller.bank)}</p>` : ""}<p class="muted">${preview ? "Review only. No stock or invoice number has been committed." : "Amounts received are recorded at issue. Print and obtain the authorised signatory's signature."}</p></section><div class="invoice-totalbox">${totalsHtml(b)}</div></div>${
     b.warranty
       ? `<section class="invoice-note"><h3>Warranty details</h3><dl class="warranty-grid">${[
@@ -146,7 +149,7 @@ export function gstSettingsForm({
   };
 }
 
-export function gstInvoiceForm({
+export async function gstInvoiceForm({
   state,
   route,
   shell,
@@ -157,6 +160,37 @@ export function gstInvoiceForm({
   error,
   appBase,
 }) {
+  const quotationId = route.split("/")[2];
+  let quotation = null;
+  if (quotationId) {
+    try {
+      quotation = await api("/quotations/" + quotationId);
+      if (location.hash.slice(1) !== route) return;
+      if (
+        !["issued", "accepted"].includes(quotation.status) ||
+        quotation.body.validUntil <
+          new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(
+            new Date(),
+          ) ||
+        !state.bikes.some(
+          (b) =>
+            b.id === quotation.body.lines[0].id && b.status === "available",
+        )
+      )
+        throw Error("This quote is no longer valid for an available bike.");
+    } catch (e) {
+      shell(
+        heading(
+          "QUOTATION CONVERSION",
+          "Unable to prepare invoice.",
+          esc(e.message),
+          '<a href="#quotations">← Quotations</a>',
+        ),
+        route,
+      );
+      return;
+    }
+  }
   const available = state.bikes.filter((b) => b.status === "available"),
     key = crypto.randomUUID();
   if (!available.length) {
@@ -184,12 +218,12 @@ export function gstInvoiceForm({
       "Choose the price basis, review the GST breakdown, then issue the invoice.",
       '<a href="#invoices">← All invoices</a>',
     ) +
-      `<div class="invoice-steps"><span><b>01</b> Customer</span><span><b>02</b> Vehicle & GST</span><span><b>03</b> Review</span><span><b>04</b> Issue & download</span></div><div class="notice"><b>${esc(state.settings.name)}</b> · GSTIN ${esc(state.settings.taxId)} · <a href="#settings">Business settings</a></div><form id="gstinvoiceform"><div class="split"><div><section class="panel"><div class="panelhead"><h2>Customer & delivery</h2></div><div class="panelbody"><div id="error"></div><div class="formgrid">${field("Customer name *", "name", "", 'required maxlength="150"')}${field("Customer phone *", "phone", "", 'required type="tel" maxlength="30"')}${area("Billing address *", "address")}${field("Customer GSTIN · optional for personal buyers", "taxId", "", 'maxlength="15" autocomplete="off"')}${select("Customer billing state *", "customerState", stateOptions)}${area("Delivery address · leave blank to use billing address", "deliveryAddress")}${select("Place of supply / delivery state *", "placeOfSupply", stateOptions)}${select("Price basis *", "priceMode", priceOptions, state.settings.priceMode)}${field("Invoice date *", "date", date, `required type="date" max="${date}"`)}${field("Salesperson", "salesperson", "", 'maxlength="100"')}${select(
+      `<div class="invoice-steps"><span><b>01</b> Customer</span><span><b>02</b> Vehicle & GST</span><span><b>03</b> Review</span><span><b>04</b> Issue & download</span></div><div class="notice"><b>${esc(state.settings.name)}</b> · GSTIN ${esc(state.settings.taxId)} · <a href="#settings">Business settings</a></div><form id="gstinvoiceform" class="commerce-form"><div class="split"><div><section class="panel"><div class="panelhead"><h2>Customer & delivery</h2></div><div class="panelbody"><div id="error"></div><div class="formgrid">${field("Customer name *", "name", "", 'required maxlength="150"')}${field("Customer phone *", "phone", "", 'required type="tel" maxlength="30"')}${area("Billing address *", "address")}${field("Customer GSTIN · optional for personal buyers", "taxId", "", 'maxlength="15" autocomplete="off"')}${select("Customer billing state *", "customerState", stateOptions)}${area("Delivery address · leave blank to use billing address", "deliveryAddress")}${select("Place of supply / delivery state *", "placeOfSupply", stateOptions)}${select("Price basis *", "priceMode", priceOptions, state.settings.priceMode)}${field("Invoice date *", "date", date, `required type="date" max="${date}"`)}${field("Salesperson", "salesperson", "", 'maxlength="100"')}${select(
         "Payment method *",
         "method",
         ["Bank transfer", "UPI", "Cash", "Not received"].map((x) => [x, x]),
         "Bank transfer",
-      )}</div><p class="form-note">Use the actual place of supply. For a normal goods delivery, this is generally where delivery ends. GST is fixed at 5% for complete EVs in this workflow.</p></div></section><section class="panel"><div class="panelhead"><h2>Electric two-wheelers</h2><button type="button" id="gstaddbike">+ Add bike</button></div><div class="panelbody"><div id="gstlines"></div><p class="form-note">HSN is stored on each bike. <a href="#inventory">Review inventory classification</a>. Prices follow the basis chosen above.</p></div></section><section class="panel"><div class="panelbody"><h2>Warranty details</h2><p class="form-note">Enter only the coverage promised for these vehicles. Leave unknown terms blank; no warranty periods are assumed. These terms apply to all bikes on this invoice.</p><div class="formgrid">${field("Vehicle warranty", "warrantyVehicle", "", 'maxlength="150" placeholder="e.g. duration / distance limit"')}${field("Battery warranty", "warrantyBattery", "", 'maxlength="150"')}${field("Motor warranty", "warrantyMotor", "", 'maxlength="150"')}${field("Controller warranty", "warrantyController", "", 'maxlength="150"')}${field("Charger warranty", "warrantyCharger", "", 'maxlength="150"')}${field("Warranty provided by", "warrantyProvider", "", 'maxlength="150"')}${field("Warranty start · defaults to invoice date", "warrantyStart", "", 'type="date"')}${area("Warranty coverage, exclusions & claim process", "warrantyTerms")}${area("Additional invoice notes / delivery terms", "notes")}</div></div></section></div><aside><section class="panel gst-sticky"><div class="panelhead"><h2>Invoice summary</h2><span class="tag">GST 5%</span></div><div class="panelbody"><div class="formgrid">${field("Discount (₹)", "discount", 0, 'type="number" min="0" step="0.01"')}${field("Amount received (₹)", "paid", 0, 'type="number" min="0" step="0.01"')}</div></div><div id="gstsummary" class="summary"></div><div class="panelbody gst-action-stack"><button type="button" id="gstpreview" class="primary">Review tax invoice →</button><button type="button" id="gstdraft">↓ Download draft PDF</button><p class="form-note">PDFs print on one A4 page, including warranty details. Review and draft downloads do not mark bikes sold or consume an invoice number.</p></div></section></aside></div><section id="gstreview" hidden></section></form>`,
+      )}</div><p class="form-note">Use the actual place of supply. For a normal goods delivery, this is generally where delivery ends. GST is fixed at 5% for complete EVs in this workflow.</p></div></section><section class="panel"><div class="panelhead"><h2>Electric two-wheelers</h2><button type="button" id="gstaddbike">+ Add bike</button></div><div class="panelbody"><div id="gstlines"></div><p class="form-note">HSN is stored on each bike. <a href="#inventory">Review inventory classification</a>. Prices follow the basis chosen above.</p></div></section><section class="panel"><div class="panelbody"><h2>Warranty details</h2><p class="form-note">Enter only the coverage promised for these vehicles. Leave unknown terms blank; no warranty periods are assumed. These terms apply to all bikes on this invoice.</p><div class="formgrid">${field("Vehicle warranty", "warrantyVehicle", "", 'maxlength="150" placeholder="e.g. duration / distance limit"')}${field("Battery warranty", "warrantyBattery", "", 'maxlength="150"')}${field("Motor warranty", "warrantyMotor", "", 'maxlength="150"')}${field("Controller warranty", "warrantyController", "", 'maxlength="150"')}${field("Charger warranty", "warrantyCharger", "", 'maxlength="150"')}${field("Warranty provided by", "warrantyProvider", "", 'maxlength="150"')}${field("Warranty start · defaults to invoice date", "warrantyStart", "", 'type="date"')}${area("Warranty coverage, exclusions & claim process", "warrantyTerms")}${area("Additional invoice notes / delivery terms", "notes")}</div></div></section></div><aside class="commerce-side"><section class="panel gst-sticky"><div class="panelhead"><h2>Invoice summary</h2><span class="tag">GST 5%</span></div><div class="panelbody"><div class="formgrid">${field("Discount (₹)", "discount", 0, 'type="number" min="0" step="0.01"')}${field("Amount received (₹)", "paid", 0, 'type="number" min="0" step="0.01"')}</div></div><div id="gstsummary" class="summary"></div><div class="panelbody gst-action-stack"><button type="button" id="gstpreview" class="primary">Review tax invoice →</button><button type="button" id="gstdraft">↓ Download draft PDF</button><p class="form-note">PDFs print on one A4 page, including warranty details. Review and draft downloads do not mark bikes sold or consume an invoice number.</p></div></section></aside></div><section id="gstreview" hidden></section></form>`,
     route,
   );
   const form = document.querySelector("#gstinvoiceform");
@@ -197,6 +231,7 @@ export function gstInvoiceForm({
   let review = null;
   const payload = () => ({
     requestKey: key,
+    ...(quotationId ? { quotationId } : {}),
     ...Object.fromEntries(new FormData(form)),
     lines: [...document.querySelectorAll("#gstlines .line")].map((row) => ({
       id: row.querySelector("select").value,
@@ -376,4 +411,41 @@ export function gstInvoiceForm({
       event.submitter.disabled = false;
     }
   };
+  if (quotation) {
+    const b = quotation.body;
+    for (const [key, value] of Object.entries({
+      name: b.customer.name,
+      phone: b.customer.phone,
+      address: b.customer.address,
+      taxId: b.customer.taxId,
+      customerState: b.customer.stateCode,
+      placeOfSupply: b.placeOfSupply,
+      deliveryAddress: b.deliveryAddress,
+      priceMode: b.priceMode,
+      discount: b.discount / 100,
+      salesperson: b.salesperson,
+      notes: [b.paymentTerms, b.notes].filter(Boolean).join("\n"),
+      paid: 0,
+      method: "Not received",
+    }))
+      if (form.elements[key]) form.elements[key].value = value;
+    for (const [key, value] of Object.entries(b.warranty || {})) {
+      const name = "warranty" + key[0].toUpperCase() + key.slice(1);
+      if (form.elements[name]) form.elements[name].value = value;
+    }
+    const picker = document.querySelector("#gstlines select");
+    picker.value = b.lines[0].id;
+    picker.onchange();
+    document.querySelector("#gstlines .bike-price").value =
+      b.lines[0].salePrice / 100;
+    invalidate();
+    calculate();
+    const note = document.createElement("p");
+    note.className = "notice";
+    note.textContent =
+      "Prepared from " +
+      quotation.number +
+      ". Review current stock, pricing and invoice details before issuing.";
+    form.prepend(note);
+  }
 }

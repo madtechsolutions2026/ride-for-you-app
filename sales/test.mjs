@@ -9,6 +9,7 @@ import path from "node:path";
 import { PassThrough } from "node:stream";
 import { invoicePdf } from "./invoice-pdf.mjs";
 import { serviceChecks } from "./service-checks.mjs";
+import { commerceChecks } from "./tests/commerce-checks.mjs";
 
 test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", async () => {
   const folder = mkdtempSync(path.join(os.tmpdir(), "rfy-sales-test-"));
@@ -574,6 +575,7 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
       assert((await stress.json()).error.includes("one legible A4 page"));
     }
     await serviceChecks(req, id, invoice.id, bike);
+    await commerceChecks(req);
     assert.equal((await req("/logout", "POST", {})).status, 200);
     assert.equal((await req("/state")).status, 401);
     const otp2 = await (

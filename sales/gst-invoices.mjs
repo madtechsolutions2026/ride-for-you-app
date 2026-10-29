@@ -1,3 +1,8 @@
+import { insertInvoice } from "./core/documents.mjs";
+import {
+  convertibleQuotation,
+  linkQuotation,
+} from "./modules/quotations/routes.mjs";
 import { randomUUID, createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -162,6 +167,9 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
         nextNumber: nextNumber(seller, fy),
         example: invoiceNumber(seller, fy),
       },
+      batteries: db
+        .prepare("SELECT * FROM batteries ORDER BY created DESC")
+        .all(),
       bikes: db.prepare("SELECT * FROM bikes ORDER BY created DESC").all(),
       invoices: db
         .prepare("SELECT * FROM invoices ORDER BY created DESC")
@@ -332,6 +340,13 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
       fail("Choose 1-20 bikes.");
     if (new Set(body.lines.map((line) => line.id)).size !== body.lines.length)
       fail("A bike cannot appear twice.");
+    const quotation = body.quotationId
+      ? convertibleQuotation(
+          db,
+          text(body.quotationId, "quotation", 80),
+          body.lines.map((l) => l.id),
+        )
+      : null;
     const input = body.lines.map((line) => {
       const bike = db.prepare("SELECT * FROM bikes WHERE id=?").get(line.id);
       if (!bike || bike.status !== "available")
@@ -401,6 +416,9 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
     }
     const invoice = {
       version: 2,
+      ...(quotation
+        ? { quotationId: quotation.id, quotationNumber: quotation.number }
+        : {}),
       seller,
       customer,
       date,
@@ -500,23 +518,18 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
           "UPDATE bikes SET battery=?,motor=?,controller=?,charger=? WHERE id=?",
         ).run(line.battery, line.motor, line.controller, line.charger, line.id);
       }
-      db.prepare(
-        "INSERT INTO invoices(id,number,request_key,body,total,paid,created,request_hash) VALUES(?,?,?,?,?,?,?,?)",
-      ).run(
+      insertInvoice(db, {
         id,
         number,
+        series: sequenceKey(seller.prefix, fy),
+        next: seq,
+        invoice,
         key,
-        JSON.stringify(invoice),
-        invoice.total,
-        invoice.paid,
-        new Date().toISOString(),
-        hash,
-      );
-      db.prepare(
-        "INSERT INTO invoice_sequences VALUES(?,?) ON CONFLICT(series) DO UPDATE SET next_number=excluded.next_number",
-      ).run(sequenceKey(seller.prefix, fy), seq + 1);
+        digest: hash,
+      });
       for (const line of invoice.lines)
         db.prepare("INSERT INTO invoice_bikes VALUES(?,?)").run(id, line.id);
+      linkQuotation(db, invoice.quotationId, id);
       db.exec("COMMIT");
       res.json({ id });
     } catch (error) {

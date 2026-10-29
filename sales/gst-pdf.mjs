@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import path from "node:path";
 import { stateName } from "./public/gst.mjs";
+import { taxRows } from "./public/domain/totals.mjs";
 
 const GREEN = "#155232",
   INK = "#22382b",
@@ -30,7 +31,7 @@ function documentFor(invoice, root) {
     margin: 30,
     bufferPages: true,
     info: {
-      Title: `${invoice.draft ? "Draft" : invoice.version === 2 ? "Tax invoice" : "Sales invoice"}`,
+      Title: `${invoice.documentType === "quotation" ? "Quotation" : invoice.draft ? "Draft" : invoice.version === 2 ? "Tax invoice" : "Sales invoice"}`,
       Author: invoice.seller.name,
     },
   });
@@ -85,6 +86,8 @@ function planPage(doc, b, number, root, copy, p) {
         .stroke(),
     );
   const gst = b.version === 2,
+    quotation = b.documentType === "quotation",
+    battery = b.saleType === "battery",
     draft = Boolean(b.draft);
   let y = 30,
     sy = y;
@@ -107,24 +110,30 @@ function planPage(doc, b, number, root, copy, p) {
   y = Math.max(y + 54, sy) + gap;
   rule(y);
   y += gap;
-  const title = draft
-    ? "DRAFT - NOT ISSUED"
-    : gst
-      ? "TAX INVOICE"
-      : "SALES INVOICE";
+  const title = quotation
+    ? b.quotationStatus === "cancelled"
+      ? "CANCELLED QUOTATION"
+      : "QUOTATION"
+    : draft
+      ? "DRAFT - NOT ISSUED"
+      : gst
+        ? "TAX INVOICE"
+        : "SALES INVOICE";
   const titleHeight = Math.max(
     text(title, left, y, 270, p.title, true, GREEN),
     text(number, left + 285, y, width - 285, 10, true, INK, "right"),
   );
   y += titleHeight + 3;
-  const copyLabel = draft
-    ? "FOR REVIEW ONLY - NOT VALID FOR SALE"
-    : {
-        original: "ORIGINAL FOR RECIPIENT",
-        transporter: "DUPLICATE FOR TRANSPORTER",
-        supplier: "TRIPLICATE FOR SUPPLIER",
-      }[copy] || "ORIGINAL FOR RECIPIENT";
-  const dateLine = `Date: ${b.date}${b.financialYear ? " | FY " + b.financialYear : ""}`;
+  const copyLabel = quotation
+    ? "PRICE OFFER - NOT A TAX INVOICE"
+    : draft
+      ? "FOR REVIEW ONLY - NOT VALID FOR SALE"
+      : {
+          original: "ORIGINAL FOR RECIPIENT",
+          transporter: "DUPLICATE FOR TRANSPORTER",
+          supplier: "TRIPLICATE FOR SUPPLIER",
+        }[copy] || "ORIGINAL FOR RECIPIENT";
+  const dateLine = `Date: ${b.date}${quotation ? " | Valid until: " + b.validUntil : b.financialYear ? " | FY " + b.financialYear : ""}`;
   y +=
     Math.max(
       text(copyLabel, left, y, 290, 7.5, true, MUTED),
@@ -155,8 +164,13 @@ function planPage(doc, b, number, root, copy, p) {
     gst
       ? `Place of supply: ${stateName(b.placeOfSupply)} | Reverse charge: No`
       : "",
-    `Payment: ${b.method} | ${b.balance === 0 ? "Paid" : b.paid ? "Partially paid" : "Unpaid"}`,
+    quotation
+      ? b.paymentTerms
+        ? "Payment terms: " + b.paymentTerms
+        : "Payment terms: As agreed at sale"
+      : `Payment: ${b.method} | ${b.balance === 0 ? "Paid" : b.paid ? "Partially paid" : "Unpaid"}`,
     b.salesperson ? "Salesperson: " + b.salesperson : "",
+    b.quotationNumber ? "Quotation reference: " + b.quotationNumber : "",
   ].filter(Boolean);
   const cardHeight =
     Math.max(
@@ -172,7 +186,7 @@ function planPage(doc, b, number, root, copy, p) {
     const x = left + index * (cardWidth + 12);
     rect(x, y, cardWidth, cardHeight);
     text(
-      index ? "DELIVERY & SUPPLY" : "BILLED TO",
+      index ? "DELIVERY & SUPPLY" : quotation ? "PREPARED FOR" : "BILLED TO",
       x + 8,
       y + 7,
       inner,
@@ -186,7 +200,7 @@ function planPage(doc, b, number, root, copy, p) {
   }
   y += cardHeight + gap;
   text(
-    `VEHICLE DETAILS - ALL AMOUNTS IN INR | ${gst ? (b.priceMode === "inclusive" ? "PRICES INCLUDE GST" : "GST ADDED TO PRICES") : "QUOTED PRICES"}`,
+    `${battery ? "BATTERY" : "VEHICLE"} DETAILS - ALL AMOUNTS IN INR | ${gst ? (b.priceMode === "inclusive" ? "PRICES INCLUDE GST" : "GST ADDED TO PRICES") : "QUOTED PRICES"}`,
     left,
     y,
     width,
@@ -200,11 +214,11 @@ function planPage(doc, b, number, root, copy, p) {
   for (let i = 0; i < columns.length - 1; i++) xs.push(xs[i] + columns[i]);
   rect(left, y, width, 23, GREEN);
   const headers = [
-    "VEHICLE / IDENTIFICATION",
+    battery ? "BATTERY / IDENTIFICATION" : "VEHICLE / IDENTIFICATION",
     "QTY",
     "UNIT PRICE",
     gst ? "TAXABLE" : "AMOUNT",
-    gst ? "GST (5%)" : "TAX",
+    gst ? (b.taxRate == null ? "GST" : `GST (${b.taxRate / 100}%)`) : "TAX",
     gst ? "LINE TOTAL" : "LINE AMOUNT",
   ];
   headers.forEach((label, i) =>
@@ -223,19 +237,29 @@ function planPage(doc, b, number, root, copy, p) {
   for (const [index, item] of b.lines.entries()) {
     const model = clean(item.brand + " " + item.model);
     const details = [
-      "Chassis: " + item.vin,
+      battery ? "Battery serial: " + item.serial : "Chassis: " + item.vin,
       [
         item.hsn ? "HSN: " + item.hsn : "",
         item.color ? "Colour: " + item.color : "",
       ]
         .filter(Boolean)
         .join(" | "),
-      ...(gst
-        ? ["battery", "motor", "controller", "charger"].map(
-            (type) =>
-              `${type[0].toUpperCase() + type.slice(1)}: ${item[type] || "Not recorded"}`,
-          )
-        : [item.battery ? "Battery / motor: " + item.battery : ""]),
+      ...(battery
+        ? [
+            [item.chemistry, item.voltage, item.capacity]
+              .filter(Boolean)
+              .join(" | "),
+            item.warranty ? "Warranty: " + item.warranty : "",
+            item.provider ? "Warranty provider: " + item.provider : "",
+            item.warranty_terms ? "Warranty terms: " + item.warranty_terms : "",
+            `GST rate: ${item.gstRate / 100}%`,
+          ]
+        : gst
+          ? ["battery", "motor", "controller", "charger"].map(
+              (type) =>
+                `${type[0].toUpperCase() + type.slice(1)}: ${item[type] || "Not recorded"}`,
+            )
+          : [item.battery ? "Battery / motor: " + item.battery : ""]),
       item.discount ? "Line discount: INR " + money(item.discount) : "",
     ].filter(Boolean);
     const descHeight =
@@ -247,8 +271,8 @@ function planPage(doc, b, number, root, copy, p) {
       2;
     const taxes = gst
       ? b.intraState
-        ? `CGST: ${money(item.cgst)}\n${b.stateTaxLabel}: ${money(item.sgst)}`
-        : `IGST: ${money(item.igst)}`
+        ? `CGST${battery ? ` ${item.gstRate / 200}%` : ""}: ${money(item.cgst)}\n${b.stateTaxLabel}${battery ? ` ${item.gstRate / 200}%` : ""}: ${money(item.sgst)}`
+        : `IGST${battery ? ` ${item.gstRate / 100}%` : ""}: ${money(item.igst)}`
       : "See totals";
     const cells = [
       "1\nNOS",
@@ -333,6 +357,11 @@ function planPage(doc, b, number, root, copy, p) {
     }
   }
   note("PAYMENT / BANK DETAILS", b.seller.bank);
+  if (quotation)
+    note(
+      "QUOTATION CONDITIONS",
+      "Price offer only. Subject to stock availability and the validity date. This quotation does not reserve stock or acknowledge payment.",
+    );
   note("ADDITIONAL SALE TERMS", b.notes);
   if (b.seller.footer)
     ly += text(b.seller.footer, left, ly, notesWidth, p.body, false, MUTED) + 4;
@@ -343,12 +372,7 @@ function planPage(doc, b, number, root, copy, p) {
     ...(gst
       ? [
           ["Taxable value", b.taxable],
-          ...(b.intraState
-            ? [
-                ["CGST (2.5%)", b.cgst],
-                [`${b.stateTaxLabel} (2.5%)`, b.sgst],
-              ]
-            : [["IGST (5%)", b.igst]]),
+          ...taxRows(b),
           ...(b.roundOff ? [["Rounding adjustment", b.roundOff]] : []),
         ]
       : [[`Tax (${b.taxRate / 100}%)`, b.tax]]),
@@ -364,16 +388,18 @@ function planPage(doc, b, number, root, copy, p) {
     25,
     measure(money(b.total), totalsWidth - 116, 10, true) + 12,
   );
-  const paidHeight =
-    Math.max(
-      measure("Amount received", 112, p.body),
-      measure(money(b.paid), totalsWidth - 128, p.body),
-    ) + 8;
-  const balanceHeight =
-    Math.max(
-      measure("BALANCE DUE", 105, p.body, true),
-      measure(money(b.balance), totalsWidth - 121, 9.5, true),
-    ) + 8;
+  const paidHeight = quotation
+    ? 0
+    : Math.max(
+        measure("Amount received", 112, p.body),
+        measure(money(b.paid), totalsWidth - 128, p.body),
+      ) + 8;
+  const balanceHeight = quotation
+    ? 0
+    : Math.max(
+        measure("BALANCE DUE", 105, p.body, true),
+        measure(money(b.balance), totalsWidth - 121, 9.5, true),
+      ) + 8;
   const totalHeight =
     metricHeights.reduce((a, n) => a + n, 0) +
     grandHeight +
@@ -396,7 +422,15 @@ function planPage(doc, b, number, root, copy, p) {
     ty += metricHeights[i];
   });
   rect(totalsX + 1, ty, totalsWidth - 2, grandHeight, GREEN);
-  text("INVOICE TOTAL", totalsX + 8, ty + 8, 100, 8, true, "#fff");
+  text(
+    quotation ? "QUOTATION TOTAL" : "INVOICE TOTAL",
+    totalsX + 8,
+    ty + 8,
+    100,
+    8,
+    true,
+    "#fff",
+  );
   text(
     money(b.total),
     totalsX + 108,
@@ -408,29 +442,31 @@ function planPage(doc, b, number, root, copy, p) {
     "right",
   );
   ty += grandHeight + 8;
-  text("Amount received", totalsX + 8, ty, 112, p.body);
-  text(
-    money(b.paid),
-    totalsX + 120,
-    ty,
-    totalsWidth - 128,
-    p.body,
-    false,
-    INK,
-    "right",
-  );
-  ty += paidHeight;
-  text("BALANCE DUE", totalsX + 8, ty, 105, p.body, true);
-  text(
-    money(b.balance),
-    totalsX + 113,
-    ty,
-    totalsWidth - 121,
-    9.5,
-    true,
-    GREEN,
-    "right",
-  );
+  if (!quotation) {
+    text("Amount received", totalsX + 8, ty, 112, p.body);
+    text(
+      money(b.paid),
+      totalsX + 120,
+      ty,
+      totalsWidth - 128,
+      p.body,
+      false,
+      INK,
+      "right",
+    );
+    ty += paidHeight;
+    text("BALANCE DUE", totalsX + 8, ty, 105, p.body, true);
+    text(
+      money(b.balance),
+      totalsX + 113,
+      ty,
+      totalsWidth - 121,
+      9.5,
+      true,
+      GREEN,
+      "right",
+    );
+  }
   y = Math.max(ly, y + totalHeight) + gap + 10;
   const signatureY = y;
   ops.push(() =>
@@ -448,7 +484,15 @@ function planPage(doc, b, number, root, copy, p) {
       .stroke(),
   );
   const signatureHeight = Math.max(
-    text("Customer acknowledgment", left, y + 6, 220, 7.5, false, MUTED),
+    text(
+      quotation ? "Customer acceptance (optional)" : "Customer acknowledgment",
+      left,
+      y + 6,
+      220,
+      7.5,
+      false,
+      MUTED,
+    ),
     text(
       `For ${b.seller.name}\n${b.seller.signatory || "Authorised signatory"}`,
       left + 285,
@@ -487,9 +531,16 @@ export function assertSinglePageInvoice(invoice, root) {
   }
 }
 
-export function gstInvoicePdf(res, row, root, { copy = "original" } = {}) {
+export function gstInvoicePdf(
+  res,
+  row,
+  root,
+  { copy = "original", inline = false } = {},
+) {
   const invoice = JSON.parse(row.body),
     doc = documentFor(invoice, root);
+  if (invoice.documentType === "quotation")
+    invoice.quotationStatus = row.status;
   let plan;
   try {
     plan = selectPlan(doc, invoice, row.number, root, copy);
@@ -515,7 +566,7 @@ export function gstInvoicePdf(res, row, root, { copy = "original" } = {}) {
     .fontSize(7.5)
     .fillColor(MUTED)
     .text(
-      `${invoice.draft ? "DRAFT - NOT VALID FOR SALE" : "Seller / authorised representative signature required"} | ${row.number}`,
+      `${invoice.documentType === "quotation" ? "QUOTATION - NOT A TAX INVOICE" : invoice.draft ? "DRAFT - NOT VALID FOR SALE" : "Seller / authorised representative signature required"} | ${row.number}`,
       30,
       794,
       { width: 480, lineGap: 0 },
@@ -529,7 +580,7 @@ export function gstInvoicePdf(res, row, root, { copy = "original" } = {}) {
     ".pdf";
   res.set({
     "Content-Type": "application/pdf",
-    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${filename}"`,
   });
   doc.pipe(res);
   doc.end();

@@ -4,6 +4,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 COPY server.mjs auth.mjs inventory-import.mjs invoice-pdf.mjs gst-invoices.mjs gst-pdf.mjs components.mjs service.mjs ./
+COPY core ./core
+COPY db ./db
+COPY modules ./modules
 COPY public ./public
 COPY assets ./assets
 RUN mkdir -p /data && chown node:node /data

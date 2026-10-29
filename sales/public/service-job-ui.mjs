@@ -30,9 +30,10 @@ export async function serviceJobScreen(ctx, id, preselected) {
     ctx;
   const current = () => location.hash.slice(1) === route,
     creating = id === "new";
-  const [techs, record] = await Promise.all([
+  const [techs, record, batteryStock] = await Promise.all([
     api("/technicians"),
     creating ? Promise.resolve(null) : api("/services/" + id),
+    api("/batteries"),
   ]);
   if (!current()) return;
   const body = record?.body || {},
@@ -64,7 +65,7 @@ export async function serviceJobScreen(ctx, id, preselected) {
       .map((t) => [t.id, t.name + (t.active ? "" : " (inactive)")]),
   ];
   const workFields = working
-    ? `${panel("2. Services carried out", `<div class="formgrid">${area("Services carried out", "workPerformed", body.workPerformed)}${area("Inspection notes · optional", "diagnosis", body.diagnosis)}${area("Internal notes", "notes", body.notes, 1500)}</div><p class="form-note">After doing the work, describe each service on a new line. For example: adjusted the rear brake, cleaned battery terminals, and tested charging. This becomes part of this bike’s history.</p>`)}${panel("Parts & materials used", `<p class="form-note">Add only what was actually used. For a battery, motor, controller or charger replacement, record the new component number.</p><div class="scroll"><table class="service-parts"><thead><tr><th>Part / material</th><th>Qty</th><th>Your unit cost ₹</th><th>Customer unit charge ₹</th><th>Replacement type</th><th>New number</th><th></th></tr></thead><tbody id="serviceParts"></tbody></table></div>`, '<button type="button" id="addPart">+ Add part</button>')}${panel(
+    ? `${panel("2. Services carried out", `<div class="formgrid">${area("Services carried out", "workPerformed", body.workPerformed)}${area("Inspection notes · optional", "diagnosis", body.diagnosis)}${area("Internal notes", "notes", body.notes, 1500)}</div><p class="form-note">After doing the work, describe each service on a new line. For example: adjusted the rear brake, cleaned battery terminals, and tested charging. This becomes part of this bike’s history.</p>`)}${panel("Parts & materials used", `<p class="form-note">Add only what was actually used. For a battery, motor, controller or charger replacement, record the new component number.</p><div class="scroll"><table class="service-parts"><thead><tr><th>Part / material</th><th>Qty</th><th>Your unit cost ₹</th><th>Customer unit charge ₹</th><th>Replacement type</th><th>New number</th><th>Stock battery</th><th></th></tr></thead><tbody id="serviceParts"></tbody></table></div>`, '<button type="button" id="addPart">+ Add part</button>')}${panel(
         "Service charges",
         `<div class="formgrid">${select(
           "Charge type",
@@ -249,6 +250,29 @@ export async function serviceJobScreen(ctx, id, preselected) {
       .join(
         "",
       )}</select></td><td><input aria-label="Replacement serial number" data-part="newSerial" maxlength="100" value="${esc(p.newSerial)}"></td><td><button type="button" aria-label="Remove part">×</button></td>`;
+    const stockCell = document.createElement("td");
+    stockCell.innerHTML = `<select aria-label="Battery inventory replacement" data-part="batteryId"><option value="">No stock battery selected</option>${batteryStock
+      .filter((b) => b.status === "available" || b.id === p.batteryId)
+      .map(
+        (b) =>
+          `<option value="${b.id}" ${b.id === p.batteryId ? "selected" : ""}>${esc(b.brand + " " + b.model + " · " + b.serial)}</option>`,
+      )
+      .join("")}</select>`;
+    row.insertBefore(stockCell, row.lastElementChild);
+    stockCell.querySelector("select").onchange = (e) => {
+      const pack = batteryStock.find((b) => b.id === e.target.value);
+      if (pack) {
+        row.querySelector('[data-part="componentType"]').value = "battery";
+        row.querySelector('[data-part="newSerial"]').value = pack.serial;
+        row.querySelector('[data-part="quantity"]').value = 1;
+        row.querySelector('[data-part="description"]').value =
+          pack.brand + " " + pack.model;
+        row.querySelector('[data-part="unitCost"]').value = pack.cost / 100;
+        row.querySelector('[data-part="unitCharge"]').value =
+          form.elements.chargeType.value === "paid" ? pack.price / 100 : 0;
+      }
+      totals();
+    };
     row.querySelector("button").onclick = () => {
       row.remove();
       totals();
