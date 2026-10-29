@@ -15,16 +15,16 @@ const fail = (message, status = 400) => {
 const hash = (value) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
 export const SERVICE_STATES = {
-  received: "Received",
-  diagnosing: "Diagnosing",
-  in_progress: "In progress",
+  received: "Complaint registered",
+  diagnosing: "Under inspection",
+  in_progress: "Under service",
   waiting_parts: "Waiting for parts",
-  ready: "Ready for delivery",
-  delivered: "Delivered",
+  ready: "Service completed",
+  delivered: "Handed over",
   cancelled: "Cancelled",
 };
 const NEXT = {
-  received: ["diagnosing", "cancelled"],
+  received: ["in_progress", "diagnosing", "cancelled"],
   diagnosing: ["in_progress", "waiting_parts", "cancelled"],
   in_progress: ["waiting_parts", "ready", "cancelled"],
   waiting_parts: ["in_progress", "cancelled"],
@@ -342,6 +342,16 @@ export function serviceRoutes(db, app, { text, money }) {
             bike: { ...bike, ...intake },
             invoiceNumber: sale.number,
           });
+        if (
+          data.workPerformed ||
+          data.diagnosis ||
+          data.parts.length ||
+          data.totalCost ||
+          data.totalCharge
+        )
+          fail(
+            "Register the complaint first. Record services carried out, parts and charges after starting service.",
+          );
         const fy = financialYear(
             new Date().toLocaleDateString("en-CA", {
               timeZone: "Asia/Kolkata",
@@ -371,7 +381,7 @@ export function serviceRoutes(db, app, { text, money }) {
         db.prepare(
           "INSERT INTO service_sequences VALUES(?,?) ON CONFLICT(fy) DO UPDATE SET next_number=excluded.next_number",
         ).run(fy, seq + 1);
-        event(id, "received", "Bike received for service", data);
+        event(id, "received", "Customer complaint registered", data);
         return { id };
       }),
     ),
@@ -394,21 +404,35 @@ export function serviceRoutes(db, app, { text, money }) {
           fail("That service status transition is not allowed.");
         const assigned = technician(body.technicianId),
           data = details(body, row.body);
-        if (!["received", "cancelled"].includes(status) && !assigned)
-          fail("Assign an active technician before starting work.");
+        if (row.status !== "received" && data.complaint !== row.body.complaint)
+          fail(
+            "The original customer complaint is preserved after service starts. Add findings to the service notes.",
+          );
         if (
-          ["ready", "delivered"].includes(status) &&
-          (!data.diagnosis || !data.workPerformed)
+          status === "received" &&
+          (data.workPerformed !== row.body.workPerformed ||
+            data.diagnosis !== row.body.diagnosis ||
+            JSON.stringify(data.parts) !== JSON.stringify(row.body.parts) ||
+            data.totalCost !== row.body.totalCost ||
+            data.totalCharge !== row.body.totalCharge)
         )
           fail(
-            "Record the diagnosis and work performed before marking the bike ready.",
+            "Start service before recording completed work, parts or charges.",
           );
+        if (!["received", "cancelled"].includes(status) && !assigned)
+          fail("Assign an active technician before starting work.");
+        if (["ready", "delivered"].includes(status) && !data.workPerformed)
+          fail("Record the services carried out before completing this visit.");
         if (data.totalCharge < row.received)
           fail("Customer charges cannot be reduced below recorded payments.");
         if (status === "cancelled" && row.received)
           fail(
             "A job with recorded payments cannot be cancelled without a refund workflow.",
           );
+        if (status === "ready" && row.status !== "ready") {
+          data.completedAt = new Date().toISOString();
+          data.completedByTechnician = assigned.name;
+        }
         if (status === "delivered") {
           if (
             data.totalCharge > row.received &&
@@ -460,7 +484,16 @@ export function serviceRoutes(db, app, { text, money }) {
         event(
           row.id,
           status === row.status ? "updated" : status,
-          `Owner saved job: ${SERVICE_STATES[status]}`,
+          status === row.status
+            ? "Job card details updated"
+            : {
+                in_progress: "Service started",
+                ready: "Service completed",
+                delivered: "Bike handed over",
+                waiting_parts: "Waiting for parts",
+                cancelled: "Service visit cancelled",
+                diagnosing: "Inspection started",
+              }[status] || SERVICE_STATES[status],
           { before: row.body, after: data, technician: assigned?.name || null },
         );
         return { ok: true };
