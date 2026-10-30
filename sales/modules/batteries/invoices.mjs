@@ -14,6 +14,7 @@ import { financialYear } from "../../public/gst.mjs";
 import { productTotals } from "../../public/domain/totals.mjs";
 import { gstRate, hsnCode } from "./routes.mjs";
 import { batteryEvent } from "./stock.mjs";
+import { invoiceDeletion } from "../invoices/deletion.mjs";
 import { assertSinglePageInvoice, gstInvoicePdf } from "../../gst-pdf.mjs";
 export function batteryInvoiceRoutes(db, app, { root }) {
   function build(body) {
@@ -117,6 +118,11 @@ export function batteryInvoiceRoutes(db, app, { root }) {
             .prepare("SELECT id,request_hash FROM invoices WHERE request_key=?")
             .get(key);
         if (existing) {
+          if (invoiceDeletion(db, existing.id))
+            fail(
+              "This request belongs to a deleted invoice. Start and review a new battery invoice.",
+              409,
+            );
           if (existing.request_hash !== digest)
             fail(
               "This invoice request was already used with different details.",

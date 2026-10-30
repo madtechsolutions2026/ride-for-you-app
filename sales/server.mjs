@@ -1,6 +1,10 @@
 import { batteryRoutes } from "./modules/batteries/routes.mjs";
 import { batteryInvoiceRoutes } from "./modules/batteries/invoices.mjs";
 import { quotationRoutes } from "./modules/quotations/routes.mjs";
+import {
+  invoiceDeletion,
+  invoiceDeletionRoutes,
+} from "./modules/invoices/deletion.mjs";
 import { openDatabase } from "./db/database.mjs";
 import { text, money } from "./core/validation.mjs";
 export { money } from "./core/validation.mjs";
@@ -89,6 +93,7 @@ gstInvoiceRoutes(db, app, { text, money, root });
 batteryRoutes(db, app);
 batteryInvoiceRoutes(db, app, { root });
 quotationRoutes(db, app, { root });
+invoiceDeletionRoutes(db, app);
 serviceRoutes(db, app, { text, money });
 inventoryImport(db, app, { text, money });
 app.get("/api/invoices/:id/pdf", (req, res) => {
@@ -96,6 +101,13 @@ app.get("/api/invoices/:id/pdf", (req, res) => {
     .prepare("SELECT * FROM invoices WHERE id=?")
     .get(req.params.id);
   if (!row) return res.status(404).json({ error: "Invoice not found." });
+  if (invoiceDeletion(db, row.id))
+    return res
+      .status(410)
+      .json({
+        error:
+          "This invoice was deleted from active sales. Its original record and deletion reason are retained under Deleted invoices; it cannot be downloaded as an active invoice.",
+      });
   invoicePdf(res, row, root, {
     copy: ["original", "supplier", "transporter"].includes(req.query.copy)
       ? req.query.copy

@@ -94,7 +94,7 @@ export function gstInvoiceView({ row, route, shell, heading, appBase }) {
       "GST TAX INVOICE",
       esc(row.number),
       "Saved seller, customer, HSN and tax details are preserved.",
-      `<a href="#invoices">← All invoices</a><a class="primary download-link" href="${appBase}/api/invoices/${row.id}/pdf">↓ Download tax invoice PDF</a><a href="${appBase}/api/invoices/${row.id}/pdf?copy=transporter">Transporter copy</a><a href="${appBase}/api/invoices/${row.id}/pdf?copy=supplier">Supplier copy</a>`,
+      `<a href="#invoices">← All invoices</a><a class="primary download-link" href="${appBase}/api/invoices/${row.id}/pdf">↓ Download tax invoice PDF</a><a href="${appBase}/api/invoices/${row.id}/pdf?copy=transporter">Transporter copy</a><a href="${appBase}/api/invoices/${row.id}/pdf?copy=supplier">Supplier copy</a><a class="danger-link" href="#invoices/${row.id}/delete">Delete invoice</a>`,
     ) + gstInvoiceHtml(row.number, row.body, { logoBase: appBase }),
     route,
   );

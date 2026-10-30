@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { productTotals } from "../public/domain/totals.mjs";
 import { upgradeCommerce } from "../db/migrations/003-commerce.mjs";
+import { upgradeInvoiceDeletion } from "../db/migrations/004-invoice-deletion.mjs";
 test("configurable product GST preserves paise, mixed rates and inclusive/exclusive totals", () => {
   for (const rate of [500, 750, 1200, 1800, 2800, 4000]) {
     const result = productTotals(
@@ -75,6 +76,45 @@ test("commerce migration is repeatable and snapshots existing live records befor
     );
     backup.close();
     assert.equal(db.prepare("SELECT COUNT(*) n FROM batteries").get().n, 0);
+  } finally {
+    db.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("invoice deletion upgrade preserves issued records and creates a verified pre-upgrade snapshot", () => {
+  const db = new DatabaseSync(":memory:");
+  const dir = mkdtempSync(path.join(os.tmpdir(), "rfy-deletion-migration-"));
+  db.exec(
+    "CREATE TABLE app_meta(key TEXT PRIMARY KEY,value TEXT); CREATE TABLE invoices(id TEXT PRIMARY KEY,body TEXT); INSERT INTO invoices VALUES('original','unchanged original');",
+  );
+  const backupPath = path.join(dir, "before-deletion.sqlite");
+  try {
+    upgradeInvoiceDeletion(db, { backupPath });
+    upgradeInvoiceDeletion(db);
+    assert.equal(
+      db.prepare("SELECT body FROM invoices WHERE id='original'").get().body,
+      "unchanged original",
+    );
+    assert.equal(
+      db.prepare("SELECT COUNT(*) n FROM invoice_deletions").get().n,
+      0,
+    );
+    const backup = new DatabaseSync(backupPath, { readOnly: true });
+    assert.equal(
+      backup.prepare("SELECT body FROM invoices WHERE id='original'").get()
+        .body,
+      "unchanged original",
+    );
+    assert.equal(
+      backup
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE name='invoice_deletions'",
+        )
+        .get(),
+      undefined,
+    );
+    backup.close();
   } finally {
     db.close();
     rmSync(dir, { recursive: true, force: true });

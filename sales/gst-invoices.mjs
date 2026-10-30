@@ -1,4 +1,5 @@
 import { insertInvoice } from "./core/documents.mjs";
+import { invoiceDeletion } from "./modules/invoices/deletion.mjs";
 import {
   convertibleQuotation,
   linkQuotation,
@@ -172,9 +173,21 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
         .all(),
       bikes: db.prepare("SELECT * FROM bikes ORDER BY created DESC").all(),
       invoices: db
-        .prepare("SELECT * FROM invoices ORDER BY created DESC")
+        .prepare(
+          "SELECT i.* FROM invoices i WHERE NOT EXISTS(SELECT 1 FROM invoice_deletions d WHERE d.invoice_id=i.id) ORDER BY i.created DESC",
+        )
         .all()
         .map((row) => ({ ...row, body: JSON.parse(row.body) })),
+      deletedInvoices: db
+        .prepare(
+          "SELECT i.*,d.deleted_at,d.reason FROM invoices i JOIN invoice_deletions d ON d.invoice_id=i.id ORDER BY d.deleted_at DESC",
+        )
+        .all()
+        .map(({ deleted_at, reason, ...row }) => ({
+          ...row,
+          body: JSON.parse(row.body),
+          deletion: { deletedAt: deleted_at, reason },
+        })),
     });
   });
   app.put("/api/settings", (req, res) => {
@@ -470,6 +483,13 @@ export function gstInvoiceRoutes(db, app, { text, money, root }) {
         .get(key);
       if (previous) {
         db.exec("ROLLBACK");
+        if (invoiceDeletion(db, previous.id))
+          return res
+            .status(409)
+            .json({
+              error:
+                "This invoice request belongs to a deleted invoice. Start a new invoice and review it before issuing.",
+            });
         if (previous.request_hash !== hash)
           return res.status(409).json({
             error:

@@ -10,6 +10,7 @@ import { PassThrough } from "node:stream";
 import { invoicePdf } from "./invoice-pdf.mjs";
 import { serviceChecks } from "./service-checks.mjs";
 import { commerceChecks } from "./tests/commerce-checks.mjs";
+import { invoiceDeletionChecks } from "./tests/invoice-deletion-checks.mjs";
 
 test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", async () => {
   const folder = mkdtempSync(path.join(os.tmpdir(), "rfy-sales-test-"));
@@ -87,6 +88,7 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     assert(page.includes(`src="${prefix}/app.js"`));
     assert.equal((await fetch(base + "/logo.png")).status, 200);
     assert.equal((await req("/state")).status, 401);
+    assert.equal((await req("/invoices/missing", "DELETE", {})).status, 401);
     assert.equal((await req("/services")).status, 401);
     assert.equal((await req("/technicians")).status, 401);
     assert.equal(
@@ -576,6 +578,7 @@ test("WhatsApp-only auth, bulk inventory, immutable invoices and branded PDFs", 
     }
     await serviceChecks(req, id, invoice.id, bike);
     await commerceChecks(req);
+    await invoiceDeletionChecks(req, path.join(folder, "sales.sqlite"));
     assert.equal((await req("/logout", "POST", {})).status, 200);
     assert.equal((await req("/state")).status, 401);
     const otp2 = await (

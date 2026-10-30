@@ -39,6 +39,12 @@ Single shared owner workspace: all allowed numbers have full access. Regular dom
 - Quotations > Create quotation selects one available bike, customer details, price basis, discount, validity, warranty and terms. Review, generate, then print or download its one-page PDF. Quotations are clearly marked as price offers, not tax invoices. They do not reserve stock or consume sales invoice numbers.
 - A valid issued/accepted quotation can prepare a bike invoice. Customer, price, warranty and terms are prefilled, then reviewed again before issue. Conversion rechecks availability and links the quotation atomically. Cancelled, expired and converted quotes cannot be reused for another invoice.
 
+## Delete an invoice created in error
+
+Invoices > Delete opens a full review page. The owner enters a reason, types the exact invoice number and confirms physical stock and any required external payment/tax corrections. Deletion removes the invoice from active sales, receipts/balance totals and CSV exports, and returns linked bikes/batteries to available stock in one transaction. It does not delete the physical inventory item. A stale review or any service history blocks deletion. Stock can be resold only through a new invoice with a new number.
+
+Deleted invoices remain in Invoices > Deleted invoices with the original saved details, reason and timestamp. Their numbers are never reused; active invoice PDF downloads are disabled. Original sale data and linked converted quotations are retained. This action does not refund money, issue a credit note, cancel an IRN or update a GST filing. Use the relevant external correction process for a real issued transaction.
+
 ## After-sales service
 
 1. Add technicians in Technicians. The owner assigns and manages their work. Deactivation preserves history and prevents further assignment.

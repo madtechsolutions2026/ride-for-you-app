@@ -1,5 +1,9 @@
 import { batteryScreen } from "./modules/batteries/ui.mjs";
 import { quotationScreen } from "./modules/quotations/ui.mjs";
+import {
+  invoiceDeleteScreen,
+  retainedInvoiceView,
+} from "./modules/invoices/deletion-ui.mjs";
 import { gstInvoiceForm, gstInvoiceView, gstSettingsForm } from "./gst-ui.mjs";
 import { EV_HSN, DEFAULT_HSN } from "./gst.mjs";
 import { serviceScreen } from "./service-ui.mjs";
@@ -168,9 +172,9 @@ function heading(k, t, sub, actions = "") {
 function empty(title, desc, href, button) {
   return `<div class="empty"><b>${title}</b><p>${desc}</p>${href ? `<a href="${href}"><button class="primary">${button}</button></a>` : ""}</div>`;
 }
-function invoiceTable(rows) {
+function invoiceTable(rows, deleted = false) {
   return rows.length
-    ? `<div class="scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Total</th><th>Balance</th><th></th></tr></thead><tbody>${rows.map((i) => `<tr><td><b>${esc(i.number)}</b><small>${i.body.lines.length} ${i.body.saleType === "battery" ? (i.body.lines.length === 1 ? "battery" : "batteries") : i.body.lines.length === 1 ? "bike" : "bikes"}</small></td><td>${esc(i.body.customer.name)}<small>${esc(i.body.customer.phone)}</small></td><td>${esc(i.body.date)}</td><td>${rupee(i.total)}</td><td>${i.total - i.paid ? `<span class="balance">${rupee(i.total - i.paid)}</span>` : '<span class="tag">Paid</span>'}</td><td><a href="#invoices/${i.id}">View ↗</a></td></tr>`).join("")}</tbody></table></div>`
+    ? `<div class="scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>${deleted ? "Original total" : "Total"}</th><th>${deleted ? "Status" : "Balance"}</th><th>Actions</th></tr></thead><tbody>${rows.map((i) => `<tr><td><b>${esc(i.number)}</b><small>${i.body.lines.length} ${i.body.saleType === "battery" ? (i.body.lines.length === 1 ? "battery" : "batteries") : i.body.lines.length === 1 ? "bike" : "bikes"}</small></td><td>${esc(i.body.customer.name)}<small>${esc(i.body.customer.phone)}</small></td><td>${esc(i.body.date)}</td><td>${rupee(i.total)}</td><td>${deleted ? '<span class="tag deleted-tag">Deleted</span>' : i.total - i.paid ? `<span class="balance">${rupee(i.total - i.paid)}</span>` : '<span class="tag">Paid</span>'}</td><td><div class="invoice-row-actions"><a href="#invoices/${i.id}">${deleted ? "Retained record" : "View ↗"}</a>${deleted ? "" : `<a class="danger-link" href="#invoices/${i.id}/delete">Delete</a>`}</div></td></tr>`).join("")}</tbody></table></div>`
     : empty(
         "Your next sale starts here.",
         "Create an invoice to build your sales history.",
@@ -211,6 +215,9 @@ function render() {
     return bikeForm(route);
   if (route === "invoices/new" || route.startsWith("invoices/new/"))
     return invoiceForm(route);
+  if (/^invoices\/[^/]+\/delete$/.test(route))
+    return invoiceDeleteScreen(context);
+  if (route === "invoices/deleted") return deletedInvoices(route);
   if (route.startsWith("invoices/")) return invoiceView(route);
   if (route === "settings") return settings(route);
   if (route === "inventory") return inventory(route);
@@ -351,7 +358,7 @@ function invoices(route) {
       "SALES & BILLING",
       "Invoices, neatly in order.",
       "Bike and battery invoices with customer, serial and warranty details.",
-      `<button id="export">Export CSV</button><a href="#batteries/sale"><button>Battery invoice</button></a><a href="#invoices/new"><button class="primary">+ Bike invoice</button></a>`,
+      `<a href="#invoices/deleted">Deleted invoices (${state.deletedInvoices?.length || 0})</a><button id="export">Export CSV</button><a href="#batteries/sale"><button>Battery invoice</button></a><a href="#invoices/new"><button class="primary">+ Bike invoice</button></a>`,
     ) +
       `<div class="search"><input id="search" placeholder="Search invoice number or customer…" aria-label="Search invoices"><div class="datefilters">Month <input id="month" type="month"><button id="clear" class="smallbtn">Clear</button></div></div><section class="panel" id="invoicetable"></section>`,
     route,
@@ -418,6 +425,31 @@ function invoices(route) {
       ]),
     ]);
 }
+function deletedInvoices(route) {
+  shell(
+    heading(
+      "SALES RECORDS",
+      "Deleted invoices.",
+      "Original records are retained. These invoices are excluded from sales totals and exports.",
+      '<a href="#invoices">← Active invoices</a>',
+    ) +
+      '<div class="search"><input id="deletedSearch" type="search" aria-label="Search deleted invoices" placeholder="Search invoice, customer or deletion reason…"></div><section class="panel" id="deletedInvoiceTable"></section>',
+    route,
+  );
+  const draw = () => {
+    const q = document.querySelector("#deletedSearch").value.toLowerCase();
+    const rows = (state.deletedInvoices || []).filter((i) =>
+      `${i.number} ${i.body.customer.name} ${i.body.customer.phone} ${i.deletion.reason}`
+        .toLowerCase()
+        .includes(q),
+    );
+    document.querySelector("#deletedInvoiceTable").innerHTML = rows.length
+      ? invoiceTable(rows, true)
+      : '<div class="empty"><b>No deleted invoices to show.</b><p>Deleted invoices will remain here for review.</p></div>';
+  };
+  draw();
+  document.querySelector("#deletedSearch").oninput = draw;
+}
 function invoiceForm(route) {
   return gstInvoiceForm({
     state,
@@ -432,11 +464,15 @@ function invoiceForm(route) {
   });
 }
 function invoiceView(route) {
-  const i = state.invoices.find((x) => x.id === route.split("/")[1]);
+  const i = [...state.invoices, ...(state.deletedInvoices || [])].find(
+    (x) => x.id === route.split("/")[1],
+  );
   if (!i) {
     location.hash = "invoices";
     return;
   }
+  if (i.deletion)
+    return retainedInvoiceView({ shell, heading, route, appBase }, i);
   if (i.body.version === 2)
     return gstInvoiceView({ row: i, route, shell, heading, appBase });
   const b = i.body,
@@ -446,7 +482,7 @@ function invoiceView(route) {
       "SALES DOCUMENT",
       esc(i.number),
       "Issued invoice · saved sale details cannot be changed.",
-      `<a href="#invoices"><button>← All invoices</button></a><a href="${appBase}/api/invoices/${i.id}/pdf"><button class="primary">↓ Download invoice PDF</button></a>`,
+      `<a href="#invoices"><button>← All invoices</button></a><a href="${appBase}/api/invoices/${i.id}/pdf"><button class="primary">↓ Download invoice PDF</button></a><a class="danger-link" href="#invoices/${i.id}/delete">Delete invoice</a>`,
     ) +
       `<div class="invoice-sheet"><div class="invoice-top"><div class="invoice-identity"><img src="${appBase}/logo.png" alt="Ride For You mobile app logo"><div><h2>${esc(seller.name)}</h2><p>${esc(seller.address)}<br>${esc(seller.phone)} ${esc(seller.email)}${seller.taxId ? "<br>Tax ID / GSTIN: " + esc(seller.taxId) : ""}</p></div></div><div class="invoice-ref"><div class="eyebrow">SALES INVOICE</div><h2>${esc(i.number)}</h2><p>${esc(b.date)}</p><span class="tag ${b.balance ? "due" : ""}">${b.balance === 0 ? "Paid" : b.paid ? "Partially paid" : "Unpaid"}</span></div></div><div class="invoice-parties"><section><div class="eyebrow">BILLED TO</div><h3>${esc(b.customer.name)}</h3><p>${esc(b.customer.address)}<br>Phone: ${esc(b.customer.phone)}${b.customer.taxId ? "<br>Tax ID / GSTIN: " + esc(b.customer.taxId) : ""}</p></section><section><div class="eyebrow">SALE DETAILS</div><dl><dt>Payment method</dt><dd>${esc(b.method)}</dd><dt>Salesperson</dt><dd>${esc(b.salesperson || "—")}</dd><dt>Bikes supplied</dt><dd>${b.lines.length}</dd></dl></section></div><div class="scroll"><table class="invoice-items"><thead><tr><th>No.</th><th>Bike & identification</th><th>Qty</th><th class="right">Unit price</th><th class="right">Amount</th></tr></thead><tbody>${b.lines.map((l, n) => `<tr><td>${n + 1}</td><td><b>${esc(l.brand + " " + l.model)}</b><small>Chassis / frame: ${esc(l.vin)}</small><small>${esc(l.color ? "Colour: " + l.color : "")}${l.battery ? " · Battery / motor serial: " + esc(l.battery) : ""}</small></td><td>1</td><td class="right">${rupee(l.salePrice)}</td><td class="right"><b>${rupee(l.salePrice)}</b></td></tr>`).join("")}</tbody></table></div><div class="invoice-bottom"><div><div class="eyebrow">SALE SUMMARY</div><p>${b.lines.length} bike${b.lines.length === 1 ? "" : "s"} supplied.<br>Amounts shown in Indian Rupees (INR).</p><p class="muted">Payment amounts reflect the seller’s recorded receipt at invoice issue.</p>${seller.bank ? `<h3>Payment / bank details</h3><p class="prewrap">${esc(seller.bank)}</p>` : ""}</div><div class="invoice-totalbox">${[
         ["Subtotal", b.subtotal],

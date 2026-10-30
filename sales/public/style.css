@@ -1362,3 +1362,132 @@ details .warranty-grid {
     position: static;
   }
 }
+
+.invoice-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+a.danger-link {
+  color: #9d302e;
+  font-weight: 600;
+}
+.invoice-delete-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.invoice-delete-grid .panelbody > .field {
+  margin-top: 24px;
+}
+.invoice-delete-grid .field textarea {
+  min-height: 100px;
+}
+.invoice-delete-confirm {
+  position: sticky;
+  top: 24px;
+}
+.delete-effects {
+  display: grid;
+  gap: 16px;
+  margin: 26px 0;
+  padding: 22px;
+  background: #f3f6f2;
+  border-radius: 6px;
+}
+.delete-effects p {
+  margin: 6px 0 0;
+  color: #4c5d50;
+  line-height: 1.65;
+}
+.delete-amounts {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 15px;
+  margin: 0 0 24px;
+}
+.delete-amounts dd {
+  margin: 0;
+  font-weight: 700;
+}
+.delete-checks {
+  display: grid;
+  gap: 18px;
+  margin: 24px 0;
+}
+.delete-checks label {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  line-height: 1.7;
+  color: #263f31;
+}
+.delete-checks input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin: 3px 0 0;
+  accent-color: #a43230;
+}
+button.danger-button {
+  width: 100%;
+  background: #a43230;
+  border-color: #a43230;
+  color: white;
+  padding: 15px 12px;
+}
+button.danger-button:hover {
+  background: #862826;
+}
+.delete-back {
+  display: block;
+  text-align: center;
+  margin-top: 20px;
+}
+.deletion-record {
+  padding: 22px 26px;
+  background: #fff1ee;
+  color: #742b26;
+  border: 1px solid #efc5bb;
+  border-radius: 6px;
+  margin-bottom: 24px;
+}
+.deletion-record p {
+  margin: 10px 0 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.deleted-tag {
+  color: #8d302c;
+  background: #fff0eb;
+}
+.retained-invoice {
+  position: relative;
+  border-top: 5px solid #a43230;
+}
+.retained-invoice::before {
+  content: "RETAINED RECORD - DELETED";
+  display: block;
+  text-align: center;
+  background: #f7e5e1;
+  color: #742b26;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 14px;
+}
+@media (max-width: 1000px) {
+  .invoice-delete-grid {
+    grid-template-columns: 1fr;
+  }
+  .invoice-delete-confirm {
+    position: static;
+  }
+}
+@media print {
+  .retained-invoice::before {
+    color: #742b26;
+    font-size: 16px;
+  }
+}
